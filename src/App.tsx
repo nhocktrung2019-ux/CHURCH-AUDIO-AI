@@ -6,6 +6,7 @@ import MeasurementPlanner from "./audio/MeasurementPlanner";
 import TransferFunctionPanel from "./audio/TransferFunctionPanel";
 import FeedbackMonitor from "./audio/FeedbackMonitor";
 import TuningAdvisor from "./audio/TuningAdvisor";
+import RoomPlanner3D from "./audio/RoomPlanner3D";
 
 export default function App(){
  const a=useAudioAnalyzer(),t=useToneGenerator(),inputs=a.devices.filter(d=>d.kind==="audioinput"),outputs=a.devices.filter(d=>d.kind==="audiooutput");
@@ -25,7 +26,8 @@ export default function App(){
   <TransferFunctionPanel selectedInput={a.selectedInput}/>
   <FeedbackMonitor history={a.history}/>
   <TuningAdvisor history={a.history} level={a.level}/>
+  <RoomPlanner3D/>
   <section className="roadmap"><small>ROADMAP</small><p>01 RTA + SPECTROGRAM <b>→</b> 02 RT60 / DELAY <b>→</b> 03 AUTO EQ / FEEDBACK <b>→</b> 04 3D COVERAGE <b>→</b> 05 DSP CONTROL</p></section>
-  <footer>CHURCH AUDIO ANALYZER <span>BUILD 0.7.0 · TUNING ADVISOR</span></footer>
+  <footer>CHURCH AUDIO ANALYZER <span>BUILD 0.8.0 · ROOM PLANNER</span></footer>
  </main>;
 }
