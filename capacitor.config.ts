@@ -4,7 +4,6 @@ const config: CapacitorConfig = {
   appId: "com.churchaudio.analyzer",
   appName: "Church Audio Analyzer",
   webDir: "dist",
-  bundledWebRuntime: false,
   android: {
     allowMixedContent: false
   }
