@@ -1,0 +1,6 @@
+import {useEffect,useRef,useState} from "react";
+export function useToneGenerator(){const ctx=useRef<AudioContext|null>(null),osc=useRef<OscillatorNode|null>(null),gain=useRef<GainNode|null>(null);const[frequency,setFrequency]=useState(1000),[volume,setVolume]=useState(-30),[active,setActive]=useState(false);
+ const stop=()=>{try{osc.current?.stop();}catch{}osc.current?.disconnect();gain.current?.disconnect();osc.current=null;gain.current=null;setActive(false);void ctx.current?.close();ctx.current=null;};
+ const start=async()=>{stop();const c=new AudioContext(),o=c.createOscillator(),g=c.createGain();o.type="sine";o.frequency.value=frequency;g.gain.value=Math.pow(10,volume/20)*.08;o.connect(g).connect(c.destination);ctx.current=c;osc.current=o;gain.current=g;o.start();setActive(true);};
+ useEffect(()=>{if(osc.current)osc.current.frequency.setTargetAtTime(frequency,ctx.current?.currentTime??0,.02);},[frequency]);useEffect(()=>{if(gain.current)gain.current.gain.setTargetAtTime(Math.pow(10,volume/20)*.08,ctx.current?.currentTime??0,.02);},[volume]);useEffect(()=>()=>{try{osc.current?.stop();}catch{}void ctx.current?.close();},[]);
+ return{frequency,setFrequency,volume,setVolume,active,start,stop};}
