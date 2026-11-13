@@ -4,6 +4,7 @@ import{useToneGenerator}from"./audio/useToneGenerator";
 import{equipment}from"./data/equipment";
 import MeasurementPlanner from "./audio/MeasurementPlanner";
 import TransferFunctionPanel from "./audio/TransferFunctionPanel";
+import FeedbackMonitor from "./audio/FeedbackMonitor";
 
 export default function App(){
  const a=useAudioAnalyzer(),t=useToneGenerator(),inputs=a.devices.filter(d=>d.kind==="audioinput"),outputs=a.devices.filter(d=>d.kind==="audiooutput");
@@ -21,7 +22,8 @@ export default function App(){
   </section>
   <MeasurementPlanner running={a.running} spectrum={a.spectrum}/>
   <TransferFunctionPanel selectedInput={a.selectedInput}/>
+  <FeedbackMonitor history={a.history}/>
   <section className="roadmap"><small>ROADMAP</small><p>01 RTA + SPECTROGRAM <b>→</b> 02 RT60 / DELAY <b>→</b> 03 AUTO EQ / FEEDBACK <b>→</b> 04 3D COVERAGE <b>→</b> 05 DSP CONTROL</p></section>
-  <footer>CHURCH AUDIO ANALYZER <span>BUILD 0.5.0 · TRANSFER FUNCTION PREVIEW</span></footer>
+  <footer>CHURCH AUDIO ANALYZER <span>BUILD 0.6.0 · FEEDBACK WATCH</span></footer>
  </main>;
 }
