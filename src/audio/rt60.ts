@@ -169,7 +169,7 @@ function schroederDecay(samples: Float32Array): Float32Array | null {
   const curve = new Float32Array(samples.length);
   let integrated = 0;
   for (let i = samples.length - 1; i >= 0; i--) {
-    integrated += Math.max(0, samples[i] * samples[i] - noisePower);
+    integrated = Math.max(0, integrated + samples[i] * samples[i] - noisePower);
     curve[i] = integrated;
   }
   const reference = curve[0];
