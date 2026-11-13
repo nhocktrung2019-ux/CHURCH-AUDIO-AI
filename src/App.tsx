@@ -28,6 +28,6 @@ export default function App(){
   <TuningAdvisor history={a.history}/>
   <RoomPlanner3D/>
   <section className="roadmap"><small>ROADMAP</small><p>01 RTA + SPECTROGRAM <b>→</b> 02 RT60 / DELAY <b>→</b> 03 AUTO EQ / FEEDBACK <b>→</b> 04 3D COVERAGE <b>→</b> 05 DSP CONTROL</p></section>
-  <footer>CHURCH AUDIO ANALYZER <span>BUILD 0.8.0 · ROOM PLANNER</span></footer>
+  <footer>CHURCH AUDIO ANALYZER <span>BUILD 0.9.0 · SPEAKER DATABASE</span></footer>
  </main>;
 }
