@@ -82,6 +82,11 @@ export function useAudioAnalyzer() {
   const [connecting, setConnecting] = useState(false);
   const [level, setLevel] = useState(-100);
   const [rmsDbfs, setRmsDbfs] = useState(-100);
+  const [weightedLevels, setWeightedLevels] = useState({ z: -100, a: -100, c: -100 });
+  const [leqLevels, setLeqLevels] = useState({ z: -100, a: -100, c: -100 });
+  const [measurementSeconds, setMeasurementSeconds] = useState(0);
+  const integrationRef = useRef({ z: 0, a: 0, c: 0, frames: 0 });
+  const startedAtRef = useRef<number | null>(null);
   const [spectrum, setSpectrum] = useState<number[]>(Array(64).fill(-100));
   const [history, setHistory] = useState<number[][]>([]);
   const [error, setError] = useState("");
@@ -128,6 +133,11 @@ export function useAudioAnalyzer() {
     setConnecting(false);
     setLevel(-100);
     setRmsDbfs(-100);
+    setWeightedLevels({ z: -100, a: -100, c: -100 });
+    setLeqLevels({ z: -100, a: -100, c: -100 });
+    setMeasurementSeconds(0);
+    integrationRef.current = { z: 0, a: 0, c: 0, frames: 0 };
+    startedAtRef.current = null;
     setTrackInfo("");
   }, []);
 
@@ -196,6 +206,10 @@ export function useAudioAnalyzer() {
           : "",
       );
       setHistory([]);
+      integrationRef.current = { z: 0, a: 0, c: 0, frames: 0 };
+      startedAtRef.current = Date.now();
+      setLeqLevels({ z: -100, a: -100, c: -100 });
+      setMeasurementSeconds(0);
       setRunning(true);
 
       track.addEventListener(
@@ -341,7 +355,42 @@ export function useAudioAnalyzer() {
             const rms = Math.sqrt(sumSquares / Math.max(1, timeData.length));
             const peakDbfs = inputPeak > 0 ? 20 * Math.log10(inputPeak) : -100;
             const rmsLevelDbfs = rms > 0 ? 20 * Math.log10(rms) : -100;
-
+            let totalSpectrumPower = 0, zPower = 0, aPower = 0, cPower = 0;
+            const sampleRate = context?.sampleRate ?? 48000;
+            for (let k = 1; k < data.length; k++) {
+              if (!Number.isFinite(data[k]) || data[k] <= -120) continue;
+              const hz = k * sampleRate / fftSize;
+              const power = Math.pow(10, data[k] / 10);
+              totalSpectrumPower += power;
+              if (hz < 20 || hz > Math.min(20000, sampleRate / 2)) continue;
+              const f2 = hz * hz, f1 = 20.6, f2a = 107.7, f3 = 737.9, f4 = 12200;
+              const aNumerator = f4 * f4 * f2 * f2;
+              const aDenominator = (f2 + f1 * f1) * Math.sqrt(f2 + f2a * f2a) * Math.sqrt(f2 + f3 * f3) * (f2 + f4 * f4);
+              const aWeightDb = 20 * Math.log10(Math.max(1e-20, aNumerator / aDenominator)) + 2.0;
+              const cNumerator = f4 * f4 * f2;
+              const cDenominator = (f2 + f1 * f1) * (f2 + f4 * f4);
+              const cWeightDb = 20 * Math.log10(Math.max(1e-20, cNumerator / cDenominator)) + 0.06;
+              zPower += power;
+              aPower += power * Math.pow(10, aWeightDb / 10);
+              cPower += power * Math.pow(10, cWeightDb / 10);
+            }
+            const bandRatio = totalSpectrumPower > 0 ? zPower / totalSpectrumPower : 1;
+            const zLevel = rmsLevelDbfs + 10 * Math.log10(Math.max(1e-12, bandRatio));
+            const aLevel = rmsLevelDbfs + 10 * Math.log10(Math.max(1e-12, totalSpectrumPower > 0 ? aPower / totalSpectrumPower : 1));
+            const cLevel = rmsLevelDbfs + 10 * Math.log10(Math.max(1e-12, totalSpectrumPower > 0 ? cPower / totalSpectrumPower : 1));
+            const safeLevels = { z: Math.max(-100, Math.min(0, zLevel)), a: Math.max(-100, Math.min(0, aLevel)), c: Math.max(-100, Math.min(0, cLevel)) };
+            integrationRef.current.z += Math.pow(10, safeLevels.z / 10);
+            integrationRef.current.a += Math.pow(10, safeLevels.a / 10);
+            integrationRef.current.c += Math.pow(10, safeLevels.c / 10);
+            integrationRef.current.frames++;
+            const frameCount = integrationRef.current.frames;
+            setWeightedLevels(safeLevels);
+            setLeqLevels({
+              z: 10 * Math.log10(integrationRef.current.z / frameCount),
+              a: 10 * Math.log10(integrationRef.current.a / frameCount),
+              c: 10 * Math.log10(integrationRef.current.c / frameCount),
+            });
+            setMeasurementSeconds(startedAtRef.current === null ? 0 : (Date.now() - startedAtRef.current) / 1000);
             setSpectrum(bins);
             setLevel(Math.max(-100, Math.min(0, peakDbfs)));
             setRmsDbfs(Math.max(-100, Math.min(0, rmsLevelDbfs)));
@@ -393,6 +442,9 @@ export function useAudioAnalyzer() {
     connecting,
     level,
     rmsDbfs,
+    weightedLevels,
+    leqLevels,
+    measurementSeconds,
     spectrum,
     history,
     error,
