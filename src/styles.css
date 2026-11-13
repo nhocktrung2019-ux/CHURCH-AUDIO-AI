@@ -127,3 +127,22 @@ footer{padding-bottom:calc(26px + env(safe-area-inset-bottom))}
  .mic-status small{font-size:10px}
  .panel button{padding:12px 10px}
 }
+
+/* Clearer acoustic room visualization */
+.room-view-switch{display:flex;gap:8px;justify-content:flex-end;margin:14px 0 0}
+.room-view-switch button{display:inline-flex;align-items:center;justify-content:center;gap:7px;width:auto;margin:0;padding:9px 13px;border:1px solid #3b5360;background:#14232d;color:#b9cbd0;border-radius:8px;font-size:11px}
+.room-view-switch button svg{width:15px;height:15px}
+.room-view-switch button.active{background:linear-gradient(135deg,#1c5148,#17352f);border-color:#65d2b6;color:#bff5e3;box-shadow:0 0 0 1px rgba(101,210,182,.12),0 8px 20px rgba(0,0,0,.18)}
+.room-canvas{position:relative;background:radial-gradient(ellipse at 48% 45%,#1c3942 0%,#101b25 70%);box-shadow:inset 0 0 36px rgba(0,0,0,.28)}
+.room-canvas svg{min-height:300px;max-height:560px}
+.room-canvas svg text{font-family:Inter,"Segoe UI",sans-serif;paint-order:stroke;stroke:rgba(8,17,23,.65);stroke-width:2px;stroke-linejoin:round}
+.room-legend{padding:9px 12px;border:1px solid #2a414a;border-radius:8px;background:rgba(12,22,29,.58)}
+.room-legend i{box-shadow:0 0 9px currentColor}
+.room-speaker-list button{border-radius:8px;transition:border-color .18s,background .18s,transform .18s}
+.room-speaker-list button:hover{border-color:#65d2b6;transform:translateY(-1px)}
+.room-editor,.room-heatmap-panel,.room-reference{background:linear-gradient(135deg,rgba(20,34,43,.45),rgba(12,20,28,.15));border-radius:10px;padding:16px;margin-top:18px}
+.room-editor .heading,.room-heatmap-panel .heading,.room-reference .heading{margin-bottom:14px}
+.spl-cell{box-shadow:inset 0 0 0 1px rgba(255,255,255,.07);transition:filter .15s}
+.spl-cell:hover{filter:brightness(1.25)}
+@media(max-width:600px){.room-view-switch{justify-content:stretch}.room-view-switch button{flex:1;padding:10px 8px}.room-canvas svg{min-height:210px}.room-editor,.room-heatmap-panel,.room-reference{padding:12px;margin-left:-2px;margin-right:-2px}}
+@media(prefers-reduced-motion:reduce){.room-speaker-list button,.spl-cell{transition:none}}
