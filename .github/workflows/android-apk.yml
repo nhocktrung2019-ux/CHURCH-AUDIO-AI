@@ -44,10 +44,17 @@ jobs:
           from pathlib import Path
           p = Path("android/app/src/main/AndroidManifest.xml")
           s = p.read_text()
-          marker = '<manifest'
-          pos = s.find('>')
+          import re
+          match = re.search(r'<manifest\\b[^>]*>', s)
+          if not match:
+              raise SystemExit("AndroidManifest.xml has no manifest root element")
+          additions = []
           if 'android.permission.RECORD_AUDIO' not in s:
-              s = s[:pos+1] + '\n    <uses-permission android:name="android.permission.RECORD_AUDIO" />' + s[pos+1:]
+              additions.append('    <uses-permission android:name="android.permission.RECORD_AUDIO" />')
+          if 'android.hardware.microphone' not in s:
+              additions.append('    <uses-feature android:name="android.hardware.microphone" android:required="false" />')
+          if additions:
+              s = s[:match.end()] + '\\n' + '\\n'.join(additions) + s[match.end():]
           p.write_text(s)
           PY
       - name: Build debug APK
