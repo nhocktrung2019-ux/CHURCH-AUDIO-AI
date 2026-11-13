@@ -181,3 +181,46 @@ footer{padding-bottom:calc(26px + env(safe-area-inset-bottom))}
  .overview-grid{grid-template-columns:1fr}
 }
 @media(prefers-reduced-motion:reduce){.workspace-tab{transition:none}}
+
+
+/* 0.11.x acoustics lab instrumentation */
+.calibration-panel,.rt60-pro-panel,.transfer-pro-panel{margin-top:14px;border-color:#39515c;background:linear-gradient(145deg,rgba(23,38,49,.98),rgba(11,19,27,.99))}
+.calibration-reading{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin:14px 0}
+.calibration-reading>div{padding:13px;border:1px solid #304650;border-radius:9px;background:rgba(7,15,22,.56);min-width:0}
+.calibration-reading small,.calibration-reading strong{display:block}
+.calibration-reading small{font:9px ui-monospace,SFMono-Regular,Consolas,monospace;letter-spacing:.7px;color:#8da4ad}
+.calibration-reading strong{margin-top:9px;font-size:20px;overflow-wrap:anywhere;color:#dff8ef}
+.calibration-reading strong small{display:inline;font-size:10px}
+.calibration-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.calibration-actions button{flex:1 1 150px;margin:0}
+.calibration-actions button.secondary{background:#1a2b35;border:1px solid #344d58;color:#d8e6e6}
+.calibrated-inline{margin:12px 0 0;padding:9px 11px;border:1px solid #2e4b49;border-radius:7px;background:rgba(21,61,51,.2);color:#9ddbc7;font:10px ui-monospace,SFMono-Regular,Consolas,monospace}
+.overview-metrics{grid-template-columns:repeat(4,minmax(0,1fr))}
+.rt60-metrics{grid-template-columns:repeat(3,minmax(0,1fr));margin:14px 0}
+.rt60-metrics article{padding:13px}
+.rt60-metrics strong{font-size:22px}
+.ir-plot{margin:16px 0;padding:12px;border:1px solid #304651;border-radius:9px;background:#0a131a}
+.ir-plot svg{display:block;width:100%;height:auto;overflow:visible}
+.ir-plot .muted{display:block;margin-top:6px}
+.rt60-pro-panel .form-grid{margin:14px 0}
+.rt60-pro-panel .form-grid select{width:100%;min-height:42px;background:#0d151d;color:#e5edf1;border:1px solid #394752;border-radius:6px;padding:10px}
+.rt60-pro-panel .table-wrap{margin-top:14px}
+.transfer-pro-panel .response-chart{position:relative;min-height:150px;padding-top:12px}
+.chart-label{position:absolute;left:8px;top:5px;font:9px ui-monospace,SFMono-Regular,Consolas,monospace;color:#8fa5ad;z-index:1;pointer-events:none}
+.phase-panel,.auto-eq-results{margin-top:18px;padding:14px;border:1px solid #304650;border-radius:10px;background:rgba(8,16,22,.45)}
+.phase-panel .heading,.auto-eq-results .heading{margin-bottom:8px}
+.phase-panel h3,.auto-eq-results h3{font-size:14px;margin:0;flex:1}
+.phase-panel svg{width:100%;height:auto;display:block}
+.coherence-good{color:#7ee0b8}.coherence-mid{color:#e4bd79}.coherence-low{color:#ff9c9c}
+.auto-eq-results button{margin-top:12px}
+.transfer-metrics{grid-template-columns:repeat(3,minmax(0,1fr));margin:14px 0}
+.transfer-metrics article{padding:13px;min-width:0}
+.transfer-metrics strong{font-size:21px;overflow-wrap:anywhere}
+@media(max-width:760px){
+ .overview-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .calibration-reading{grid-template-columns:1fr 1fr}
+ .calibration-reading>div:last-child{grid-column:span 2}
+ .rt60-metrics,.transfer-metrics{grid-template-columns:1fr 1fr}
+ .rt60-metrics article:last-child,.transfer-metrics article:last-child{grid-column:span 2}
+ .calibration-actions button{flex-basis:100%}
+}
