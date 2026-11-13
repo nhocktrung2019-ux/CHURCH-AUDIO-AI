@@ -1,5 +1,5 @@
 import{useState}from"react";
-import{Plus,Speaker,Trash2,Move3d,Ruler,Database,Info}from"lucide-react";
+import{Plus,Speaker,Trash2,Move3d,Ruler}from"lucide-react";
 import{SPEAKER_MODELS}from"../data/speakerModels";
 type SpeakerUnit={id:number;name:string;model:string;zone:string;x:number;y:number;z:number;azimuth:number;coverage:number;verticalCoverage:number;sensitivity:number|null;powerW:number|null;impedance:number};
 const clamp=(v:number,min:number,max:number)=>Math.max(min,Math.min(max,v));
@@ -14,7 +14,7 @@ export default function RoomPlanner3D(){
  const roof=[[0,0],[length,0],[length,width],[0,width]].map(([x,y])=>project(x,y,height)).map(p=>p.x+","+p.y).join(" ");
  const distances=speakers.map(s=>Math.hypot(refX-s.x,refY-s.y,1.2-s.z)),maxDistance=Math.max(0,...distances);\n const soundEstimates=speakers.map((s,i)=>{const dx=refX-s.x,dy=refY-s.y,horizontal=Math.hypot(dx,dy),bearing=Math.atan2(dy,dx)*180/Math.PI;const delta=((bearing-s.azimuth+540)%360)-180;const elevation=Math.atan2(1.2-s.z,Math.max(.01,horizontal))*180/Math.PI;const inCoverage=Math.abs(delta)<=s.coverage/2&&Math.abs(elevation)<=s.verticalCoverage/2;const spl=s.sensitivity!==null&&s.powerW!==null&&s.powerW>0&&distances[i]>.1?s.sensitivity+10*Math.log10(s.powerW)-20*Math.log10(distances[i]):null;return{inCoverage,spl};});
  const add=()=>{const id=Date.now(),n=speakers.length+1;const item:SpeakerUnit={id,name:"Loa "+n,model:"Khác / nhập thủ công",zone:"Khu vực "+n,x:length/2,y:width/2,z:height*.65,azimuth:180,coverage:90,verticalCoverage:40,sensitivity:null,powerW:null,impedance:8};setSpeakers(old=>[...old,item]);setSelected(id);};
- const update=(key:keyof SpeakerUnit,value:string|number)=>{if(!current)return;setSpeakers(old=>old.map(s=>s.id===selected?{...s,[key]:value}:s));};
+ const update=(key:keyof SpeakerUnit,value:string|number|null)=>{if(!current)return;setSpeakers(old=>old.map(s=>s.id===selected?{...s,[key]:value}:s));};
  const fan=(s:SpeakerUnit)=>{const base=project(s.x,s.y,0),r=Math.max(2,Math.min(length,width)*.72),a=(s.azimuth-s.coverage/2)*Math.PI/180,b=(s.azimuth+s.coverage/2)*Math.PI/180;const p1=project(clamp(s.x+Math.cos(a)*r,0,length),clamp(s.y+Math.sin(a)*r,0,width),0),p2=project(clamp(s.x+Math.cos(b)*r,0,length),clamp(s.y+Math.sin(b)*r,0,width),0);return `${base.x},${base.y} ${p1.x},${p1.y} ${p2.x},${p2.y}`;};
  return <section className="panel room-planner"><div className="heading"><Move3d/><h2>Mô phỏng không gian · Bố trí loa 3D</h2><span>SCHEMATIC</span></div>
  <p className="muted">Mô hình bố trí sơ bộ. Góc phủ ngang/dọc chỉ là hình học. Cơ sở dữ liệu lưu tên model; thông số hãng để trống cho tới khi nhập đúng datasheet, không tự bịa thông số.</p>
