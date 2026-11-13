@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Activity, AudioWaveform, Mic, Radio, Volume2, Waves, RefreshCw, Square, Timer, Layers3, CheckCircle2, AlertCircle, LayoutDashboard, SlidersHorizontal, ShieldCheck, Box, Settings2, Ruler, Speaker } from "lucide-react";
+import { Activity, AudioWaveform, Mic, Radio, Volume2, Waves, RefreshCw, Square, Layers3, CheckCircle2, AlertCircle, LayoutDashboard, SlidersHorizontal, ShieldCheck, Box, Settings2, Ruler, Speaker } from "lucide-react";
 import { useAudioAnalyzer } from "./audio/useAudioAnalyzer";
 import { useToneGenerator } from "./audio/useToneGenerator";
 import { equipment } from "./data/equipment";
