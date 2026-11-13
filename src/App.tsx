@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Activity, AudioWaveform, Mic, Radio, Volume2, Waves, RefreshCw, Square, Timer, Layers3, CheckCircle2, AlertCircle, LayoutDashboard, SlidersHorizontal, ShieldCheck, Box, Settings2, Ruler, Speaker } from "lucide-react";
 import { useAudioAnalyzer } from "./audio/useAudioAnalyzer";
 import { useToneGenerator } from "./audio/useToneGenerator";
@@ -8,6 +8,8 @@ import TransferFunctionPanel from "./audio/TransferFunctionPanel";
 import FeedbackMonitor from "./audio/FeedbackMonitor";
 import TuningAdvisor from "./audio/TuningAdvisor";
 import RoomPlanner3D from "./audio/RoomPlanner3D";
+import RT60MeasurementPanel from "./audio/RT60MeasurementPanel";
+import MeasurementCalibrationPanel from "./audio/MeasurementCalibrationPanel";
 
 type TabId = "overview" | "rta" | "room" | "align" | "system" | "design" | "tools";
 const tabs: { id: TabId; label: string; short: string; icon: typeof Activity }[] = [
@@ -22,6 +24,8 @@ const tabs: { id: TabId; label: string; short: string; icon: typeof Activity }[]
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<TabId>("overview");
+  const [calibrationOffsetDb, setCalibrationOffsetDb] = useState(() => { try { const saved = typeof window !== "undefined" ? window.localStorage.getItem("church-audio-mic-offset-db") : null; return saved !== null && Number.isFinite(Number(saved)) ? Number(saved) : 0; } catch { return 0; } });
+  useEffect(() => { try { window.localStorage.setItem("church-audio-mic-offset-db", String(calibrationOffsetDb)); } catch { /* storage may be disabled */ } }, [calibrationOffsetDb]);
   const a = useAudioAnalyzer();
   const t = useToneGenerator();
   const inputs = a.devices.filter((device) => device.kind === "audioinput");
@@ -53,15 +57,7 @@ export default function App() {
     <div className="heading"><Activity /><h2>RTA · Real-time Analyzer</h2><span>{a.running ? "LIVE" : "WAITING"}</span></div>
     <div className="chart">{a.spectrum.map((value, index) => <i key={index} style={{ height: `${Math.max(2, (value + 100) * .98)}%` }} />)}</div>
     <div className="axis"><span>20 Hz</span><span>100 Hz</span><span>1 kHz</span><span>5 kHz</span><span>20 kHz</span></div>
-    <small className="muted">FFT 8192 · LOG FREQUENCY · RELATIVE dBFS</small>
-  </article>;
-
-  const Rt60Panel = () => <article className="panel">
-    <div className="heading"><Timer /><h2>RT60 · Reverberation</h2></div>
-    <strong className="rt-value">{a.rt60 === null ? "—" : a.rt60.toFixed(2) + " s"}</strong>
-    <p className="muted">Ước tính từ bản ghi microphone 6 giây. Cần tín hiệu kích thích đủ rõ và nền ồn thấp.</p>
-    <button disabled={!a.running || a.capturingRt60} onClick={() => void a.captureRt60()}>{a.capturingRt60 ? "Đang ghi mẫu 6 giây…" : "Ghi mẫu và ước tính RT60"}</button>
-    <p className="warning">Kết quả hiện là ước tính hiện trường, chưa thay thế phép đo đáp ứng xung chuẩn IEC/ISO.</p>
+    <small className="muted">FFT 8192 · 64 LOG BANDS · dBFS POWER AVERAGE · 20 Hz–20 kHz</small><p className="calibrated-inline">INPUT RMS {a.rmsDbfs <= -99 ? "—" : (a.rmsDbfs + calibrationOffsetDb).toFixed(1) + " dB SPL"} · {calibrationOffsetDb === 0 ? "NO CALIBRATION OFFSET" : "ONE-POINT OFFSET ACTIVE"}</p>
   </article>;
 
   const SpectrogramPanel = () => <article className="panel">
@@ -87,11 +83,11 @@ export default function App() {
     <div className="workspace-title"><div><small>WORKSPACE / {tabs.find(x => x.id === activeTab)?.short}</small><h2>{tabs.find(x => x.id === activeTab)?.label}</h2></div><span className={a.running ? "live" : "idle"}>{a.running ? "● INPUT LIVE" : "● INPUT IDLE"}</span></div>
 
     {activeTab === "overview" && <>
-      <section className="metrics"><article><small>INPUT PEAK</small><strong>{a.level <= -99 ? "−∞" : a.level.toFixed(0)} <small>dBFS</small></strong><div className="meter"><i style={{width:`${Math.max(0,Math.min(100,((a.level+60)/60)*100))}%`}} /></div></article><article><small>INPUT DEVICES</small><strong>{inputs.length} <small>MIC</small></strong></article><article><small>OUTPUT DEVICES</small><strong>{outputs.length} <small>OUT</small></strong></article></section>
-      <section className="grid overview-grid"><RtaPanel /><DevicePanel /><Rt60Panel /><article className="panel overview-guide"><div className="heading"><AudioWaveform /><h2>Quy trình đo đề xuất</h2></div><ol><li>Chọn đúng micro đo và đầu ra tín hiệu.</li><li>Kiểm tra mức tín hiệu đầu vào, tránh clipping.</li><li>Đo phổ, đáp ứng phòng và thời gian vang.</li><li>Căn chỉnh delay/phase rồi kiểm tra lại.</li><li>Lưu kết quả và ghi chú điều kiện đo.</li></ol><p className="warning">Số đo điện thoại chưa hiệu chuẩn chỉ dùng tham khảo tương đối.</p></article></section>
+      <section className="metrics overview-metrics"><article><small>INPUT PEAK</small><strong>{a.level <= -99 ? "−∞" : a.level.toFixed(1)} <small>dBFS</small></strong><div className="meter"><i style={{width:`${Math.max(0,Math.min(100,((a.level+60)/60)*100))}%`}} /></div></article><article><small>INPUT RMS</small><strong>{a.rmsDbfs <= -99 ? "—" : (a.rmsDbfs+calibrationOffsetDb).toFixed(1)} <small>{calibrationOffsetDb===0?"dBFS":"dB SPL"}</small></strong></article><article><small>INPUT DEVICES</small><strong>{inputs.length} <small>MIC</small></strong></article><article><small>OUTPUT DEVICES</small><strong>{outputs.length} <small>OUT</small></strong></article></section>
+      <section className="grid overview-grid"><RtaPanel /><DevicePanel /><article className="panel overview-guide"><div className="heading"><AudioWaveform /><h2>Quy trình đo đề xuất</h2></div><ol><li>Chọn đúng micro đo và đầu ra tín hiệu.</li><li>Kiểm tra mức tín hiệu đầu vào, tránh clipping.</li><li>Đo phổ, đáp ứng phòng và thời gian vang.</li><li>Căn chỉnh delay/phase rồi kiểm tra lại.</li><li>Lưu kết quả và ghi chú điều kiện đo.</li></ol><p className="warning">Số đo điện thoại chưa hiệu chuẩn chỉ dùng tham khảo tương đối.</p></article></section>
     </>}
-    {activeTab === "rta" && <section className="grid"><RtaPanel /><SpectrogramPanel /><DevicePanel /></section>}
-    {activeTab === "room" && <section className="tab-stack"><div className="grid"><Rt60Panel /><MeasurementPlanner running={a.running} spectrum={a.spectrum} /></div><SpectrogramPanel /></section>}
+    {activeTab === "rta" && <section className="tab-stack"><section className="grid"><RtaPanel /><SpectrogramPanel /><DevicePanel /></section><MeasurementCalibrationPanel rmsDbfs={a.rmsDbfs} offsetDb={calibrationOffsetDb} onOffsetChange={setCalibrationOffsetDb} /></section>}
+    {activeTab === "room" && <section className="tab-stack"><RT60MeasurementPanel selectedInput={a.selectedInput} running={a.running} /><MeasurementPlanner running={a.running} spectrum={a.spectrum} /><SpectrogramPanel /></section>}
     {activeTab === "align" && <section className="tab-stack"><TransferFunctionPanel selectedInput={a.selectedInput} running={a.running} /><MeasurementPlanner running={a.running} spectrum={a.spectrum} /></section>}
     {activeTab === "system" && <section className="tab-stack"><FeedbackMonitor history={a.history} /><TuningAdvisor history={a.history} /></section>}
     {activeTab === "design" && <RoomPlanner3D />}
