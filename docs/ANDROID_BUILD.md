@@ -8,7 +8,7 @@ The Android wrapper is generated from the Vite web application using Capacitor 7
 3. Open the successful run and download the `church-audio-analyzer-debug-apk` artifact.
 4. Extract the ZIP and install `app-debug.apk` on an Android device. Allow installation from that source if Android asks.
 
-This workflow creates a **debug APK** for testing, not a signed Play Store release. A production release needs a private signing key and protected GitHub Actions secrets.
+The generated Android manifest declares both `RECORD_AUDIO` and `MODIFY_AUDIO_SETTINGS`, which the Capacitor WebView microphone permission flow requires. This workflow creates a **debug APK** for testing, not a signed Play Store release. A production release needs a private signing key and protected GitHub Actions secrets.
 
 ## Local build
 Requires Node.js 22 and JDK 21.

@@ -72,3 +72,58 @@ button,select,input{touch-action:manipulation}
 .quick-nav a:hover,.quick-nav a:focus-visible{border-color:#65d2b6;color:#e9fff7;outline-offset:3px}
 #live,#survey,#transfer,#feedback,#advisor,#room{scroll-margin-top:82px}
 @media(max-width:760px){.quick-nav{margin:0 -2px 2px;padding-bottom:14px}.quick-nav a{padding:10px 12px;font-size:9px}}
+
+
+/* 0.9.2 microphone workflow + visual refinement */
+:root{--accent:#65d2b6;--accent-soft:rgba(101,210,182,.12);--panel-border:#2b414b}
+body{background:radial-gradient(ellipse at 18% -15%,rgba(44,104,99,.28),transparent 38%),radial-gradient(ellipse at 94% 10%,rgba(35,76,103,.2),transparent 32%),#0b1017}
+.hero{position:relative}
+.hero:after{content:"";display:block;width:min(220px,45vw);height:3px;margin-top:26px;border-radius:8px;background:linear-gradient(90deg,#65d2b6,rgba(101,210,182,0))}
+.metrics article,.panel{background:linear-gradient(145deg,rgba(24,37,47,.96),rgba(15,23,32,.98));border-color:var(--panel-border);box-shadow:0 14px 38px rgba(0,0,0,.18)}
+.metrics article{position:relative;overflow:hidden}
+.metrics article:before,.panel:before{content:"";display:block;pointer-events:none}
+.metrics article:after{content:"";position:absolute;left:0;top:0;width:100%;height:2px;background:linear-gradient(90deg,rgba(101,210,182,.75),transparent 72%)}
+.panel{border-radius:15px}
+.panel:hover{border-color:#45616c;box-shadow:0 18px 42px rgba(0,0,0,.24)}
+.heading{margin-bottom:18px}
+.heading svg{width:19px;height:19px;flex:none}
+.device-panel{position:relative;overflow:hidden}
+.mic-status{display:flex;align-items:center;gap:12px;padding:13px;margin:0 0 16px;border:1px solid #33454f;border-radius:11px;background:rgba(11,18,25,.72)}
+.mic-status-icon{width:36px;height:36px;display:grid;place-items:center;flex:none;border-radius:10px;background:#26343b;color:#b7c8ce}
+.mic-status-icon svg{width:19px;height:19px}
+.mic-status b,.mic-status small{display:block}
+.mic-status b{font-size:11px;letter-spacing:.6px;color:#e9f4f0}
+.mic-status small{margin-top:5px;font:11px/1.5 Inter,"Segoe UI",sans-serif;letter-spacing:0;color:#9caeb6}
+.mic-status.online{border-color:#2d685b;background:linear-gradient(110deg,rgba(23,65,54,.48),rgba(12,22,27,.8))}
+.mic-status.online .mic-status-icon{background:#204a40;color:#7be0bf}
+.mic-status.pending{border-color:#8a6839;background:rgba(76,55,26,.25)}
+.mic-status.pending .mic-status-icon{color:#e7bd75}
+.mic-status.failed{border-color:#82484a;background:rgba(82,35,39,.22)}
+.mic-status.failed .mic-status-icon{color:#ff9b9b}
+.device-notice{padding:11px 12px;border-left:3px solid #65d2b6;border-radius:6px;background:rgba(54,116,99,.15);color:#b5e6d8;font-size:11px;line-height:1.6}
+.permission-help{margin-top:15px;padding:12px;border:1px solid #31424c;border-radius:9px;background:rgba(11,18,25,.48)}
+.permission-help b,.permission-help span{display:block}
+.permission-help b{color:#cce9df;font-size:11px;margin-bottom:6px}
+.permission-help span{color:#91a4ae;font-size:11px;line-height:1.65}
+.pending-text{color:#e7bd75}
+.panel select:disabled{opacity:.72;cursor:not-allowed}
+.panel button{border-radius:8px;box-shadow:0 5px 14px rgba(30,130,108,.12)}
+.panel button.secondary{border:1px solid #384a54}
+.quick-nav a{background:rgba(20,33,42,.82);backdrop-filter:blur(10px)}
+.quick-nav a:active{background:#1b3c36}
+.chart{border-radius:8px 8px 0 0}
+.spectrogram{border:1px solid rgba(74,101,112,.25)}
+.rt-value{letter-spacing:-1px}
+footer{padding-bottom:calc(26px + env(safe-area-inset-bottom))}
+@media(max-width:760px){
+ .panel{padding:15px}
+ .mic-status{align-items:flex-start}
+ .permission-help{padding:11px}
+ .hero p{max-width:54ch}
+}
+@media(max-width:420px){
+ .mic-status-icon{width:32px;height:32px}
+ .mic-status b{font-size:10px}
+ .mic-status small{font-size:10px}
+ .panel button{padding:12px 10px}
+}

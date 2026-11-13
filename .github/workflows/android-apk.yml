@@ -51,6 +51,8 @@ jobs:
           additions = []
           if 'android.permission.RECORD_AUDIO' not in s:
               additions.append('    <uses-permission android:name="android.permission.RECORD_AUDIO" />')
+          if 'android.permission.MODIFY_AUDIO_SETTINGS' not in s:
+              additions.append('    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />')
           if 'android.hardware.microphone' not in s:
               additions.append('    <uses-feature android:name="android.hardware.microphone" android:required="false" />')
           if additions:
