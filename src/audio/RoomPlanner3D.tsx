@@ -12,7 +12,7 @@ export default function RoomPlanner3D(){
  const corners=[[0,0],[length,0],[length,width],[0,width]].map(([x,y])=>project(x,y,0));
  const floor=corners.map(p=>p.x+","+p.y).join(" ");
  const roof=[[0,0],[length,0],[length,width],[0,width]].map(([x,y])=>project(x,y,height)).map(p=>p.x+","+p.y).join(" ");
- const distances=speakers.map(s=>Math.hypot(refX-s.x,refY-s.y,1.2-s.z)),maxDistance=Math.max(0,...distances);\
+ const distances=speakers.map(s=>Math.hypot(refX-s.x,refY-s.y,1.2-s.z)),maxDistance=Math.max(0,...distances);
  const soundEstimates=speakers.map((s,i)=>{const dx=refX-s.x,dy=refY-s.y,horizontal=Math.hypot(dx,dy),bearing=Math.atan2(dy,dx)*180/Math.PI;const delta=((bearing-s.azimuth+540)%360)-180;const elevation=Math.atan2(1.2-s.z,Math.max(.01,horizontal))*180/Math.PI;const inCoverage=Math.abs(delta)<=s.coverage/2&&Math.abs(elevation)<=s.verticalCoverage/2;const spl=s.sensitivity!==null&&s.powerW!==null&&s.powerW>0&&distances[i]>.1?s.sensitivity+10*Math.log10(s.powerW)-20*Math.log10(distances[i]):null;return{inCoverage,spl};});
  const gridCols=9,gridRows=7;
  const evaluatePoint=(x:number,y:number)=>{
