@@ -12,6 +12,7 @@ import RT60MeasurementPanel from "./audio/RT60MeasurementPanel";
 import MeasurementCalibrationPanel from "./audio/MeasurementCalibrationPanel";
 import CBTCalculator from "./audio/CBTCalculator";
 import PolarDataStudio from "./audio/PolarDataStudio";
+import SPLMeterPanel from "./audio/SPLMeterPanel";
 
 type TabId = "overview" | "rta" | "room" | "align" | "system" | "design" | "tools";
 const tabs: { id: TabId; label: string; short: string; icon: typeof Activity }[] = [
@@ -88,7 +89,7 @@ export default function App() {
       <section className="metrics overview-metrics"><article><small>INPUT PEAK</small><strong>{a.level <= -99 ? "−∞" : a.level.toFixed(1)} <small>dBFS</small></strong><div className="meter"><i style={{width:`${Math.max(0,Math.min(100,((a.level+60)/60)*100))}%`}} /></div></article><article><small>INPUT RMS</small><strong>{a.rmsDbfs <= -99 ? "—" : (a.rmsDbfs+calibrationOffsetDb).toFixed(1)} <small>{calibrationOffsetDb===0?"dBFS":"dB SPL"}</small></strong></article><article><small>INPUT DEVICES</small><strong>{inputs.length} <small>MIC</small></strong></article><article><small>OUTPUT DEVICES</small><strong>{outputs.length} <small>OUT</small></strong></article></section>
       <section className="grid overview-grid"><RtaPanel /><DevicePanel /><article className="panel overview-guide"><div className="heading"><AudioWaveform /><h2>Quy trình đo đề xuất</h2></div><ol><li>Chọn đúng micro đo và đầu ra tín hiệu.</li><li>Kiểm tra mức tín hiệu đầu vào, tránh clipping.</li><li>Đo phổ, đáp ứng phòng và thời gian vang.</li><li>Căn chỉnh delay/phase rồi kiểm tra lại.</li><li>Lưu kết quả và ghi chú điều kiện đo.</li></ol><p className="warning">Số đo điện thoại chưa hiệu chuẩn chỉ dùng tham khảo tương đối.</p></article></section>
     </>}
-    {activeTab === "rta" && <section className="tab-stack"><section className="grid"><RtaPanel /><SpectrogramPanel /><DevicePanel /></section><MeasurementCalibrationPanel rmsDbfs={a.rmsDbfs} offsetDb={calibrationOffsetDb} onOffsetChange={setCalibrationOffsetDb} /></section>}
+    {activeTab === "rta" && <section className="tab-stack"><section className="grid"><RtaPanel /><SpectrogramPanel /><DevicePanel /></section><SPLMeterPanel weighted={a.weightedLevels} leq={a.leqLevels} peakDbfs={a.level} offsetDb={calibrationOffsetDb} durationSeconds={a.measurementSeconds} running={a.running} /><MeasurementCalibrationPanel rmsDbfs={a.rmsDbfs} offsetDb={calibrationOffsetDb} onOffsetChange={setCalibrationOffsetDb} /></section>}
     {activeTab === "room" && <section className="tab-stack"><RT60MeasurementPanel selectedInput={a.selectedInput} running={a.running} /><MeasurementPlanner running={a.running} spectrum={a.spectrum} /><SpectrogramPanel /></section>}
     {activeTab === "align" && <section className="tab-stack"><TransferFunctionPanel selectedInput={a.selectedInput} running={a.running} /><MeasurementPlanner running={a.running} spectrum={a.spectrum} /></section>}
     {activeTab === "system" && <section className="tab-stack"><FeedbackMonitor history={a.history} /><TuningAdvisor history={a.history} /></section>}
