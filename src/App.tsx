@@ -10,6 +10,7 @@ import TuningAdvisor from "./audio/TuningAdvisor";
 import RoomPlanner3D from "./audio/RoomPlanner3D";
 import RT60MeasurementPanel from "./audio/RT60MeasurementPanel";
 import MeasurementCalibrationPanel from "./audio/MeasurementCalibrationPanel";
+import CBTCalculator from "./audio/CBTCalculator";
 
 type TabId = "overview" | "rta" | "room" | "align" | "system" | "design" | "tools";
 const tabs: { id: TabId; label: string; short: string; icon: typeof Activity }[] = [
@@ -90,7 +91,7 @@ export default function App() {
     {activeTab === "room" && <section className="tab-stack"><RT60MeasurementPanel selectedInput={a.selectedInput} running={a.running} /><MeasurementPlanner running={a.running} spectrum={a.spectrum} /><SpectrogramPanel /></section>}
     {activeTab === "align" && <section className="tab-stack"><TransferFunctionPanel selectedInput={a.selectedInput} running={a.running} /><MeasurementPlanner running={a.running} spectrum={a.spectrum} /></section>}
     {activeTab === "system" && <section className="tab-stack"><FeedbackMonitor history={a.history} /><TuningAdvisor history={a.history} /></section>}
-    {activeTab === "design" && <RoomPlanner3D />}
+    {activeTab === "design" && <section className="tab-stack"><CBTCalculator /><RoomPlanner3D /></section>}
     {activeTab === "tools" && <section className="grid"><GeneratorPanel /><DevicePanel /><article className="panel"><div className="heading"><Speaker /><h2>Thư viện thiết bị</h2><span>{equipment.length} ITEMS</span></div>{equipment.map(item => <div className="item" key={item.name}><b>{item.name}</b><small>{item.type} · Cần xác minh thông số hãng</small></div>)}</article></section>}
     <section className="roadmap"><small>PHƯƠNG PHÁP / WORKFLOW</small><p>01 KHẢO SÁT <b>→</b> 02 ĐO LƯỜNG <b>→</b> 03 CĂN CHỈNH <b>→</b> 04 KIỂM SOÁT HỆ THỐNG <b>→</b> 05 THIẾT KẾ PHỦ ÂM</p></section>
     <footer>CHURCH AUDIO ANALYZER <span>WORKSPACE UI · BUILD 0.10.0</span></footer>
