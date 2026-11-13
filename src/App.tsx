@@ -2,6 +2,7 @@ import{Activity,AudioWaveform,Mic,Radio,Volume2,Waves,RefreshCw,Square,ShieldAle
 import{useAudioAnalyzer}from"./audio/useAudioAnalyzer";
 import{useToneGenerator}from"./audio/useToneGenerator";
 import{equipment}from"./data/equipment";
+import MeasurementPlanner from "./audio/MeasurementPlanner";
 
 export default function App(){
  const a=useAudioAnalyzer(),t=useToneGenerator(),inputs=a.devices.filter(d=>d.kind==="audioinput"),outputs=a.devices.filter(d=>d.kind==="audiooutput");
@@ -17,7 +18,8 @@ export default function App(){
    <article className="panel"><div className="heading"><Waves/><h2>Signal Generator</h2></div><div className="value"><label>Tần số</label><b>{t.frequency.toLocaleString("vi-VN")} Hz</b></div><input type="range" min="20" max="20000" step="10" value={t.frequency} onChange={e=>t.setFrequency(+e.target.value)}/><div className="value"><label>Mức phát</label><b>{t.volume} dB</b></div><input type="range" min="-60" max="0" value={t.volume} onChange={e=>t.setVolume(+e.target.value)}/><button onClick={()=>t.active?t.stop():void t.start()}><Volume2/>{t.active?"Dừng tín hiệu":"Phát tín hiệu thử"}</button><p className="warning">Bắt đầu ở mức thấp, giảm âm lượng ampli trước khi thử.</p></article>
    <article className="panel"><div className="heading"><Volume2/><h2>Thư viện thiết bị</h2><span>{equipment.length} ITEMS</span></div>{equipment.map(x=><div className="item" key={x.name}><b>{x.name}</b><small>{x.type} · Cần xác minh thông số hãng</small></div>)}</article>
   </section>
+  <MeasurementPlanner running={a.running} spectrum={a.spectrum}/>
   <section className="roadmap"><small>ROADMAP</small><p>01 RTA + SPECTROGRAM <b>→</b> 02 RT60 / DELAY <b>→</b> 03 AUTO EQ / FEEDBACK <b>→</b> 04 3D COVERAGE <b>→</b> 05 DSP CONTROL</p></section>
-  <footer>CHURCH AUDIO ANALYZER <span>BUILD 0.3.0 · MEASUREMENT PREVIEW</span></footer>
+  <footer>CHURCH AUDIO ANALYZER <span>BUILD 0.4.0 · MULTI-POSITION PREVIEW</span></footer>
  </main>;
 }
