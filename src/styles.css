@@ -253,3 +253,28 @@ footer{padding-bottom:calc(26px + env(safe-area-inset-bottom))}
 .cbt-calculator>button{margin-top:4px}
 @media(max-width:760px){.cbt-room-controls{grid-template-columns:repeat(2,minmax(0,1fr))}.cbt-speaker-list{grid-template-columns:1fr}.cbt-input-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.cbt-section{padding:10px}}
 @media(max-width:430px){.cbt-room-controls,.cbt-input-grid{grid-template-columns:1fr}.cbt-summary span{flex-basis:40%}.cbt-level-summary{flex-direction:column}}
+
+
+/* Manufacturer polar-data import studio */
+.polar-studio{border-color:#415965;background:linear-gradient(145deg,#172832,#0c151e)}
+.polar-actions{display:flex;flex-wrap:wrap;gap:9px;margin:14px 0}
+.polar-actions button{margin:0}
+.polar-upload{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:43px;padding:10px 14px;border-radius:8px;background:#5dd0b3;color:#071511;font-size:12px;font-weight:800;cursor:pointer}
+.polar-upload svg{width:16px;height:16px}
+.polar-upload input{display:none}
+.polar-file-info{display:flex;flex-direction:column;gap:5px;margin:12px 0;padding:12px;border:1px solid #36504f;border-radius:8px;background:rgba(20,61,52,.22)}
+.polar-file-info b{font-size:12px;color:#d6f2e9;overflow-wrap:anywhere}
+.polar-file-info small{font-size:10px;color:#8eaaa8}
+.polar-controls{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:12px 0}
+.polar-controls label{font:10px ui-monospace,SFMono-Regular,Consolas,monospace;color:#91a0aa}
+.polar-controls select{display:block;width:100%;margin-top:7px;min-height:40px;padding:9px;background:#0d151d;color:#e5edf1;border:1px solid #394752;border-radius:6px}
+.polar-result-grid{display:grid;grid-template-columns:1.15fr 1fr;gap:12px;margin:14px 0}
+.polar-chart{padding:10px;border:1px solid #304651;border-radius:9px;background:#0a141c;text-align:center}
+.polar-chart svg{width:100%;max-width:360px;display:block;margin:auto}
+.polar-chart .muted{display:block;margin-top:8px;font-size:9px}
+.polar-metrics{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.polar-metrics article{padding:12px;border:1px solid #324954;border-radius:8px;background:rgba(8,17,24,.55);min-width:0}
+.polar-metrics small,.polar-metrics b{display:block}
+.polar-metrics small{font:9px ui-monospace,SFMono-Regular,Consolas,monospace;color:#8ca4ac}
+.polar-metrics b{font-size:17px;color:#dff8ef;margin-top:9px;overflow-wrap:anywhere}
+@media(max-width:680px){.polar-result-grid{grid-template-columns:1fr}.polar-controls{grid-template-columns:1fr}.polar-actions{flex-direction:column}.polar-actions>*{width:100%}}
