@@ -54,7 +54,8 @@ jobs:
           if 'android.hardware.microphone' not in s:
               additions.append('    <uses-feature android:name="android.hardware.microphone" android:required="false" />')
           if additions:
-              s = s[:pos+1] + '\\n' + '\\n'.join(additions) + s[pos+1:]
+              nl = chr(10)
+              s = s[:pos+1] + nl + nl.join(additions) + s[pos+1:]
           p.write_text(s)
           PY
       - name: Build debug APK
