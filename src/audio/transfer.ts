@@ -1,5 +1,5 @@
 export type TransferPoint={frequencyHz:number; magnitudeDb:number; phaseDeg:number};
-export type TransferResult={points:TransferPoint[]; impulsePeakMs:number; estimatedDelayMs:number; confidence:number};
+export type TransferResult={points:TransferPoint[]; estimatedDelayMs:number; confidence:number};
 
 function fft(re:Float64Array,im:Float64Array,inverse=false){
  const n=re.length;
@@ -32,7 +32,6 @@ export function analyzeTransfer(reference:Float32Array,recorded:Float32Array,sam
  }
  if(!frames)return null;
  const points:TransferPoint[]=[];
- for(let k=2;k<bins;k+=2){const power=auto[k];if(power<1e-12)continue;const re=crossRe[k]/power,im=crossIm[k]/power,mag=Math.sqrt(re*re+im*im);if(!Number.isFinite(mag)||mag<1e-8)continue;points.push({frequencyHz:k*sampleRate/frame,magnitudeDb:20*Math.log10(mag),phaseDeg:Math.atan2(im,re)*180/Math.PI});}
- const peakIndex=recorded.reduce((best,v,i)=>Math.abs(v)>Math.abs(recorded[best]??0)?i:best,0);
- return {points,impulsePeakMs:peakIndex/sampleRate*1000,estimatedDelayMs:lag/sampleRate*1000,confidence:Math.round(score*1000)/1000};
+ for(let k=2;k<bins;k+=2){const power=auto[k];if(power<1e-12)continue;const re=crossRe[k]/power,im=crossIm[k]/power,mag=Math.sqrt(re*re+im*im);if(!Number.isFinite(mag)||mag<1e-8)continue;const frequencyHz=k*sampleRate/frame;const omega=2*Math.PI*frequencyHz*lag/sampleRate;const correctedRe=re*Math.cos(omega)+im*Math.sin(omega),correctedIm=im*Math.cos(omega)-re*Math.sin(omega);points.push({frequencyHz,magnitudeDb:20*Math.log10(mag),phaseDeg:Math.atan2(correctedIm,correctedRe)*180/Math.PI});}
+ return {points,estimatedDelayMs:lag/sampleRate*1000,confidence:Math.round(score*1000)/1000};
 }

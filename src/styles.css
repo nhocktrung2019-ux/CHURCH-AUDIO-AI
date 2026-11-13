@@ -64,3 +64,11 @@ button,select,input{touch-action:manipulation}
  :root{scroll-behavior:auto}
  *,*::before,*::after{transition:none!important;animation:none!important}
 }
+
+
+/* Version 0.9.1: fast section navigation and accessible anchor targets */
+.quick-nav{display:flex;gap:8px;overflow-x:auto;padding:0 0 18px;scrollbar-width:thin;overscroll-behavior-x:contain}
+.quick-nav a{flex:none;padding:9px 13px;border:1px solid #30424d;border-radius:999px;background:#14212a;color:#a9c7c0;text-decoration:none;font:10px ui-monospace,SFMono-Regular,Consolas,monospace;letter-spacing:.6px}
+.quick-nav a:hover,.quick-nav a:focus-visible{border-color:#65d2b6;color:#e9fff7;outline-offset:3px}
+#live,#survey,#transfer,#feedback,#advisor,#room{scroll-margin-top:82px}
+@media(max-width:760px){.quick-nav{margin:0 -2px 2px;padding-bottom:14px}.quick-nav a{padding:10px 12px;font-size:9px}}
