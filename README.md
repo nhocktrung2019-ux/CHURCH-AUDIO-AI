@@ -29,7 +29,10 @@ npm run build
 npm run preview
 ```
 
+## Android APK
+Android packaging is configured with Capacitor. A GitHub Actions workflow builds a debug APK on pushes to `main` and can also be started manually. See [Android build and install guide](docs/ANDROID_BUILD.md). The APK is a test build, not a signed Play Store release.
+
 ## Platform plan
-The first release is a responsive Progressive Web App for laptop browsers and Android Chrome. Native Android packaging and hardware-specific USB/Bluetooth routing follow after capability testing.
+The application remains a responsive web app for laptop browsers and is wrapped for Android with Capacitor. Hardware-specific USB/Bluetooth routing requires device-by-device testing.
 
 See [docs/ROADMAP.md](docs/ROADMAP.md).
