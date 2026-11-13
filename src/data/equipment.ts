@@ -1,0 +1,1 @@
+export const equipment=[...["CBT 50","CBT 70","CBT 100","Column 600","Column 800","MA12","MA12 EX","Bose 402 IV","Bose 402 V","Bose 802 V","Bose 502","Inter-M CU7120","Inter-M CU7060"].map(name=>({name,type:"Loa"})),{name:"Shure Dynamic (chọn model cụ thể)",type:"Micro"},{name:"Shure Gooseneck (chọn model cụ thể)",type:"Micro"}];
