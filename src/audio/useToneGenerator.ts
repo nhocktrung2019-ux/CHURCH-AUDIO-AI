@@ -64,7 +64,6 @@ export function useToneGenerator() {
       const element = output.current ?? (new Audio() as SinkCapableAudio);
 
       element.autoplay = true;
-      element.playsInline = true;
       element.volume = 1;
       element.srcObject = streamDestination.stream;
 
