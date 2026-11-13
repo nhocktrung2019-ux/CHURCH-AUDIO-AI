@@ -224,3 +224,32 @@ footer{padding-bottom:calc(26px + env(safe-area-inset-bottom))}
  .rt60-metrics article:last-child,.transfer-metrics article:last-child{grid-column:span 2}
  .calibration-actions button{flex-basis:100%}
 }
+
+
+/* CBT vertical array design calculator */
+.cbt-calculator{border-color:#47616d;background:linear-gradient(145deg,#172833,#0d1720)}
+.cbt-summary,.cbt-level-summary{display:flex;flex-wrap:wrap;gap:8px;margin:13px 0}
+.cbt-summary span,.cbt-level-summary span{flex:1 1 140px;padding:10px 12px;border:1px solid #314955;border-radius:8px;background:rgba(8,17,24,.55);color:#91a6af;font-size:10px}
+.cbt-summary b,.cbt-level-summary b{display:block;margin-top:5px;color:#dff5ed;font-size:14px}
+.cbt-room-controls,.cbt-input-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:13px 0}
+.cbt-room-controls label,.cbt-input-grid label{display:block;color:#91a0aa;font:10px ui-monospace,SFMono-Regular,Consolas,monospace}
+.cbt-room-controls input,.cbt-input-grid input,.cbt-input-grid select,.cbt-table-input,.cbt-table-select{display:block;width:100%;min-width:0;min-height:39px;margin-top:7px;padding:8px 9px;border:1px solid #394f5c;border-radius:6px;background:#0c151d;color:#e6f0ee;font:12px Inter,"Segoe UI",sans-serif}
+.cbt-input-grid input[readonly]{color:#90cbb9;background:#13241f}
+.cbt-speaker-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:13px 0}
+.cbt-speaker-card{min-width:0;padding:14px;border:1px solid #344d5a;border-radius:10px;background:rgba(8,17,24,.5)}
+.cbt-card-title{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.cbt-card-title>b{display:flex;align-items:center;gap:8px;color:#e4f3ee;font-size:13px}
+.cbt-card-title>b i{display:inline-block;width:9px;height:9px;border-radius:50%;box-shadow:0 0 10px currentColor}
+.cbt-card-title .icon-button{width:auto!important;min-height:30px!important}
+.cbt-source-note{display:block;line-height:1.6;color:#8fa4ae;font-size:10px}
+.cbt-source-note a{color:#72d7ba;text-decoration:none}
+.cbt-section{margin-top:18px;padding:15px;border:1px solid #304752;border-radius:10px;background:rgba(7,15,22,.42)}
+.cbt-section .heading{margin-bottom:10px}
+.cbt-section h3{font-size:14px;margin:0;flex:1}
+.cbt-table-input,.cbt-table-select{min-height:32px;margin:0;font-size:11px}
+.cbt-table-input.short{max-width:76px}
+.cbt-plot{overflow:hidden;border:1px solid #304752;border-radius:9px;background:radial-gradient(ellipse at 40% 20%,#1c3440,#0a141d)}
+.cbt-plot svg{display:block;width:100%;height:auto}
+.cbt-calculator>button{margin-top:4px}
+@media(max-width:760px){.cbt-room-controls{grid-template-columns:repeat(2,minmax(0,1fr))}.cbt-speaker-list{grid-template-columns:1fr}.cbt-input-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.cbt-section{padding:10px}}
+@media(max-width:430px){.cbt-room-controls,.cbt-input-grid{grid-template-columns:1fr}.cbt-summary span{flex-basis:40%}.cbt-level-summary{flex-direction:column}}
