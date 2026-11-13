@@ -47,7 +47,7 @@ jobs:
           marker = '<manifest'
           pos = s.find('>')
           if 'android.permission.RECORD_AUDIO' not in s:
-              s = s[:pos+1] + '\\n    <uses-permission android:name="android.permission.RECORD_AUDIO" />' + s[pos+1:]
+              s = s[:pos+1] + '\n    <uses-permission android:name="android.permission.RECORD_AUDIO" />' + s[pos+1:]
           p.write_text(s)
           PY
       - name: Build debug APK
