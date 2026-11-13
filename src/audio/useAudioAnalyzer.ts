@@ -81,6 +81,7 @@ export function useAudioAnalyzer() {
   const [running, setRunning] = useState(false);
   const [connecting, setConnecting] = useState(false);
   const [level, setLevel] = useState(-100);
+  const [rmsDbfs, setRmsDbfs] = useState(-100);
   const [spectrum, setSpectrum] = useState<number[]>(Array(64).fill(-100));
   const [history, setHistory] = useState<number[][]>([]);
   const [error, setError] = useState("");
@@ -126,6 +127,7 @@ export function useAudioAnalyzer() {
     setRunning(false);
     setConnecting(false);
     setLevel(-100);
+    setRmsDbfs(-100);
     setTrackInfo("");
   }, []);
 
@@ -304,23 +306,45 @@ export function useAudioAnalyzer() {
             const data = new Float32Array(analyser.frequencyBinCount);
             analyser.getFloatFrequencyData(data);
 
+            const context = contextRef.current;
+            const fftSize = analyser.fftSize;
+            const nyquist = context ? context.sampleRate / 2 : 24000;
+            const minimumHz = 20;
+            const maximumHz = Math.min(20000, nyquist);
+            const ratio = maximumHz / minimumHz;
             const bins = Array.from({ length: 64 }, (_, index) => {
-              const start = Math.max(1, Math.floor(Math.pow(data.length, index / 64)));
-              const end = Math.max(start + 1, Math.floor(Math.pow(data.length, (index + 1) / 64)));
-              let peak = -120;
-              for (let i = start; i < Math.min(end, data.length); i++) {
-                if (Number.isFinite(data[i])) peak = Math.max(peak, data[i]);
+              const lowerHz = minimumHz * Math.pow(ratio, index / 64);
+              const upperHz = minimumHz * Math.pow(ratio, (index + 1) / 64);
+              const start = Math.max(1, Math.floor(lowerHz * fftSize / (context?.sampleRate ?? 48000)));
+              const end = Math.min(data.length, Math.max(start + 1, Math.ceil(upperHz * fftSize / (context?.sampleRate ?? 48000))));
+              let power = 0, count = 0;
+              for (let i = start; i < end; i++) {
+                if (Number.isFinite(data[i]) && data[i] > -120) {
+                  power += Math.pow(10, data[i] / 10);
+                  count++;
+                }
               }
-              return Math.max(-100, Math.min(0, peak));
+              const bandDb = count ? 10 * Math.log10(power / count) : -100;
+              return Math.max(-100, Math.min(0, bandDb));
             });
 
-            let inputPeak = -100;
-            for (let i = 1; i < data.length; i++) {
-              if (Number.isFinite(data[i])) inputPeak = Math.max(inputPeak, data[i]);
+            const timeData = new Float32Array(fftSize);
+            analyser.getFloatTimeDomainData(timeData);
+            let inputPeak = 0, sumSquares = 0, mean = 0;
+            for (let i = 0; i < timeData.length; i++) mean += timeData[i];
+            mean /= Math.max(1, timeData.length);
+            for (let i = 0; i < timeData.length; i++) {
+              const sample = timeData[i] - mean;
+              inputPeak = Math.max(inputPeak, Math.abs(sample));
+              sumSquares += sample * sample;
             }
+            const rms = Math.sqrt(sumSquares / Math.max(1, timeData.length));
+            const peakDbfs = inputPeak > 0 ? 20 * Math.log10(inputPeak) : -100;
+            const rmsLevelDbfs = rms > 0 ? 20 * Math.log10(rms) : -100;
 
             setSpectrum(bins);
-            setLevel(inputPeak);
+            setLevel(Math.max(-100, Math.min(0, peakDbfs)));
+            setRmsDbfs(Math.max(-100, Math.min(0, rmsLevelDbfs)));
             if (frame % 6 === 0) {
               setHistory((current) => [...current.slice(-39), bins]);
             }
@@ -368,6 +392,7 @@ export function useAudioAnalyzer() {
     running,
     connecting,
     level,
+    rmsDbfs,
     spectrum,
     history,
     error,
