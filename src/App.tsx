@@ -3,6 +3,7 @@ import{useAudioAnalyzer}from"./audio/useAudioAnalyzer";
 import{useToneGenerator}from"./audio/useToneGenerator";
 import{equipment}from"./data/equipment";
 import MeasurementPlanner from "./audio/MeasurementPlanner";
+import TransferFunctionPanel from "./audio/TransferFunctionPanel";
 
 export default function App(){
  const a=useAudioAnalyzer(),t=useToneGenerator(),inputs=a.devices.filter(d=>d.kind==="audioinput"),outputs=a.devices.filter(d=>d.kind==="audiooutput");
@@ -19,7 +20,8 @@ export default function App(){
    <article className="panel"><div className="heading"><Volume2/><h2>Thư viện thiết bị</h2><span>{equipment.length} ITEMS</span></div>{equipment.map(x=><div className="item" key={x.name}><b>{x.name}</b><small>{x.type} · Cần xác minh thông số hãng</small></div>)}</article>
   </section>
   <MeasurementPlanner running={a.running} spectrum={a.spectrum}/>
+  <TransferFunctionPanel selectedInput={a.selectedInput}/>
   <section className="roadmap"><small>ROADMAP</small><p>01 RTA + SPECTROGRAM <b>→</b> 02 RT60 / DELAY <b>→</b> 03 AUTO EQ / FEEDBACK <b>→</b> 04 3D COVERAGE <b>→</b> 05 DSP CONTROL</p></section>
-  <footer>CHURCH AUDIO ANALYZER <span>BUILD 0.4.0 · MULTI-POSITION PREVIEW</span></footer>
+  <footer>CHURCH AUDIO ANALYZER <span>BUILD 0.5.0 · TRANSFER FUNCTION PREVIEW</span></footer>
  </main>;
 }
