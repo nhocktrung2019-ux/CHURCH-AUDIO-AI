@@ -9,6 +9,7 @@ import { equipment } from "./data/equipment";
 import MeasurementPlanner from "./audio/MeasurementPlanner";
 import TransferFunctionPanel from "./audio/TransferFunctionPanel";
 import FeedbackMonitor from "./audio/FeedbackMonitor";
+import MultiMicFeedbackPanel from "./audio/MultiMicFeedbackPanel";
 import TuningAdvisor from "./audio/TuningAdvisor";
 import RoomPlanner3D from "./audio/RoomPlanner3D";
 import RT60MeasurementPanel from "./audio/RT60MeasurementPanel";
@@ -119,7 +120,7 @@ export default function App() {
     {activeTab === "rta" && <section className="tab-stack"><section className="grid"><RtaPanel /><SpectrogramPanel /><DevicePanel /></section><SPLMeterPanel weighted={a.weightedLevels} leq={a.leqLevels} timeWeighted={a.timeWeightedLevels} peakDbfs={a.level} offsetDb={calibrationOffsetDb} durationSeconds={a.measurementSeconds} running={a.running} /><MeasurementCalibrationPanel inputDbfs={a.rmsDbfs + micCorrectionAt(calibrationPoints,1000)} offsetDb={calibrationOffsetDb} onOffsetChange={setCalibrationOffsetDb} /><MicCalibrationPanel value={micCalibration} onChange={setMicCalibration} /></section>}
     {activeTab === "room" && <section className="tab-stack"><RT60MeasurementPanel selectedInput={a.selectedInput} running={a.running} /><MeasurementPlanner running={a.running} spectrum={a.spectrum} /><SpectrogramPanel /></section>}
     {activeTab === "align" && <section className="tab-stack"><TransferFunctionPanel selectedInput={a.selectedInput} running={a.running} calibrationPoints={calibrationPoints} /><MeasurementPlanner running={a.running} spectrum={a.spectrum} /></section>}
-    {activeTab === "system" && <section className="tab-stack"><FeedbackMonitor history={a.history} /><TuningAdvisor history={a.history} /></section>}
+    {activeTab === "system" && <section className="tab-stack"><MultiMicFeedbackPanel /><FeedbackMonitor history={a.history} /><TuningAdvisor history={a.history} /></section>}
     {activeTab === "design" && <section className="tab-stack"><CBTCalculator /><PolarDataStudio /><RoomPlanner3D /></section>}
     {activeTab === "tools" && <section className="tab-stack"><section className="grid"><GeneratorPanel /><DevicePanel /><article className="panel"><div className="heading"><Speaker /><h2>Thư viện thiết bị</h2><span>{equipment.length} ITEMS</span></div>{equipment.map(item => <div className="item" key={item.name}><b>{item.name}</b><small>{item.type} · Cần xác minh thông số hãng</small></div>)}</article></section><ProjectBackupPanel /></section>}
     {activeTab === "support" && <section className="tab-stack"><VersionSupportPanel /></section>}
