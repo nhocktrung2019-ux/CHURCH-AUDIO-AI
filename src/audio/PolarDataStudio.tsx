@@ -1,4 +1,5 @@
 import { useMemo, useState, type ChangeEvent } from "react";
+import { usePersistentState } from "./usePersistentState";
 import { FileUp, Download, Radar, AlertTriangle } from "lucide-react";
 
 type PolarPoint={frequencyHz:number;plane:"H"|"V";angleDeg:number;levelDb:number};
@@ -32,9 +33,9 @@ function interpolateCrossing(a:{angleDeg:number;relativeDb:number},b:{angleDeg:n
   return a.angleDeg+(threshold-a.relativeDb)/span*(b.angleDeg-a.angleDeg);
 }
 export default function PolarDataStudio(){
-  const [file,setFile]=useState<ParsedFile|null>(null);
-  const [selectedFrequency,setSelectedFrequency]=useState(1000);
-  const [selectedPlane,setSelectedPlane]=useState<"H"|"V">("V");
+  const [file,setFile]=usePersistentState<ParsedFile|null>("church-audio-polar-data",null);
+  const [selectedFrequency,setSelectedFrequency]=usePersistentState("church-audio-polar-frequency",1000);
+  const [selectedPlane,setSelectedPlane]=usePersistentState<"H"|"V">("church-audio-polar-plane","V");
   const [error,setError]=useState("");
   const [status,setStatus]=useState("");
   const frequencies=useMemo(()=>file?Array.from(new Set(file.points.filter(p=>p.plane===selectedPlane).map(p=>p.frequencyHz))).sort((a,b)=>a-b):[],[file,selectedPlane]);
