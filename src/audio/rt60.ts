@@ -191,7 +191,8 @@ export function analyzeImpulseResponse(reference: Float32Array, recorded: Float3
   }
   if (!(peak > 1e-6)) return null;
   const start = Math.max(0, peakIndex - Math.floor(sampleRate * 0.003));
-  const estimatedLinearIrLength = Math.max(0, recorded.length - reference.length + 1);\n  const usableLength = Math.min(Math.floor(sampleRate * 4), deconvolved.length - start, estimatedLinearIrLength - start);
+  const estimatedLinearIrLength = Math.max(0, recorded.length - reference.length + 1);
+  const usableLength = Math.min(Math.floor(sampleRate * 4), deconvolved.length - start, estimatedLinearIrLength - start);
   if (usableLength < sampleRate * 0.5) return null;
   const impulse = deconvolved.slice(start, start + usableLength);
   for (let i = 0; i < impulse.length; i++) impulse[i] /= peak;
