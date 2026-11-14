@@ -295,7 +295,7 @@ export default function MultiMicFeedbackPanel() {
 
     <section className="multi-source-assistant">
       <div className="heading"><Brain /><h3>AI Voice Assistant · Trợ lý giọng nói</h3><span>VIETNAMESE</span></div>
-      <p>Điều khiển bằng giọng nói: “Quét micro”, “Bắt đầu đo đa nguồn”, “Dừng đo”, “Đọc kết quả”. Trợ lý có thể đọc mức phổ và cảnh báo đỉnh nghi vấn theo dữ liệu đang đo.</p>
+      <p>Điều khiển bằng giọng nói: “Quét micro”, “Bắt đầu đo đa nguồn”, “Dừng đo”, “Đọc kết quả”. Trợ lý có thể đọc mức phổ và cảnh báo đỉnh nghi vấn theo dữ liệu đang đo. {speechSupported ? "Nhận dạng tiếng Việt được trình duyệt hỗ trợ." : "WebView này chưa hỗ trợ nhận dạng giọng nói; dùng ô nhập lệnh thay thế."}</p>
       <div className="voice-command-actions">
         <button className={listening ? "voice-listening" : "secondary"} onClick={toggleListening}>
           <Radio />{listening ? "Đang nghe · Dừng nghe" : "Nói lệnh tiếng Việt"}
