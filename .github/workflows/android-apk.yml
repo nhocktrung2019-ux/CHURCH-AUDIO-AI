@@ -3,14 +3,15 @@ name: Android APK
 on:
   workflow_dispatch:
   pull_request:
-    branches: [main]
+    branches: [main, "feature/jbl-col-audio-input-delay"]
     paths:
       - "src/**"
       - "public/**"
       - "index.html"
       - "package.json"
       - "capacitor.config.ts"
-      - ".github/workflows/android-apk.yml"
+      - "docs/**"
+      - ".github/workflows/**"
   push:
     branches: [main]
     paths:
