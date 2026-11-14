@@ -317,3 +317,14 @@ footer{padding-bottom:calc(26px + env(safe-area-inset-bottom))}
  .phase-ab-result{grid-template-columns:1fr 1fr}
  .phase-ab-result article:last-of-type{grid-column:span 2}
 }
+
+
+/* Microphone calibration file manager */
+.mic-calibration-file-panel{border-color:#47616d;background:linear-gradient(145deg,#172833,#0b151e)}
+.mic-calibration-actions{display:flex;flex-wrap:wrap;gap:9px;margin:14px 0}
+.mic-calibration-actions button{margin:0}
+.mic-calibration-actions .polar-upload{flex:1 1 210px}
+.mic-calibration-actions button.secondary{flex:1 1 140px}
+.mic-calibration-file-panel .polar-file-info{margin:12px 0}
+.mic-calibration-file-panel .table-wrap{max-height:260px;overflow:auto}
+@media(max-width:600px){.mic-calibration-actions{flex-direction:column}.mic-calibration-actions>*{width:100%}}
