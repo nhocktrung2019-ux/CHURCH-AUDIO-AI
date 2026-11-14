@@ -1,0 +1,5 @@
+export const APP_VERSION = "0.12.0";
+export const APP_CHANNEL = "stable";
+export const APP_RELEASES_URL = "https://github.com/nhocktrung2019-ux/CHURCH-AUDIO-AI/releases";
+export const APP_SUPPORT_URL = "https://github.com/nhocktrung2019-ux/CHURCH-AUDIO-AI/issues/new?template=technical-support.yml";
+export const APP_SUPPORT_DOCS_URL = "https://github.com/nhocktrung2019-ux/CHURCH-AUDIO-AI/blob/main/docs/TECHNICAL_SUPPORT.md";
