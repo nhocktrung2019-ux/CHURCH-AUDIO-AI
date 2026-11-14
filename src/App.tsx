@@ -76,7 +76,7 @@ export default function App() {
     <div className="heading"><Activity /><h2>RTA · Real-time Analyzer</h2><span>{a.running ? "LIVE" : "WAITING"}</span></div>
     <div className="chart">{a.spectrum.map((value, index) => <i key={index} style={{ height: `${Math.max(2, (value + 100) * .98)}%` }} />)}</div>
     <div className="axis"><span>20 Hz</span><span>100 Hz</span><span>1 kHz</span><span>5 kHz</span><span>20 kHz</span></div>
-    <small className="muted">FFT 8192 · 64 LOG BANDS · dBFS POWER AVERAGE · 20 Hz–20 kHz</small><p className="calibrated-inline">INPUT RMS {a.rmsDbfs <= -99 ? "—" : (a.rmsDbfs + calibrationOffsetDb).toFixed(1) + " dB SPL"} · {calibrationOffsetDb === 0 ? "NO CALIBRATION OFFSET" : "ONE-POINT OFFSET ACTIVE"}</p>
+    <small className="muted">FFT 8192 · 64 LOG BANDS · dBFS POWER AVERAGE · 20 Hz–20 kHz</small><p className="calibrated-inline">INPUT RMS {a.rmsDbfs <= -99 ? "—" : (a.rmsDbfs + calibrationOffsetDb).toFixed(1) + (Math.abs(calibrationOffsetDb) > 0.001 ? " dB SPL" : " dBFS")} · {Math.abs(calibrationOffsetDb) > 0.001 ? "ONE-POINT LEVEL CALIBRATION ACTIVE" : "NO ABSOLUTE LEVEL CALIBRATION"}</p>
   </article>;
 
   const SpectrogramPanel = () => <article className="panel">
