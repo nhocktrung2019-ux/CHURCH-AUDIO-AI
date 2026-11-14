@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { micCorrectionAt, type MicCalibrationPoint } from "./micCalibration";
 import {
   explainMicrophoneError,
   readMicrophonePermission,
@@ -339,7 +340,8 @@ export function useAudioAnalyzer(calibrationPoints: MicCalibrationPoint[] = []) 
                 }
               }
               const bandDb = count ? 10 * Math.log10(power / count) : -100;
-              return Math.max(-100, Math.min(0, bandDb));
+              const correctionDb = micCorrectionAt(calibrationPoints, Math.sqrt(lowerHz * upperHz));
+              return Math.max(-100, Math.min(24, bandDb + correctionDb));
             });
 
             const timeData = new Float32Array(fftSize);
@@ -360,7 +362,8 @@ export function useAudioAnalyzer(calibrationPoints: MicCalibrationPoint[] = []) 
             for (let k = 1; k < data.length; k++) {
               if (!Number.isFinite(data[k]) || data[k] <= -120) continue;
               const hz = k * sampleRate / fftSize;
-              const power = Math.pow(10, data[k] / 10);
+              const correctionDb = micCorrectionAt(calibrationPoints, hz);
+              const power = Math.pow(10, (data[k] + correctionDb) / 10);
               totalSpectrumPower += power;
               if (hz < 20 || hz > Math.min(20000, sampleRate / 2)) continue;
               const f2 = hz * hz, f1 = 20.6, f2a = 107.7, f3 = 737.9, f4 = 12200;
@@ -406,7 +409,7 @@ export function useAudioAnalyzer(calibrationPoints: MicCalibrationPoint[] = []) 
     }
 
     return () => cancelAnimationFrame(frameId);
-  }, [running]);
+  }, [running, calibrationPoints]);
 
   useEffect(() => {
     void refreshDevices();
