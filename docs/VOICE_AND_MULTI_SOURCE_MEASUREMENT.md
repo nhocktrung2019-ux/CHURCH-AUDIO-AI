@@ -5,8 +5,8 @@
 - Speech commands are supported through the browser/WebView Web Speech Recognition API when the platform exposes it. The recognition locale is Vietnamese (vi-VN).
 - Commands: scan microphone inputs, start a multi-source measurement, stop the measurement, read the current report, and request help.
 - Spoken reports use SpeechSynthesis with a Vietnamese voice when the platform provides one. A typed-command fallback remains available if speech recognition is not supported.
-- The current assistant parses a limited set of local intents and summarizes measured RTA/feedback indicators. It is not a connected cloud LLM and does not send captured audio or measurement data to an AI provider.
-- Speech recognition availability, network use, and privacy behavior depend on Android WebView and its configured speech service. Operators should review the device's speech-service privacy settings.
+- The current assistant parses a limited set of local intents and summarizes measured RTA/feedback indicators. It is not a connected cloud LLM and does not send measurement input streams or measurement data to an AI model provider.
+- Speech recognition availability, network use, and privacy behavior depend on Android WebView and its configured speech service. Spoken command audio may be processed by that platform service; operators should review the device's speech-service privacy settings.
 
 ## One measurement with multiple sources
 
