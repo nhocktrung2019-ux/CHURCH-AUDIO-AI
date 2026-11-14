@@ -93,6 +93,35 @@ export default function TransferFunctionPanel({ selectedInput, running }: { sele
     return (index ? "L" : "M") + x.toFixed(1) + " " + y.toFixed(1);
   }).join(" ");
 
+  const phaseComparison = useMemo(() => {
+    if (!referenceA || !referenceB) return null;
+    const low = crossoverHz / Math.SQRT2, high = crossoverHz * Math.SQRT2;
+    const bByFrequency = new Map(referenceB.points.map(point => [Math.round(point.frequencyHz), point]));
+    const paired = referenceA.points.filter(point => point.frequencyHz >= low && point.frequencyHz <= high && point.coherence >= .8).flatMap(point => {
+      const other = bByFrequency.get(Math.round(point.frequencyHz));
+      return other && other.coherence >= .8 ? [{ a: point, b: other }] : [];
+    });
+    if (paired.length < 3) return { count: paired.length, meanPhaseDeg: null as number | null, phaseConcentration: 0, magnitudeDeltaDb: null as number | null, interpretation: "Không đủ điểm có coherence ≥ 0.8 trong dải crossover." };
+    const phaseDiff = paired.map(pair => {
+      let angle = pair.b.phaseDeg - pair.a.phaseDeg;
+      while (angle > 180) angle -= 360;
+      while (angle < -180) angle += 360;
+      return angle * Math.PI / 180;
+    });
+    const sin = phaseDiff.reduce((sum, value) => sum + Math.sin(value), 0) / phaseDiff.length;
+    const cos = phaseDiff.reduce((sum, value) => sum + Math.cos(value), 0) / phaseDiff.length;
+    const mean = Math.atan2(sin, cos) * 180 / Math.PI;
+    const concentration = Math.hypot(sin, cos);
+    const magnitudeDeltaDb = paired.reduce((sum, pair) => sum + pair.b.magnitudeDb - pair.a.magnitudeDb, 0) / paired.length;
+    const absolute = Math.abs(mean);
+    const interpretation = absolute >= 135 && concentration >= .7
+      ? "Có dấu hiệu đảo cực / phase gần đối nhau. Kiểm tra polarity ở DSP và crossover."
+      : absolute <= 45 && concentration >= .7
+        ? "Pha trung bình gần trùng trong dải kiểm tra; vẫn cần kiểm tra theo từng điểm nghe."
+        : "Có lệch pha đáng kể hoặc pha biến thiên; kiểm tra delay/crossover và đo lại đồng thời.";
+    return { count: paired.length, meanPhaseDeg: mean, phaseConcentration: concentration, magnitudeDeltaDb, interpretation };
+  }, [referenceA, referenceB, crossoverHz]);
+
   return <section className="panel transfer-pro-panel" id="transfer">
     <div className="heading"><Activity /><h2>Transfer Function · Magnitude · Phase · Coherence</h2><span>WELCH H1</span></div>
     <p className="muted">Tạo tín hiệu broadband tham chiếu, ghi micro, căn chỉnh thời gian và ước tính H1 transfer function bằng averaging. Coherence biểu thị mức tương quan giữa reference và response theo từng tần số.</p>
@@ -123,31 +152,4 @@ export default function TransferFunctionPanel({ selectedInput, running }: { sele
     <p className="warning">Không thể chứng nhận pha/delay chuyên nghiệp qua một micro và loa mặc định: để căn delay tuyệt đối cần loopback/reference input có đồng hồ đồng bộ, thiết bị đo phù hợp và kiểm tra polarity. Giữ nguyên gain/processing giữa các lần đo.</p>
   </section>;
 }
-  const phaseComparison = useMemo(() => {
-    if (!referenceA || !referenceB) return null;
-    const low = crossoverHz / Math.SQRT2, high = crossoverHz * Math.SQRT2;
-    const bByFrequency = new Map(referenceB.points.map(point => [Math.round(point.frequencyHz), point]));
-    const paired = referenceA.points.filter(point => point.frequencyHz >= low && point.frequencyHz <= high && point.coherence >= .8).flatMap(point => {
-      const other = bByFrequency.get(Math.round(point.frequencyHz));
-      return other && other.coherence >= .8 ? [{ a: point, b: other }] : [];
-    });
-    if (paired.length < 3) return { count: paired.length, meanPhaseDeg: null as number | null, phaseConcentration: 0, magnitudeDeltaDb: null as number | null, interpretation: "Không đủ điểm có coherence ≥ 0.8 trong dải crossover." };
-    const phaseDiff = paired.map(pair => {
-      let angle = pair.b.phaseDeg - pair.a.phaseDeg;
-      while (angle > 180) angle -= 360;
-      while (angle < -180) angle += 360;
-      return angle * Math.PI / 180;
-    });
-    const sin = phaseDiff.reduce((sum, value) => sum + Math.sin(value), 0) / phaseDiff.length;
-    const cos = phaseDiff.reduce((sum, value) => sum + Math.cos(value), 0) / phaseDiff.length;
-    const mean = Math.atan2(sin, cos) * 180 / Math.PI;
-    const concentration = Math.hypot(sin, cos);
-    const magnitudeDeltaDb = paired.reduce((sum, pair) => sum + pair.b.magnitudeDb - pair.a.magnitudeDb, 0) / paired.length;
-    const absolute = Math.abs(mean);
-    const interpretation = absolute >= 135 && concentration >= .7
-      ? "Có dấu hiệu đảo cực / phase gần đối nhau. Kiểm tra polarity ở DSP và crossover."
-      : absolute <= 45 && concentration >= .7
-        ? "Pha trung bình gần trùng trong dải kiểm tra; vẫn cần kiểm tra theo từng điểm nghe."
-        : "Có lệch pha đáng kể hoặc pha biến thiên; kiểm tra delay/crossover và đo lại đồng thời.";
-    return { count: paired.length, meanPhaseDeg: mean, phaseConcentration: concentration, magnitudeDeltaDb, interpretation };
-  }, [referenceA, referenceB, crossoverHz]);
+
