@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Plus, Speaker, Ruler, Activity, Trash2, Settings2 } from "lucide-react";
+import { Plus, Speaker, Ruler, Activity, Trash2 } from "lucide-react";
 
 type CbtModelId = "CBT 50LA-1" | "CBT 70J-1" | "CBT 100LA-1";
 type CbtModel = { heightM: number; horizontalDeg: number; verticalBroadDeg: number; verticalNarrowDeg: number; musicBroadDb: number; musicNarrowDb: number; speechBroadDb: number; speechNarrowDb: number; ratedPowerW: number; impedanceOhm: number; source: string; note: string };
