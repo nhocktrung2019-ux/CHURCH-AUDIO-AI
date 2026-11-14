@@ -85,8 +85,9 @@ export function useAudioAnalyzer(calibrationPoints: MicCalibrationPoint[] = []) 
   const [rmsDbfs, setRmsDbfs] = useState(-100);
   const [weightedLevels, setWeightedLevels] = useState({ z: -100, a: -100, c: -100 });
   const [leqLevels, setLeqLevels] = useState({ z: -100, a: -100, c: -100 });
+  const [timeWeightedLevels, setTimeWeightedLevels] = useState({ af: -100, as: -100, cf: -100, cs: -100 });
   const [measurementSeconds, setMeasurementSeconds] = useState(0);
-  const integrationRef = useRef({ z: 0, a: 0, c: 0, frames: 0 });
+  const integrationRef = useRef<{ z: number; a: number; c: number; frames: number; af: number; as: number; cf: number; cs: number; lastTime: number | null }>({ z: 0, a: 0, c: 0, frames: 0, af: 0, as: 0, cf: 0, cs: 0, lastTime: null });
   const startedAtRef = useRef<number | null>(null);
   const [spectrum, setSpectrum] = useState<number[]>(Array(64).fill(-100));
   const [history, setHistory] = useState<number[][]>([]);
@@ -136,8 +137,9 @@ export function useAudioAnalyzer(calibrationPoints: MicCalibrationPoint[] = []) 
     setRmsDbfs(-100);
     setWeightedLevels({ z: -100, a: -100, c: -100 });
     setLeqLevels({ z: -100, a: -100, c: -100 });
+    setTimeWeightedLevels({ af: -100, as: -100, cf: -100, cs: -100 });
     setMeasurementSeconds(0);
-    integrationRef.current = { z: 0, a: 0, c: 0, frames: 0 };
+    integrationRef.current = { z: 0, a: 0, c: 0, frames: 0, af: 0, as: 0, cf: 0, cs: 0, lastTime: null };
     startedAtRef.current = null;
     setTrackInfo("");
   }, []);
@@ -207,9 +209,10 @@ export function useAudioAnalyzer(calibrationPoints: MicCalibrationPoint[] = []) 
           : "",
       );
       setHistory([]);
-      integrationRef.current = { z: 0, a: 0, c: 0, frames: 0 };
+      integrationRef.current = { z: 0, a: 0, c: 0, frames: 0, af: 0, as: 0, cf: 0, cs: 0, lastTime: null };
       startedAtRef.current = Date.now();
       setLeqLevels({ z: -100, a: -100, c: -100 });
+      setTimeWeightedLevels({ af: -100, as: -100, cf: -100, cs: -100 });
       setMeasurementSeconds(0);
       setRunning(true);
 
@@ -385,9 +388,33 @@ export function useAudioAnalyzer(calibrationPoints: MicCalibrationPoint[] = []) 
             integrationRef.current.z += Math.pow(10, safeLevels.z / 10);
             integrationRef.current.a += Math.pow(10, safeLevels.a / 10);
             integrationRef.current.c += Math.pow(10, safeLevels.c / 10);
+            const nowSeconds = Date.now() / 1000;
+            const instantaneousA = Math.pow(10, safeLevels.a / 10);
+            const instantaneousC = Math.pow(10, safeLevels.c / 10);
+            if (integrationRef.current.lastTime === null) {
+              integrationRef.current.af = instantaneousA;
+              integrationRef.current.as = instantaneousA;
+              integrationRef.current.cf = instantaneousC;
+              integrationRef.current.cs = instantaneousC;
+            } else {
+              const elapsed = Math.max(0.001, Math.min(0.5, nowSeconds - integrationRef.current.lastTime));
+              const fastAlpha = 1 - Math.exp(-elapsed / 0.125);
+              const slowAlpha = 1 - Math.exp(-elapsed / 1.0);
+              integrationRef.current.af += (instantaneousA - integrationRef.current.af) * fastAlpha;
+              integrationRef.current.as += (instantaneousA - integrationRef.current.as) * slowAlpha;
+              integrationRef.current.cf += (instantaneousC - integrationRef.current.cf) * fastAlpha;
+              integrationRef.current.cs += (instantaneousC - integrationRef.current.cs) * slowAlpha;
+            }
+            integrationRef.current.lastTime = nowSeconds;
             integrationRef.current.frames++;
             const frameCount = integrationRef.current.frames;
             setWeightedLevels(safeLevels);
+            setTimeWeightedLevels({
+              af: 10 * Math.log10(Math.max(1e-12, integrationRef.current.af)),
+              as: 10 * Math.log10(Math.max(1e-12, integrationRef.current.as)),
+              cf: 10 * Math.log10(Math.max(1e-12, integrationRef.current.cf)),
+              cs: 10 * Math.log10(Math.max(1e-12, integrationRef.current.cs)),
+            });
             setLeqLevels({
               z: 10 * Math.log10(integrationRef.current.z / frameCount),
               a: 10 * Math.log10(integrationRef.current.a / frameCount),
@@ -447,6 +474,7 @@ export function useAudioAnalyzer(calibrationPoints: MicCalibrationPoint[] = []) 
     rmsDbfs,
     weightedLevels,
     leqLevels,
+    timeWeightedLevels,
     measurementSeconds,
     spectrum,
     history,
