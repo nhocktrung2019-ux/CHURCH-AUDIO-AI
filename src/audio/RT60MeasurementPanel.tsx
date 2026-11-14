@@ -22,7 +22,9 @@ export default function RT60MeasurementPanel({ selectedInput, running }: Props) 
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [result, setResult] = useState<ImpulseResponseResult | null>(null);
-  const [impulse, setImpulse] = useState<Float32Array | null>(null);\n  const [recordingUrl, setRecordingUrl] = useState("");\n  useEffect(() => () => { if (recordingUrl) URL.revokeObjectURL(recordingUrl); }, [recordingUrl]);
+  const [impulse, setImpulse] = useState<Float32Array | null>(null);
+  const [recordingUrl, setRecordingUrl] = useState("");
+  useEffect(() => () => { if (recordingUrl) URL.revokeObjectURL(recordingUrl); }, [recordingUrl]);
   const [duration, setDuration] = useState(6);
   const [tailSeconds, setTailSeconds] = useState(4);
 
@@ -67,7 +69,8 @@ export default function RT60MeasurementPanel({ selectedInput, running }: Props) 
       await new Promise<void>(resolve => window.setTimeout(resolve, totalSeconds * 1000));
       if (recorder.state === "recording") recorder.stop();
       const blob = await stopped;
-      if (!blob.size) throw new Error("Bản ghi rỗng. Kiểm tra quyền micro và đầu vào âm thanh.");\n      setRecordingUrl(URL.createObjectURL(blob));
+      if (!blob.size) throw new Error("Bản ghi rỗng. Kiểm tra quyền micro và đầu vào âm thanh.");
+      setRecordingUrl(URL.createObjectURL(blob));
       const decoded = await audio.decodeAudioData(await blob.arrayBuffer());
       const mono = new Float32Array(decoded.length);
       for (let channel = 0; channel < decoded.numberOfChannels; channel++) {
@@ -120,7 +123,8 @@ export default function RT60MeasurementPanel({ selectedInput, running }: Props) 
         <article><small>PEAK / NOISE</small><strong>{result.peakToNoiseDb.toFixed(1)} <small>dB</small></strong></article>
         <article><small>IR SAMPLE RATE</small><strong>{(result.sampleRate / 1000).toFixed(1)} <small>kHz</small></strong></article>
       </div>
-      {recordingUrl && <div className="permission-help"><b>Nghe lại bản ghi khảo sát</b><span>Bản ghi gồm sweep phát ra và phần đuôi vang thu được tại vị trí micro. Dùng tai nghe để nghe/đối chiếu tiếng đuôi; đây không phải tín hiệu dry/wet đã tách riêng.</span><audio controls preload="metadata" src={recordingUrl} /></div>}\n      {impulse && <div className="ir-plot"><svg viewBox="0 0 480 120" role="img" aria-label="Impulse response plot"><path d="M0 110 H480 M0 60 H480" stroke="#3a515d" strokeDasharray="4 4" fill="none"/><polyline points={plot.map(p => p.x + "," + p.y).join(" ")} fill="none" stroke="#65d2b6" strokeWidth="1.4" vectorEffect="non-scaling-stroke"/></svg><small className="muted">Impulse response đã chuẩn hóa · 4 giây đầu sau direct peak</small></div>}
+      {recordingUrl && <div className="permission-help"><b>Nghe lại bản ghi khảo sát</b><span>Bản ghi gồm sweep phát ra và phần đuôi vang thu được tại vị trí micro. Dùng tai nghe để nghe/đối chiếu tiếng đuôi; đây không phải tín hiệu dry/wet đã tách riêng.</span><audio controls preload="metadata" src={recordingUrl} /></div>}
+      {impulse && <div className="ir-plot"><svg viewBox="0 0 480 120" role="img" aria-label="Impulse response plot"><path d="M0 110 H480 M0 60 H480" stroke="#3a515d" strokeDasharray="4 4" fill="none"/><polyline points={plot.map(p => p.x + "," + p.y).join(" ")} fill="none" stroke="#65d2b6" strokeWidth="1.4" vectorEffect="non-scaling-stroke"/></svg><small className="muted">Impulse response đã chuẩn hóa · 4 giây đầu sau direct peak</small></div>}
       <div className="table-wrap"><table><thead><tr><th>Octave band</th><th>RT20 → RT60</th><th>RT30 → RT60</th><th>Chosen RT60</th><th>Fit R²</th></tr></thead><tbody>{result.bands.map(b => <tr key={b.centerHz}><td>{b.centerHz >= 1000 ? (b.centerHz / 1000) + " kHz" : b.centerHz + " Hz"}</td><td>{b.rt20Seconds === null ? "—" : b.rt20Seconds.toFixed(2) + " s"}</td><td>{b.rt30Seconds === null ? "—" : b.rt30Seconds.toFixed(2) + " s"}</td><td><b>{b.rt60Seconds === null ? "—" : b.rt60Seconds.toFixed(2) + " s"}</b></td><td>{b.fitR2 === null ? "—" : b.fitR2.toFixed(3)}</td></tr>)}</tbody></table></div>
     </>}
     <p className="warning">Đo sweep qua loa và micro là phép đo in-situ, không phải buồng âm chuẩn. Kết quả còn phụ thuộc đáp ứng loa/micro, nén, tiếng ồn, hướng đặt micro, codec MediaRecorder và chất lượng giải chập. Để nghiệm thu cần micro đo có calibration file, soundcard phù hợp và đo lặp ở nhiều điểm; kiểm tra độ dốc/R² trước khi dùng.</p>
