@@ -411,3 +411,14 @@ footer{padding-bottom:calc(26px + env(safe-area-inset-bottom))}
 .scene-object-editor>button{align-self:end;min-height:37px;margin:0}
 @media(max-width:760px){.scene-object-editor{grid-template-columns:repeat(2,minmax(0,1fr));padding:10px}}
 @media(max-width:460px){.scene-object-editor{grid-template-columns:1fr}.scene-add-actions button{flex:1 1 42%}}
+
+
+/* Orbit camera and direct manipulation controls */
+.camera-controls{display:grid;grid-template-columns:1fr 1fr auto;align-items:end;gap:12px;margin:10px 0 14px;padding:12px;border:1px solid #38515d;border-radius:9px;background:rgba(8,17,24,.58)}
+.camera-controls label{display:flex;flex-direction:column;gap:6px;color:#91a6af;font:9px ui-monospace,SFMono-Regular,Consolas,monospace}
+.camera-controls label b{color:#ccefe3;font-size:10px}
+.camera-controls input[type=range]{width:100%;accent-color:#65d2b6}
+.camera-controls button{min-height:34px;margin:0;white-space:nowrap}
+.room-canvas svg{user-select:none;-webkit-user-select:none}
+.room-canvas svg g[style*="grab"]{touch-action:none}
+@media(max-width:620px){.camera-controls{grid-template-columns:1fr}.camera-controls button{width:100%}}
