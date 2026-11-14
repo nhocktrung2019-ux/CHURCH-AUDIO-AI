@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.14.0-beta.4 — Voice assistant and multi-source measurement
+
+- Add Vietnamese voice commands for scanning inputs, starting/stopping a multi-source session, and reading a spoken measurement summary.
+- Add typed-command fallback when Web Speech recognition is unavailable in the Android WebView.
+- Capture up to four separately enumerated inputs in one software measurement session, preserving independent RTA histories per source.
+- Add a linear-power average spectrum overview across active sources; label it as relative and non-phase-coherent.
+- Document clock, calibration, Android concurrent-capture, and single multichannel-USB-device limitations.
+
+
 ## 0.13.0-beta.3 — Independent multi-microphone feedback watch
 
 - Add an operator-controlled input scan and selection for up to four separately enumerated microphone devices.
