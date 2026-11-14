@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Activity, Play, Square, AlertTriangle, Waves } from "lucide-react";
+import { Play, Square, AlertTriangle, Waves } from "lucide-react";
 import { analyzeImpulseResponse, createLogSweep, type ImpulseResponseResult } from "./rt60";
 import { explainMicrophoneError, requestMicrophoneStream } from "./microphone";
 
