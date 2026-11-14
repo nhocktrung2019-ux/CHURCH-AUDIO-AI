@@ -69,7 +69,7 @@ function stopTracks(stream: MediaStream | null): void {
   stream?.getTracks().forEach((track) => track.stop());
 }
 
-export function useAudioAnalyzer() {
+export function useAudioAnalyzer(calibrationPoints: MicCalibrationPoint[] = []) {
   const contextRef = useRef<AudioContext | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const sourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
