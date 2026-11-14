@@ -1,7 +1,8 @@
 import { useState } from "react";
+import { APP_VERSION } from "./appVersion";
 import { usePersistentState } from "./audio/usePersistentState";
 import { micCorrectionAt, type MicCalibrationFile, type MicCalibrationPoint } from "./audio/micCalibration";
-import { Activity, AudioWaveform, Mic, Radio, Volume2, Waves, RefreshCw, Square, Layers3, CheckCircle2, AlertCircle, LayoutDashboard, SlidersHorizontal, ShieldCheck, Box, Settings2, Ruler, Speaker } from "lucide-react";
+import { Activity, AudioWaveform, Mic, Radio, Volume2, Waves, RefreshCw, Square, Layers3, CheckCircle2, AlertCircle, LayoutDashboard, SlidersHorizontal, ShieldCheck, Box, Settings2, Ruler, Speaker, LifeBuoy } from "lucide-react";
 import { useAudioAnalyzer } from "./audio/useAudioAnalyzer";
 import { useToneGenerator } from "./audio/useToneGenerator";
 import { equipment } from "./data/equipment";
@@ -17,8 +18,9 @@ import PolarDataStudio from "./audio/PolarDataStudio";
 import SPLMeterPanel from "./audio/SPLMeterPanel";
 import MicCalibrationPanel from "./audio/MicCalibrationPanel";
 import ProjectBackupPanel from "./audio/ProjectBackupPanel";
+import VersionSupportPanel from "./audio/VersionSupportPanel";
 
-type TabId = "overview" | "rta" | "room" | "align" | "system" | "design" | "tools";
+type TabId = "overview" | "rta" | "room" | "align" | "system" | "design" | "tools" | "support";
 const EMPTY_MIC_CALIBRATION_POINTS: MicCalibrationPoint[] = [];
 
 function getInputTypeLabel(label: string): string {
@@ -36,6 +38,7 @@ const tabs: { id: TabId; label: string; short: string; icon: typeof Activity }[]
   { id: "system", label: "Chống hú & tối ưu", short: "SYSTEM", icon: ShieldCheck },
   { id: "design", label: "Thiết kế phủ âm 3D", short: "3D", icon: Box },
   { id: "tools", label: "Generator & thiết bị", short: "TOOLS", icon: Settings2 },
+  { id: "support", label: "Cập nhật & hỗ trợ", short: "SUPPORT", icon: LifeBuoy },
 ];
 
 export default function App() {
@@ -119,7 +122,8 @@ export default function App() {
     {activeTab === "system" && <section className="tab-stack"><FeedbackMonitor history={a.history} /><TuningAdvisor history={a.history} /></section>}
     {activeTab === "design" && <section className="tab-stack"><CBTCalculator /><PolarDataStudio /><RoomPlanner3D /></section>}
     {activeTab === "tools" && <section className="tab-stack"><section className="grid"><GeneratorPanel /><DevicePanel /><article className="panel"><div className="heading"><Speaker /><h2>Thư viện thiết bị</h2><span>{equipment.length} ITEMS</span></div>{equipment.map(item => <div className="item" key={item.name}><b>{item.name}</b><small>{item.type} · Cần xác minh thông số hãng</small></div>)}</article></section><ProjectBackupPanel /></section>}
+    {activeTab === "support" && <section className="tab-stack"><VersionSupportPanel /></section>}
     <section className="roadmap"><small>PHƯƠNG PHÁP / WORKFLOW</small><p>01 KHẢO SÁT <b>→</b> 02 ĐO LƯỜNG <b>→</b> 03 CĂN CHỈNH <b>→</b> 04 KIỂM SOÁT HỆ THỐNG <b>→</b> 05 THIẾT KẾ PHỦ ÂM</p></section>
-    <footer>CHURCH AUDIO ANALYZER <span>PRO MEASUREMENT BETA · BUILD 0.11.0</span></footer>
+    <footer>CHURCH AUDIO ANALYZER <span>PRO MEASUREMENT BETA · BUILD {APP_VERSION}</span></footer>
   </main>;
 }
