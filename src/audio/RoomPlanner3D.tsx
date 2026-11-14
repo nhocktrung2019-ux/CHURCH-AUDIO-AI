@@ -1,12 +1,13 @@
 import{useState}from"react";
+import { usePersistentState } from "./usePersistentState";
 import{Plus,Speaker,Trash2,Move3d,Ruler}from"lucide-react";
 import{SPEAKER_MODELS,SPEAKER_SPECS}from"../data/speakerModels";
 type SpeakerUnit={id:number;name:string;model:string;zone:string;x:number;y:number;z:number;azimuth:number;coverage:number;verticalCoverage:number;sensitivity:number|null;powerW:number|null;impedance:number};
 const clamp=(v:number,min:number,max:number)=>Math.max(min,Math.min(max,v));
 export default function RoomPlanner3D(){
- const[length,setLength]=useState(28),[width,setWidth]=useState(16),[height,setHeight]=useState(7);
- const[speakers,setSpeakers]=useState<SpeakerUnit[]>([{id:1,name:"Loa chính trái",model:"CBT 70J-1 (CBT 70)",zone:"Khu vực 1",x:3,y:3,z:5.5,azimuth:35,coverage:90,verticalCoverage:40,sensitivity:null,powerW:null,impedance:8},{id:2,name:"Loa chính phải",model:"CBT 70J-1 (CBT 70)",zone:"Khu vực 1",x:3,y:13,z:5.5,azimuth:-35,coverage:90,verticalCoverage:40,sensitivity:null,powerW:null,impedance:8},{id:3,name:"Loa delay",model:"Bose MA12",zone:"Khu vực 2",x:17,y:8,z:4,azimuth:180,coverage:100,verticalCoverage:40,sensitivity:null,powerW:null,impedance:8}]);
- const[selected,setSelected]=useState(1),[refX,setRefX]=useState(22),[refY,setRefY]=useState(8),[targetSpl,setTargetSpl]=useState(85),[view,setView]=useState<"perspective"|"top">("perspective");
+ const[length,setLength]=usePersistentState("church-audio-room-length",28),[width,setWidth]=usePersistentState("church-audio-room-width",16),[height,setHeight]=usePersistentState("church-audio-room-height",7);
+ const[speakers,setSpeakers]=usePersistentState<SpeakerUnit[]>("church-audio-room-speakers",[{id:1,name:"Loa chính trái",model:"CBT 70J-1 (CBT 70)",zone:"Khu vực 1",x:3,y:3,z:5.5,azimuth:35,coverage:90,verticalCoverage:40,sensitivity:null,powerW:null,impedance:8},{id:2,name:"Loa chính phải",model:"CBT 70J-1 (CBT 70)",zone:"Khu vực 1",x:3,y:13,z:5.5,azimuth:-35,coverage:90,verticalCoverage:40,sensitivity:null,powerW:null,impedance:8},{id:3,name:"Loa delay",model:"Bose MA12",zone:"Khu vực 2",x:17,y:8,z:4,azimuth:180,coverage:100,verticalCoverage:40,sensitivity:null,powerW:null,impedance:8}]);
+ const[selected,setSelected]=usePersistentState("church-audio-room-selected",1),[refX,setRefX]=usePersistentState("church-audio-room-ref-x",22),[refY,setRefY]=usePersistentState("church-audio-room-ref-y",8),[targetSpl,setTargetSpl]=usePersistentState("church-audio-room-target-spl",85),[view,setView]=usePersistentState<"perspective"|"top">("church-audio-room-view","perspective");
  const current=speakers.find(s=>s.id===selected)??speakers[0];
  const project=(x:number,y:number,z:number)=>view==="top"?({x:92+x/Math.max(1,length)*560,y:68+y/Math.max(1,width)*285}):({x:100+x/Math.max(1,length)*390+y/Math.max(1,width)*170,y:330-x/Math.max(1,length)*115-y/Math.max(1,width)*90-z/Math.max(1,height)*190});
  const corners=[[0,0],[length,0],[length,width],[0,width]].map(([x,y])=>project(x,y,0));
