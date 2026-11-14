@@ -307,7 +307,7 @@ export default function MultiMicFeedbackPanel() {
         <button onClick={() => void executeCommand(voiceText)}><MessageSquareText />Gửi lệnh</button>
       </div>
       <div className="voice-assistant-status">{voiceStatus}</div>
-      <p className="warning">Nhận dạng giọng nói phụ thuộc WebView/trình duyệt và dịch vụ speech trên thiết bị. Phần trợ lý hiện xử lý lệnh và tóm tắt tín hiệu tại máy; chưa kết nối mô hình ngôn ngữ đám mây hoặc gửi dữ liệu đo ra ngoài.</p>
+      <p className="warning">Nhận dạng giọng nói phụ thuộc WebView/trình duyệt và dịch vụ speech trên thiết bị. Phần trợ lý xử lý lệnh và tóm tắt tín hiệu tại máy, không gửi tín hiệu đo sang mô hình AI. Nhận dạng giọng nói có thể dùng dịch vụ speech do Android/WebView cấu hình.</p>
     </section>
 
     <div className="multi-mic-toolbar">
