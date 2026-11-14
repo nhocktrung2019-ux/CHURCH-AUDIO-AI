@@ -39,7 +39,7 @@ async function collectDiagnosticReport(): Promise<string> {
     `Online: ${navigator.onLine ? "yes" : "no"}`,
     `Secure context: ${window.isSecureContext ? "yes" : "no"}`,
     `MediaDevices API: ${mediaDevices ? "available" : "unavailable"}`,
-    `Microphone capture API: ${mediaDevices?.getUserMedia ? "available" : "unavailable"}`,
+    `Microphone capture API: ${mediaDevices ? "available" : "unavailable"}`,
     `AudioContext API: ${audioContextSupported ? "available" : "unavailable"}`,
     `Enumerated audio inputs: ${inputCount}`,
     `Enumerated audio outputs: ${outputCount}`,
