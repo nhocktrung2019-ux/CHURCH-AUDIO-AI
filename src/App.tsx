@@ -20,6 +20,14 @@ import ProjectBackupPanel from "./audio/ProjectBackupPanel";
 
 type TabId = "overview" | "rta" | "room" | "align" | "system" | "design" | "tools";
 const EMPTY_MIC_CALIBRATION_POINTS: MicCalibrationPoint[] = [];
+
+function getInputTypeLabel(label: string): string {
+  const value = label.toLowerCase();
+  if (/bluetooth|wireless|headset|hands.?free|airpods|buds/.test(value)) return "Bluetooth";
+  if (/usb|audio interface|sound card|scarlett|behringer|focusrite|umc|motu|steinberg/.test(value)) return "USB / OTG";
+  if (/built.?in|internal|phone|handset|microphone array/.test(value)) return "Tích hợp";
+  return "External / Chưa phân loại";
+}
 const tabs: { id: TabId; label: string; short: string; icon: typeof Activity }[] = [
   { id: "overview", label: "Tổng quan", short: "HOME", icon: LayoutDashboard },
   { id: "rta", label: "Phân tích tín hiệu", short: "RTA", icon: Activity },
@@ -47,9 +55,11 @@ export default function App() {
     <div className={`mic-status ${micStatusClass}`}><span className="mic-status-icon">{a.running ? <CheckCircle2 /> : a.error ? <AlertCircle /> : <Mic />}</span><div><b>{micStatus}</b><small>{a.trackInfo || (a.permissionState === "denied" ? "Mở Cài đặt Android và cho phép Microphone." : "Nhấn Bắt đầu đo để yêu cầu quyền truy cập micro.")}</small></div></div>
     <label htmlFor="mic-input">MICROPHONE INPUT</label>
     <select id="mic-input" value={a.selectedInput} disabled={a.running || a.connecting} onChange={(event) => a.setSelectedInput(event.target.value)}>
-      <option value="">Micro mặc định hệ thống</option>{inputs.map((device, index) => <option key={device.deviceId || `mic-${index}`} value={device.deviceId}>{device.label || `Microphone ${index + 1}`}</option>)}
+      <option value="">Micro mặc định hệ thống</option>{inputs.map((device, index) => <option key={device.deviceId || `mic-${index}`} value={device.deviceId}>[{getInputTypeLabel(device.label)}] {device.label || `Microphone ${index + 1}`}</option>)}
     </select>
-    <p className="muted">{a.running ? "Đang dùng micro hiện tại. Dừng đo trước khi đổi thiết bị." : "Tên thiết bị có thể hiển thị đầy đủ hơn sau khi cấp quyền micro."}</p>
+    <p className="muted">{a.running ? "Đang dùng micro hiện tại. Dừng đo trước khi đổi thiết bị." : "Chọn micro tích hợp, Bluetooth hoặc sound card USB/OTG nếu Android và WebView nhận diện được thiết bị."}</p>
+    {inputs.some(device => getInputTypeLabel(device.label) === "Bluetooth") && <p className="warning">Bluetooth có thể bị giới hạn băng thông, AGC/khử ồn và độ trễ biến thiên. Chỉ dùng kiểm tra sơ bộ; không dùng để chứng nhận SPL, phase hoặc delay tuyệt đối.</p>}
+    <p className="muted">Đo chuyên nghiệp: ưu tiên measurement mic có calibration file qua sound card USB OTG. Cần sound card 2 kênh cùng clock và loopback/reference đồng bộ để đo delay/transfer function tuyệt đối.</p>
     <label htmlFor="audio-output">OUTPUT DEVICE</label>
     <select id="audio-output" value={t.outputDevice} disabled={!t.supportsOutputSelection || outputs.length === 0} onChange={(event) => void t.selectOutput(event.target.value)}>
       <option value="">Đầu ra mặc định của hệ thống</option>{outputs.map((device, index) => <option key={device.deviceId || `out-${index}`} value={device.deviceId}>{device.label || `Thiết bị đầu ra ${index + 1}`}</option>)}
