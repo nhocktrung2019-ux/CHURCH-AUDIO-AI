@@ -1,4 +1,6 @@
-import { micCorrectionAt, type MicCalibrationPoint } from "./micCalibration";\n\nexport type TransferPoint = { frequencyHz: number; magnitudeDb: number; phaseDeg: number; coherence: number };
+import { micCorrectionAt, type MicCalibrationPoint } from "./micCalibration";
+
+export type TransferPoint = { frequencyHz: number; magnitudeDb: number; phaseDeg: number; coherence: number };
 export type TransferResult = {
   points: TransferPoint[];
   estimatedDelayMs: number;
