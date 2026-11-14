@@ -89,18 +89,22 @@ export default function MultiMicFeedbackPanel() {
       setChannels(opened.map(s => ({ id: s.id, label: s.label, history: [] })));
       setRunning(true);
       setNotice(failed.length ? "Đã mở " + opened.length + " micro; một số đầu vào không mở được: " + failed.join(" · ") : "Đang giám sát " + opened.length + " luồng micro độc lập. Khả năng mở đồng thời tùy driver và Android.");
-      const tick = () => {
-        const next: ChannelState[] = sessionsRef.current.map(s => {
+      let lastTick = 0;
+      const tick = (time: number) => {
+        if (time - lastTick >= 250) {
+          lastTick = time;
+          const next: ChannelState[] = sessionsRef.current.map(s => {
           s.analyser.getFloatFrequencyData(s.data);
           const bands = toLogBands(s.data, audio.sampleRate);
           const history = [...(historiesRef.current.get(s.id) ?? []), bands].slice(-24);
           historiesRef.current.set(s.id, history);
           return { id: s.id, label: s.label, history };
         });
-        setChannels(next);
-        frameRef.current = requestAnimationFrame(() => window.setTimeout(tick, 250));
+          setChannels(next);
+        }
+        frameRef.current = requestAnimationFrame(tick);
       };
-      tick();
+      frameRef.current = requestAnimationFrame(tick);
     } catch (e) {
       opened.forEach(s => s.stream.getTracks().forEach(t => t.stop()));
       await audio.close().catch(() => undefined);
