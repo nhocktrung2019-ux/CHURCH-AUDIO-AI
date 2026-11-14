@@ -13,7 +13,7 @@ export default function SPLMeterPanel({weighted,leq,peakDbfs,offsetDb,durationSe
       <article><small>LAeq · INTEGRATED</small><b>{fmt(leq.a+offsetDb)} {unit}</b><span>A-weighted</span></article>
       <article><small>LCeq · INTEGRATED</small><b>{fmt(leq.c+offsetDb)} {unit}</b><span>C-weighted</span></article>
       <article><small>LC · LIVE</small><b>{fmt(weighted.c+offsetDb)} {unit}</b><span>C-weighted live</span></article>
-      <article><small>PEAK SAMPLE</small><b>{fmt(peakDbfs+offsetDb)} {unit}</b><span>Unweighted sample peak</span></article>
+      <article><small>PEAK SAMPLE · RAW</small><b>{fmt(peakDbfs)} dBFS</b><span>Unweighted sample peak</span></article>
     </div>
     <div className="spl-meter-foot"><span><Activity/> {running?"Measurement running":"Start microphone to integrate Leq"} · {calibrated?"ONE-POINT OFFSET":"NOT CALIBRATED"}</span><span><Volume2/> Duration {Math.floor(durationSeconds/60).toString().padStart(2,"0")}:{Math.floor(durationSeconds%60).toString().padStart(2,"0")}</span></div>
     <p className="warning">Leq được tích phân từ FFT mic stream theo weighting curves, chỉ là Z/A/C-weighted estimate hiện tại. Chưa có time-weighted Fast/Slow detector theo IEC, true-peak oversampling, class 1/2 validation hoặc calibration frequency-response correction. Không dùng làm máy đo SPL chứng nhận.</p>
