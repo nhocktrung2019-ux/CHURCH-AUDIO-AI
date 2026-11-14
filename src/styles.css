@@ -435,3 +435,21 @@ footer{padding-bottom:calc(26px + env(safe-area-inset-bottom))}
 @media(max-width:540px){.church-webgl{height:430px}.webgl-hint{font-size:8px;line-height:1.5}}
 
 .multi-mic-panel{margin-bottom:16px}.multi-mic-toolbar{display:grid;grid-template-columns:1fr 1fr;gap:10px}.multi-mic-toolbar button{margin-top:8px}.multi-mic-select{display:grid;gap:8px;margin-top:16px;padding:14px;border:1px solid #2b3b46;border-radius:8px;background:#0f1820}.multi-mic-select>b{font-size:12px;margin-bottom:4px}.multi-mic-select label{display:flex;align-items:center;gap:10px;margin:0!important;font:12px inherit!important;letter-spacing:normal!important}.multi-mic-select input{width:18px!important;min-height:18px!important;accent-color:#65d2b6}.multi-mic-channel{margin-top:14px;padding:14px;border:1px solid #30414d;border-radius:9px;background:#0e171f}.multi-mic-channel-head{display:flex;justify-content:space-between;gap:10px;align-items:center;font-size:12px}.multi-mic-channel-head b{display:flex;gap:8px;align-items:center}.multi-mic-channel-head svg{width:16px;color:#65d2b6}.mini-spectrum{height:70px;display:flex;align-items:end;gap:2px;margin-top:12px;padding:5px;background:#091119;border-radius:6px}.mini-spectrum i{flex:1;min-width:1px;background:linear-gradient(0deg,#247b73,#69d9bd);border-radius:2px 2px 0 0}.multi-mic-channel .feedback-clear,.multi-mic-channel .feedback-alert{font-size:11px}.multi-mic-channel .feedback-alert span{overflow-wrap:anywhere}@media(max-width:540px){.multi-mic-toolbar{grid-template-columns:1fr}.multi-mic-channel{padding:10px}}
+
+
+/* 0.14.0-beta.4 — multi-source measurement and voice assistant */
+.multi-source-assistant{margin:14px 0 16px;padding:15px;border:1px solid #3a5b62;border-radius:11px;background:linear-gradient(140deg,rgba(26,58,59,.42),rgba(8,18,25,.72))}
+.multi-source-assistant .heading{margin-bottom:8px}
+.multi-source-assistant .heading h3{flex:1;margin:0;font-size:14px;color:#e2f4ed}
+.multi-source-assistant>p{font-size:11px;line-height:1.65;color:#a9bdc1}
+.voice-command-actions{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:12px}
+.voice-command-actions button{margin:0}
+.voice-command-actions .voice-listening{background:#9a5932;color:#fff1df;box-shadow:0 0 0 2px rgba(228,153,86,.16),0 0 22px rgba(228,153,86,.15)}
+.voice-command-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;margin-top:10px}
+.voice-command-row input{min-width:0;min-height:44px;padding:10px 12px;border:1px solid #3c535e;border-radius:8px;background:#0b151d;color:#e5edf1}
+.voice-command-row button{width:auto;margin:0;padding:10px 13px}
+.voice-assistant-status{margin-top:10px;padding:10px 12px;border:1px solid #304b52;border-radius:8px;background:rgba(6,15,21,.6);color:#a9d7ca;font-size:11px;line-height:1.55}
+.multi-source-composite{margin-top:15px;padding:14px;border:1px solid #3c625b;border-radius:10px;background:linear-gradient(130deg,rgba(21,62,52,.42),rgba(8,18,25,.68))}
+.multi-source-composite p{font-size:10px;line-height:1.65;color:#9eb7b6}
+.composite-spectrum{height:90px;border:1px solid #284b45}
+@media(max-width:540px){.voice-command-actions{grid-template-columns:1fr}.voice-command-row{grid-template-columns:1fr}.voice-command-row button{width:100%}.multi-source-assistant{padding:12px}}
