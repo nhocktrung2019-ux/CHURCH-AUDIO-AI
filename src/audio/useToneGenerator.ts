@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 type SinkCapableAudio = HTMLAudioElement & { setSinkId?: (sinkId: string) => Promise<void> };
+type SinkCapableContext = AudioContext & { setSinkId?: (sinkId: string) => Promise<void> };
 export type SignalType = "sine" | "white" | "pink" | "sweep";
 
 function createNoiseBuffer(audio: AudioContext, type: "white" | "pink"): AudioBuffer {
@@ -42,8 +43,18 @@ function createSweepBuffer(audio: AudioContext): AudioBuffer {
   return buffer;
 }
 
+function supportsContextSink(): boolean {
+  return typeof AudioContext !== "undefined" &&
+    typeof (AudioContext.prototype as SinkCapableContext).setSinkId === "function";
+}
+
+function supportsElementSink(): boolean {
+  return typeof HTMLMediaElement !== "undefined" &&
+    typeof (HTMLMediaElement.prototype as SinkCapableAudio).setSinkId === "function";
+}
+
 export function useToneGenerator() {
-  const ctx = useRef<AudioContext | null>(null);
+  const ctx = useRef<SinkCapableContext | null>(null);
   const osc = useRef<OscillatorNode | null>(null);
   const bufferSource = useRef<AudioBufferSourceNode | null>(null);
   const gain = useRef<GainNode | null>(null);
@@ -55,9 +66,7 @@ export function useToneGenerator() {
   const [outputDevice, setOutputDevice] = useState("");
   const [outputError, setOutputError] = useState("");
 
-  const supportsOutputSelection =
-    typeof HTMLMediaElement !== "undefined" &&
-    "setSinkId" in HTMLMediaElement.prototype;
+  const supportsOutputSelection = supportsContextSink() || supportsElementSink();
 
   const stop = useCallback(() => {
     try { osc.current?.stop(); } catch { /* already stopped */ }
@@ -72,6 +81,7 @@ export function useToneGenerator() {
       output.current.pause();
       output.current.srcObject = null;
     }
+    output.current = null;
     const previousContext = ctx.current;
     ctx.current = null;
     if (previousContext && previousContext.state !== "closed") {
@@ -82,31 +92,52 @@ export function useToneGenerator() {
 
   const selectOutput = useCallback(async (deviceId: string) => {
     try {
+      const audio = ctx.current;
       const element = output.current;
-      if (deviceId && !supportsOutputSelection) {
-        throw new Error("Trình duyệt không hỗ trợ chọn thiết bị đầu ra riêng.");
+      if (audio?.setSinkId) {
+        await audio.setSinkId(deviceId);
+      } else if (element?.setSinkId) {
+        await element.setSinkId(deviceId);
+      } else if (deviceId) {
+        throw new Error("Thiết bị/trình duyệt hiện tại không hỗ trợ định tuyến đầu ra riêng. Hãy chọn đầu ra trong cài đặt âm thanh Android.");
       }
-      if (element?.setSinkId) await element.setSinkId(deviceId);
       setOutputDevice(deviceId);
       setOutputError("");
     } catch (error) {
       setOutputError(error instanceof Error ? error.message : "Không thể đổi thiết bị đầu ra.");
     }
-  }, [supportsOutputSelection]);
+  }, []);
 
   const start = useCallback(async () => {
     stop();
-    let audio: AudioContext | null = null;
+    let audio: SinkCapableContext | null = null;
+    let element: SinkCapableAudio | null = null;
     try {
-      audio = new AudioContext();
+      audio = new AudioContext() as SinkCapableContext;
       const amplifier = audio.createGain();
-      const streamDestination = audio.createMediaStreamDestination();
-      const element = output.current ?? (new Audio() as SinkCapableAudio);
-      element.autoplay = true;
-      element.volume = 1;
-      element.srcObject = streamDestination.stream;
       amplifier.gain.value = Math.pow(10, volume / 20) * 0.08;
-      amplifier.connect(streamDestination);
+
+      if (outputDevice && audio.setSinkId) {
+        await audio.setSinkId(outputDevice);
+        amplifier.connect(audio.destination);
+      } else if (outputDevice && supportsElementSink()) {
+        const streamDestination = audio.createMediaStreamDestination();
+        element = output.current ?? (new Audio() as SinkCapableAudio);
+        if (!element.setSinkId) throw new Error("Không hỗ trợ chọn đầu ra trên phần tử âm thanh.");
+        await element.setSinkId(outputDevice);
+        element.autoplay = true;
+        element.volume = 1;
+        element.srcObject = streamDestination.stream;
+        amplifier.connect(streamDestination);
+        await audio.resume();
+        await element.play();
+        output.current = element;
+      } else {
+        if (outputDevice) {
+          throw new Error("Đầu ra riêng không được hỗ trợ trong Android WebView này. Chọn đầu ra qua bảng âm lượng/thiết bị của Android.");
+        }
+        amplifier.connect(audio.destination);
+      }
 
       let oscillator: OscillatorNode | null = null;
       let bufferNode: AudioBufferSourceNode | null = null;
@@ -124,27 +155,8 @@ export function useToneGenerator() {
         bufferNode.connect(amplifier);
       }
 
-      let routed = true;
-      try {
-        if (outputDevice) {
-          if (!element.setSinkId) throw new Error("Không hỗ trợ định tuyến đầu ra riêng.");
-          await element.setSinkId(outputDevice);
-        }
-        await audio.resume();
-        await element.play();
-      } catch {
-        routed = false;
-        amplifier.disconnect();
-        amplifier.connect(audio.destination);
-        element.pause();
-        element.srcObject = null;
-        setOutputError("Không mở được đầu ra đã chọn; tín hiệu đang dùng đầu ra mặc định.");
-      }
-
-      if (routed) {
-        output.current = element;
-        setOutputError("");
-      }
+      await audio.resume();
+      if (audio.state !== "running") throw new Error("Audio engine chưa chạy. Hãy chạm phát lại và kiểm tra chế độ im lặng/tiết kiệm pin.");
       ctx.current = audio;
       osc.current = oscillator;
       bufferSource.current = bufferNode;
@@ -152,8 +164,14 @@ export function useToneGenerator() {
       oscillator?.start();
       bufferNode?.start();
       setActive(true);
+      setOutputError("");
     } catch (error) {
+      element?.pause();
+      if (element) element.srcObject = null;
       if (audio && audio.state !== "closed") await audio.close().catch(() => undefined);
+      ctx.current = null;
+      output.current = null;
+      setActive(false);
       setOutputError(error instanceof Error ? error.message : "Không thể khởi động bộ phát tín hiệu.");
     }
   }, [frequency, outputDevice, signalType, stop, volume]);
