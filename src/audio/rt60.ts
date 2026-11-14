@@ -162,15 +162,17 @@ function fitDecay(curve: Float32Array, sampleRate: number, startDb: number, endD
 }
 function schroederDecay(samples: Float32Array): Float32Array | null {
   if (!samples.length) return null;
-  const tailStart = Math.floor(samples.length * 0.85);
+  // Estimate the stationary noise floor from the last 10% of the impulse response.
+  const tailStart = Math.floor(samples.length * 0.9);
   let noisePower = 0;
   for (let i = tailStart; i < samples.length; i++) noisePower += samples[i] * samples[i];
   noisePower /= Math.max(1, samples.length - tailStart);
+  // Noise-compensated backward integration: subtract the expected remaining noise energy.
   const curve = new Float32Array(samples.length);
   let integrated = 0;
   for (let i = samples.length - 1; i >= 0; i--) {
-    integrated = Math.max(0, integrated + samples[i] * samples[i] - noisePower);
-    curve[i] = integrated;
+    integrated += samples[i] * samples[i];
+    curve[i] = Math.max(0, integrated - noisePower * (samples.length - i));
   }
   const reference = curve[0];
   if (!(reference > 1e-15)) return null;
@@ -195,7 +197,7 @@ export function analyzeImpulseResponse(reference: Float32Array, recorded: Float3
   for (let i = 0; i < impulse.length; i++) impulse[i] /= peak;
   const tail = impulse.slice(Math.floor(impulse.length * 0.85));
   const tailRms = Math.sqrt(tail.reduce((sum, value) => sum + value * value, 0) / Math.max(1, tail.length));
-  const peakToNoiseDb = 20 * Math.log10(Math.max(peak, 1e-12) / Math.max(tailRms, 1e-12));
+  const peakToNoiseDb = 20 * Math.log10(1 / Math.max(tailRms, 1e-12));
   const bands: Rt60BandResult[] = [];
   for (const centerHz of [125, 250, 500, 1000, 2000, 4000]) {
     if (centerHz * Math.SQRT2 >= sampleRate * 0.45) continue;
