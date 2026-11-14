@@ -1,4 +1,6 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { usePersistentState } from "./audio/usePersistentState";
+import { type MicCalibrationFile, type MicCalibrationPoint } from "./audio/micCalibration";
 import { Activity, AudioWaveform, Mic, Radio, Volume2, Waves, RefreshCw, Square, Layers3, CheckCircle2, AlertCircle, LayoutDashboard, SlidersHorizontal, ShieldCheck, Box, Settings2, Ruler, Speaker } from "lucide-react";
 import { useAudioAnalyzer } from "./audio/useAudioAnalyzer";
 import { useToneGenerator } from "./audio/useToneGenerator";
@@ -13,8 +15,10 @@ import MeasurementCalibrationPanel from "./audio/MeasurementCalibrationPanel";
 import CBTCalculator from "./audio/CBTCalculator";
 import PolarDataStudio from "./audio/PolarDataStudio";
 import SPLMeterPanel from "./audio/SPLMeterPanel";
+import MicCalibrationPanel from "./audio/MicCalibrationPanel";
 
 type TabId = "overview" | "rta" | "room" | "align" | "system" | "design" | "tools";
+const EMPTY_MIC_CALIBRATION_POINTS: MicCalibrationPoint[] = [];
 const tabs: { id: TabId; label: string; short: string; icon: typeof Activity }[] = [
   { id: "overview", label: "Tổng quan", short: "HOME", icon: LayoutDashboard },
   { id: "rta", label: "Phân tích tín hiệu", short: "RTA", icon: Activity },
@@ -27,9 +31,10 @@ const tabs: { id: TabId; label: string; short: string; icon: typeof Activity }[]
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<TabId>("overview");
-  const [calibrationOffsetDb, setCalibrationOffsetDb] = useState(() => { try { const saved = typeof window !== "undefined" ? window.localStorage.getItem("church-audio-mic-offset-db") : null; return saved !== null && Number.isFinite(Number(saved)) ? Number(saved) : 0; } catch { return 0; } });
-  useEffect(() => { try { window.localStorage.setItem("church-audio-mic-offset-db", String(calibrationOffsetDb)); } catch { /* storage may be disabled */ } }, [calibrationOffsetDb]);
-  const a = useAudioAnalyzer();
+  const [calibrationOffsetDb, setCalibrationOffsetDb] = usePersistentState("church-audio-mic-offset-db",0);
+  const [micCalibration, setMicCalibration] = usePersistentState<MicCalibrationFile | null>("church-audio-mic-calibration-file",null);
+  const calibrationPoints = micCalibration?.points ?? EMPTY_MIC_CALIBRATION_POINTS;
+  const a = useAudioAnalyzer(calibrationPoints);
   const t = useToneGenerator();
   const inputs = a.devices.filter((device) => device.kind === "audioinput");
   const outputs = a.devices.filter((device) => device.kind === "audiooutput");
@@ -89,9 +94,9 @@ export default function App() {
       <section className="metrics overview-metrics"><article><small>INPUT PEAK</small><strong>{a.level <= -99 ? "−∞" : a.level.toFixed(1)} <small>dBFS</small></strong><div className="meter"><i style={{width:`${Math.max(0,Math.min(100,((a.level+60)/60)*100))}%`}} /></div></article><article><small>INPUT RMS</small><strong>{a.rmsDbfs <= -99 ? "—" : (a.rmsDbfs+calibrationOffsetDb).toFixed(1)} <small>{calibrationOffsetDb===0?"dBFS":"dB SPL"}</small></strong></article><article><small>INPUT DEVICES</small><strong>{inputs.length} <small>MIC</small></strong></article><article><small>OUTPUT DEVICES</small><strong>{outputs.length} <small>OUT</small></strong></article></section>
       <section className="grid overview-grid"><RtaPanel /><DevicePanel /><article className="panel overview-guide"><div className="heading"><AudioWaveform /><h2>Quy trình đo đề xuất</h2></div><ol><li>Chọn đúng micro đo và đầu ra tín hiệu.</li><li>Kiểm tra mức tín hiệu đầu vào, tránh clipping.</li><li>Đo phổ, đáp ứng phòng và thời gian vang.</li><li>Căn chỉnh delay/phase rồi kiểm tra lại.</li><li>Lưu kết quả và ghi chú điều kiện đo.</li></ol><p className="warning">Số đo điện thoại chưa hiệu chuẩn chỉ dùng tham khảo tương đối.</p></article></section>
     </>}
-    {activeTab === "rta" && <section className="tab-stack"><section className="grid"><RtaPanel /><SpectrogramPanel /><DevicePanel /></section><SPLMeterPanel weighted={a.weightedLevels} leq={a.leqLevels} peakDbfs={a.level} offsetDb={calibrationOffsetDb} durationSeconds={a.measurementSeconds} running={a.running} /><MeasurementCalibrationPanel rmsDbfs={a.rmsDbfs} offsetDb={calibrationOffsetDb} onOffsetChange={setCalibrationOffsetDb} /></section>}
+    {activeTab === "rta" && <section className="tab-stack"><section className="grid"><RtaPanel /><SpectrogramPanel /><DevicePanel /></section><SPLMeterPanel weighted={a.weightedLevels} leq={a.leqLevels} peakDbfs={a.level} offsetDb={calibrationOffsetDb} durationSeconds={a.measurementSeconds} running={a.running} /><MeasurementCalibrationPanel rmsDbfs={a.rmsDbfs} offsetDb={calibrationOffsetDb} onOffsetChange={setCalibrationOffsetDb} /><MicCalibrationPanel value={micCalibration} onChange={setMicCalibration} /></section>}
     {activeTab === "room" && <section className="tab-stack"><RT60MeasurementPanel selectedInput={a.selectedInput} running={a.running} /><MeasurementPlanner running={a.running} spectrum={a.spectrum} /><SpectrogramPanel /></section>}
-    {activeTab === "align" && <section className="tab-stack"><TransferFunctionPanel selectedInput={a.selectedInput} running={a.running} /><MeasurementPlanner running={a.running} spectrum={a.spectrum} /></section>}
+    {activeTab === "align" && <section className="tab-stack"><TransferFunctionPanel selectedInput={a.selectedInput} running={a.running} calibrationPoints={calibrationPoints} /><MeasurementPlanner running={a.running} spectrum={a.spectrum} /></section>}
     {activeTab === "system" && <section className="tab-stack"><FeedbackMonitor history={a.history} /><TuningAdvisor history={a.history} /></section>}
     {activeTab === "design" && <section className="tab-stack"><CBTCalculator /><PolarDataStudio /><RoomPlanner3D /></section>}
     {activeTab === "tools" && <section className="grid"><GeneratorPanel /><DevicePanel /><article className="panel"><div className="heading"><Speaker /><h2>Thư viện thiết bị</h2><span>{equipment.length} ITEMS</span></div>{equipment.map(item => <div className="item" key={item.name}><b>{item.name}</b><small>{item.type} · Cần xác minh thông số hãng</small></div>)}</article></section>}
