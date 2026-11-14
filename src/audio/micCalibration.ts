@@ -21,7 +21,7 @@ export function parseMicCalibration(text: string, name: string): MicCalibrationF
     else unique.push(point);
   }
   if (unique.length < 3) throw new Error("File hiệu chuẩn cần tối thiểu 3 cặp số: tần số (Hz), correction (dB).");
-  if (unique[unique.length-1].frequencyHz / unique[0].frequencyHz < 5) throw new Error("Dải tần trong file quá hẹp. Hãy dùng file correction có nhiều điểm và dải rộng.");
+  if (unique[0].frequencyHz > 50 || unique[unique.length-1].frequencyHz < 10000) throw new Error("File nên bao phủ ít nhất khoảng 50 Hz–10 kHz để tránh phần lớn RTA phải ngoại suy ngoài dải hiệu chuẩn.");
   return { name, points: unique };
 }
 
