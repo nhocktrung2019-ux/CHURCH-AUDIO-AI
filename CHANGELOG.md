@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.13.0-beta.3 — Independent multi-microphone feedback watch
+
+- Add an operator-controlled input scan and selection for up to four separately enumerated microphone devices.
+- Attempt independent capture sessions per selected input, with per-device RTA history and persistent narrow-peak warnings.
+- Report device-specific capture failures instead of fabricating channels; document Android/WebView and USB multichannel limitations.
+- No automatic mute, gain changes, EQ writes or mixer control.
+
+
 ## 0.13.0-beta.2 — Room listening, natural EQ & feedback safety
 
 - Add playback of the recorded RT60 sweep capture so operators can listen to the measured room tail.
