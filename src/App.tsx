@@ -75,14 +75,22 @@ export default function App() {
     <small className="muted">Trục ngang: tần số log · Trục dọc: thời gian · Độ sáng: mức tương đối</small>
   </article>;
 
-  const GeneratorPanel = () => <article className="panel">
+  const GeneratorPanel = () => <article className="panel generator-panel">
     <div className="heading"><Waves /><h2>Signal Generator</h2><span>{t.active ? "OUTPUT ON" : "STANDBY"}</span></div>
-    <div className="value"><label>Tần số</label><b>{t.frequency.toLocaleString("vi-VN")} Hz</b></div>
-    <input type="range" min="20" max="20000" step="10" value={t.frequency} onChange={(event) => t.setFrequency(+event.target.value)} />
+    <label htmlFor="signal-type">SIGNAL TYPE</label>
+    <select id="signal-type" value={t.signalType} onChange={event=>t.setSignalType(event.target.value as typeof t.signalType)}>
+      <option value="sine">Sine wave · Pure tone</option>
+      <option value="white">White noise</option>
+      <option value="pink">Pink noise</option>
+      <option value="sweep">Log sweep · 20 Hz–20 kHz</option>
+    </select>
+    <div className="value"><label>{t.signalType==="sine"?"Tần số sine":"Tần số sine (chỉ áp dụng khi chọn sine)"}</label><b>{t.signalType==="sine"?t.frequency.toLocaleString("vi-VN")+" Hz":t.signalType==="sweep"?"20 Hz → 20 kHz":t.signalType.toUpperCase()+" NOISE"}</b></div>
+    <input type="range" min="20" max="20000" step="10" value={t.frequency} disabled={t.signalType!=="sine"} onChange={(event) => t.setFrequency(+event.target.value)} />
     <div className="value"><label>Mức phát</label><b>{t.volume} dB</b></div>
     <input type="range" min="-60" max="0" value={t.volume} onChange={(event) => t.setVolume(+event.target.value)} />
     <button onClick={() => (t.active ? t.stop() : void t.start())}><Volume2 />{t.active ? "Dừng tín hiệu" : "Phát tín hiệu thử"}</button>
-    <p className="warning">Bắt đầu ở mức thấp, giảm âm lượng ampli trước khi thử. Tránh phát tín hiệu lớn vào tai nghe hoặc loa.</p>
+    <p className="muted">Pink noise phù hợp kiểm tra đáp tuyến/RTA; white noise dùng kiểm tra phổ; log sweep dùng để kích thích hệ thống. Đây là bộ phát độc lập, chưa có đồng bộ timestamp/loopback reference với phép đo.</p>
+    <p className="warning">Bắt đầu ở mức thấp, giảm âm lượng ampli trước khi thử. Tránh phát tín hiệu lớn vào tai nghe hoặc loa và tuyệt đối không phát sweep ở mức cao khi đang đeo tai nghe.</p>
   </article>;
 
   return <main className="shell">
