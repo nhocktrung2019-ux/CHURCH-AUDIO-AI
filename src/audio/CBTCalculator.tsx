@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { usePersistentState } from "./usePersistentState";
 import { Plus, Speaker, Ruler, Activity, Trash2 } from "lucide-react";
 
 type CbtModelId = "CBT 50LA-1" | "CBT 70J-1" | "CBT 100LA-1";
@@ -27,12 +28,12 @@ const COLORS=["#65d2b6","#e7b86c","#8fb2ed"];
 const clamp=(value:number,min:number,max:number)=>Math.max(min,Math.min(max,value));
 type Prediction={speakerName:string;spl:number;inCoverage:boolean;offAxisDeg:number;distanceM:number};
 export default function CBTCalculator(){
-  const [speakers,setSpeakers]=useState<CbtSpeaker[]>([{id:1,name:"CBT Main",model:"CBT 70J-1",heightM:5.2,downAngleDeg:8,mode:"broad",voicing:"music",amplifierPowerW:100}]);
-  const [planes,setPlanes]=useState<Plane[]>(DEFAULT_PLANES);
-  const [listeners,setListeners]=useState<Listener[]>(DEFAULT_LISTENERS);
-  const [targetSpl,setTargetSpl]=useState(85);
-  const [roomDepth,setRoomDepth]=useState(24);
-  const [roomHeight,setRoomHeight]=useState(7);
+  const [speakers,setSpeakers]=usePersistentState<CbtSpeaker[]>("church-audio-cbt-speakers",[{id:1,name:"CBT Main",model:"CBT 70J-1",heightM:5.2,downAngleDeg:8,mode:"broad",voicing:"music",amplifierPowerW:100}]);
+  const [planes,setPlanes]=usePersistentState<Plane[]>("church-audio-cbt-planes",DEFAULT_PLANES);
+  const [listeners,setListeners]=usePersistentState<Listener[]>("church-audio-cbt-listeners",DEFAULT_LISTENERS);
+  const [targetSpl,setTargetSpl]=usePersistentState("church-audio-cbt-target-spl",85);
+  const [roomDepth,setRoomDepth]=usePersistentState("church-audio-cbt-room-depth",24);
+  const [roomHeight,setRoomHeight]=usePersistentState("church-audio-cbt-room-height",7);
   const modelInfo=(speaker:CbtSpeaker)=>MODELS[speaker.model];
   const coverage=(speaker:CbtSpeaker)=>speaker.mode==="narrow"?modelInfo(speaker).verticalNarrowDeg:modelInfo(speaker).verticalBroadDeg;
   const sensitivity=(speaker:CbtSpeaker)=>{const m=modelInfo(speaker);if(speaker.voicing==="speech")return speaker.mode==="narrow"?m.speechNarrowDb:m.speechBroadDb;return speaker.mode==="narrow"?m.musicNarrowDb:m.musicBroadDb;};
