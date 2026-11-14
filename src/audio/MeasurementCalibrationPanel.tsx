@@ -9,7 +9,7 @@ type Props = {
 
 export default function MeasurementCalibrationPanel({ rmsDbfs, offsetDb, onOffsetChange }: Props) {
   const [referenceDb, setReferenceDb] = useState(94);
-  const [manualOffset, setManualOffset] = React.useState(String(offsetDb));
+  const [manualOffset, setManualOffset] = useState(String(offsetDb));
   const calibrated = rmsDbfs > -99 ? rmsDbfs + offsetDb : null;
   const applyCalibration = () => {
     if (!Number.isFinite(rmsDbfs) || rmsDbfs <= -90) return;
