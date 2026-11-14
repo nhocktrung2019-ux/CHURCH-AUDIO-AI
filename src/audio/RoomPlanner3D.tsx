@@ -1,4 +1,3 @@
-import{useState}from"react";
 import { usePersistentState } from "./usePersistentState";
 import{Plus,Speaker,Trash2,Move3d,Ruler}from"lucide-react";
 import{SPEAKER_MODELS,SPEAKER_SPECS}from"../data/speakerModels";
