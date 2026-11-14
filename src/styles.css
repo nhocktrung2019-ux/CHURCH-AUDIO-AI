@@ -396,3 +396,18 @@ footer{padding-bottom:calc(26px + env(safe-area-inset-bottom))}
  .version-current{min-height:140px}
  .version-links{flex-direction:column;gap:12px}
 }
+
+
+/* 0.13.0 editable church architecture and speaker coverage editor */
+.scene-toolbar{align-items:flex-start;flex-direction:column}
+.scene-add-actions{display:flex;flex-wrap:wrap;gap:7px;width:100%}
+.scene-add-actions button{display:inline-flex;align-items:center;gap:6px;min-height:34px;margin:0;padding:7px 10px;font-size:10px}
+.scene-add-actions button svg{width:13px;height:13px}
+.scene-object-editor{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:11px;margin:12px 0 18px;padding:14px;border:1px solid #38515d;border-radius:10px;background:rgba(8,17,24,.62)}
+.scene-object-editor>label{display:flex;flex-direction:column;gap:6px;min-width:0;color:#91a6af;font:9px ui-monospace,SFMono-Regular,Consolas,monospace;letter-spacing:.4px}
+.scene-object-editor input:not([type=range]),.scene-object-editor select{width:100%;min-width:0;min-height:37px;padding:8px 9px;border:1px solid #394f5c;border-radius:6px;background:#0c151d;color:#e6f0ee;font:12px Inter,"Segoe UI",sans-serif}
+.scene-object-editor label b{color:#ccefe3;font-size:10px}
+.scene-object-editor input[type=range]{width:100%;accent-color:#65d2b6}
+.scene-object-editor>button{align-self:end;min-height:37px;margin:0}
+@media(max-width:760px){.scene-object-editor{grid-template-columns:repeat(2,minmax(0,1fr));padding:10px}}
+@media(max-width:460px){.scene-object-editor{grid-template-columns:1fr}.scene-add-actions button{flex:1 1 42%}}
