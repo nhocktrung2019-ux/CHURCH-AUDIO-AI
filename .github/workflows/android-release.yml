@@ -71,6 +71,39 @@ jobs:
       - name: Sync Capacitor
         run: npx cap sync android
 
+      - name: Add microphone runtime permission
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path("android/app/src/main/AndroidManifest.xml")
+          s = p.read_text()
+          start = s.find('<manifest')
+          pos = s.find('>', start)
+          if start < 0 or pos < 0:
+              raise SystemExit('AndroidManifest.xml has no manifest root element')
+          additions = []
+          if 'android.permission.RECORD_AUDIO' not in s:
+              additions.append('    <uses-permission android:name="android.permission.RECORD_AUDIO" />')
+          if 'android.permission.MODIFY_AUDIO_SETTINGS' not in s:
+              additions.append('    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />')
+          if 'android.hardware.microphone' not in s:
+              additions.append('    <uses-feature android:name="android.hardware.microphone" android:required="false" />')
+          if additions:
+              nl = chr(10)
+              s = s[:pos+1] + nl + nl.join(additions) + s[pos+1:]
+          p.write_text(s)
+          PY
+
+      - name: Verify package and source version
+        env:
+          RELEASE_VERSION: ${{ steps.meta.outputs.version }}
+        run: |
+          PACKAGE_VERSION=$(node -p "require('./package.json').version")
+          SOURCE_VERSION=$(node -e "const fs=require('fs');const s=fs.readFileSync('src/appVersion.ts','utf8');const m=s.match(/APP_VERSION = \"([^\"]+)\"/);if(!m)process.exit(2);process.stdout.write(m[1])")
+          test "$PACKAGE_VERSION" = "$RELEASE_VERSION"
+          test "$SOURCE_VERSION" = "$RELEASE_VERSION"
+
+
       - name: Prepare release signing
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
