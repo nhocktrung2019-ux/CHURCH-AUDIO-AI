@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Activity, Mic2, ShieldAlert, ShieldCheck, Square, VolumeX } from "lucide-react";
+import { Activity, Mic2, ShieldCheck, Square, VolumeX } from "lucide-react";
 import { detectNarrowPeaks } from "./feedback";
 
 type InputDevice = { deviceId: string; label: string };
@@ -32,7 +32,7 @@ export default function MultiMicFeedbackPanel() {
   const audioRef = useRef<AudioContext | null>(null);
   const sessionsRef = useRef<Session[]>([]);
   const frameRef = useRef<number>(0);
-  const historiesRef = useRef<Map<string, number[]>>(new Map());
+  const historiesRef = useRef<Map<string, number[][]>>(new Map());
 
   const stop = () => {
     if (frameRef.current) cancelAnimationFrame(frameRef.current);
