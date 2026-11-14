@@ -1,18 +1,19 @@
 import { useMemo, useState } from "react";
+import { usePersistentState } from "./usePersistentState";
 import { Activity, Play, Square, AlertTriangle, Download, Waves } from "lucide-react";
 import { analyzeTransfer, makeReferenceNoise, type TransferResult } from "./transfer";
 import { suggestParametricEq } from "./acoustics";
 import { explainMicrophoneError, requestMicrophoneStream } from "./microphone";
 
 export default function TransferFunctionPanel({ selectedInput, running }: { selectedInput: string; running: boolean }) {
-  const [result, setResult] = useState<TransferResult | null>(null);
+  const [result, setResult] = usePersistentState<TransferResult | null>("church-audio-transfer-latest",null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [eqCopied, setEqCopied] = useState(false);
-  const [referenceA, setReferenceA] = useState<TransferResult | null>(null);
-  const [referenceB, setReferenceB] = useState<TransferResult | null>(null);
-  const [crossoverHz, setCrossoverHz] = useState(1000);
+  const [referenceA, setReferenceA] = usePersistentState<TransferResult | null>("church-audio-transfer-reference-a",null);
+  const [referenceB, setReferenceB] = usePersistentState<TransferResult | null>("church-audio-transfer-reference-b",null);
+  const [crossoverHz, setCrossoverHz] = usePersistentState("church-audio-transfer-crossover",1000);
   const eq = useMemo(() => result ? suggestParametricEq(result.points) : [], [result]);
 
   const measure = async () => {
