@@ -20,7 +20,7 @@ function createNoiseBuffer(audio: AudioContext, type: "white" | "pink"): AudioBu
       b5=-0.7616*b5-white*0.0168980;
       const pink=b0+b1+b2+b3+b4+b5+b6+white*0.5362;
       b6=white*0.115926;
-      samples[i]=pink*0.055;
+      samples[i]=pink;
     }
   }
   return buffer;
@@ -37,7 +37,7 @@ function createSweepBuffer(audio: AudioContext): AudioBuffer {
     const time=i/audio.sampleRate;
     const phase=2*Math.PI*low*constant*(Math.exp(time/constant)-1);
     const fade=Math.min(1,i/fadeSamples,(count-1-i)/fadeSamples);
-    samples[i]=Math.sin(phase)*Math.max(0,fade)*.16;
+    samples[i]=Math.sin(phase)*Math.max(0,fade)*.65;
   }
   return buffer;
 }
