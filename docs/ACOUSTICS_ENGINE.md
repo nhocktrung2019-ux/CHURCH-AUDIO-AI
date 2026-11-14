@@ -12,6 +12,13 @@ This document distinguishes implemented analysis from measurement features that 
 - Design — CBT audience-plane calculator, polar-data import, room layout, coverage heatmap and distance-based delay estimate.
 - Tools — signal generator, input/output selection, equipment library, project backup and restore.
 
+## Feedback control and natural-sound tuning
+
+- Feedback Watch ranks narrow spectral peaks that persist across recent RTA frames, reports persistence/confidence and offers conservative notch starting points. A spectral peak is only a candidate; a single measurement microphone cannot prove a feedback loop or identify which live microphone channel caused it.
+- Before opening several microphones, lower monitor/master gain, open channels one at a time, establish gain-before-feedback, and check mic-to-speaker distance, polar pattern and aiming. Isolate the offending channel with mute/solo before applying a narrow cut. Avoid broad EQ cuts and never boost deep cancellations/nulls.
+- Speech/music tuning values are starting presets only. The app does not write EQ, gate, compressor or mixer settings to external DSP hardware.
+- The current browser capture selects one audio input stream. Independent simultaneous analysis of multiple microphones requires a multichannel audio interface and a channel-separated input path; a stereo mixdown cannot identify individual mic channels. Automix must be provided by a compatible mixer/DSP or implemented against a documented multichannel driver.
+
 ## Microphone calibration
 
 1. Connect the measurement microphone and select it in Tools / Device.
