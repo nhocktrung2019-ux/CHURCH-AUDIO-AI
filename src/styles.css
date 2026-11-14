@@ -341,3 +341,58 @@ footer{padding-bottom:calc(26px + env(safe-area-inset-bottom))}
 .project-backup-actions button{flex:1 1 160px;margin:0}
 .project-backup-actions .polar-upload{flex:1 1 190px}
 @media(max-width:600px){.project-backup-actions{flex-direction:column}.project-backup-actions>*{width:100%}.project-backup-stats{grid-template-columns:1fr}}
+
+
+/* 0.12.0 version update and technical support workspace */
+.workspace-tabs{grid-template-columns:repeat(8,minmax(0,1fr))}
+.version-support-workspace{display:grid;gap:14px}
+.version-support-workspace .panel{margin:0}
+.version-support-workspace .heading{margin-bottom:14px}
+.version-overview{display:grid;grid-template-columns:minmax(180px,.72fr) minmax(0,1.6fr);gap:14px;margin:14px 0}
+.version-current{display:flex;flex-direction:column;justify-content:center;gap:9px;padding:18px;border:1px solid #3c625b;border-radius:10px;background:linear-gradient(145deg,rgba(25,76,63,.42),rgba(9,20,26,.8))}
+.version-current>small{font:9px ui-monospace,SFMono-Regular,Consolas,monospace;letter-spacing:1px;color:#94b9ad}
+.version-current>strong{font-size:clamp(34px,5vw,48px);line-height:1;color:#91e6c8;letter-spacing:-1.5px}
+.version-current>span{display:flex;align-items:center;gap:7px;color:#b5d9cc;font-size:11px}
+.version-current svg{width:15px;height:15px}
+.version-description{padding:16px;border:1px solid #304752;border-radius:10px;background:rgba(7,16,23,.54)}
+.version-description>b{font-size:14px;color:#e5f4ef}
+.version-description p,.support-intro{font-size:12px;line-height:1.75;color:#a8bbc1}
+.support-action{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:41px;padding:10px 14px;border:1px solid #3d7165;border-radius:8px;background:#17342f;color:#c9f4e5;text-decoration:none;font-size:11px;font-weight:800}
+.support-action svg{width:15px;height:15px}
+.support-action:hover{background:#1d4940;border-color:#65d2b6}
+.support-action.primary-action{background:#5dd0b3;color:#071511;border-color:#5dd0b3}
+.update-steps{margin-top:12px;padding:15px;border:1px solid #304650;border-radius:9px;background:rgba(7,15,22,.43)}
+.update-steps>b{font-size:12px;color:#dff4eb}
+.update-steps ol{padding-left:21px;color:#b8c8cc;font-size:11px;line-height:1.8}
+.update-steps li{padding-left:4px}
+.update-steps li::marker{color:#65d2b6}
+.update-steps .warning{margin:12px 0 0}
+.version-links{display:flex;flex-wrap:wrap;gap:10px 18px;margin-top:14px;padding-top:12px;border-top:1px solid #293c46}
+.version-links a{display:inline-flex;align-items:center;gap:6px;color:#80d9bd;text-decoration:none;font-size:10px}
+.version-links a:hover{text-decoration:underline}
+.version-links svg{width:12px;height:12px}
+.support-diagnostic-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin:14px 0}
+.support-diagnostic-grid>div{display:flex;flex-direction:column;align-items:flex-start;gap:8px;min-width:0;padding:14px;border:1px solid #304752;border-radius:9px;background:rgba(7,16,23,.48)}
+.support-diagnostic-grid svg{width:18px;height:18px;color:#72d6b9}
+.support-diagnostic-grid b{font-size:11px;color:#e0eee9}
+.support-diagnostic-grid small{font-size:10px;line-height:1.6;color:#8fa6af}
+.support-actions{display:flex;flex-wrap:wrap;gap:9px;margin:14px 0}
+.support-actions button,.support-actions .support-action{flex:1 1 180px;margin:0}
+.support-actions button{display:inline-flex;align-items:center;justify-content:center;gap:8px}
+.support-actions button svg{width:15px;height:15px}
+.support-actions button.secondary{background:#1a2b35;border:1px solid #344d58;color:#d8e6e6}
+.support-notice{padding:10px 12px;border:1px solid #38695d;border-radius:8px;background:rgba(24,75,60,.24);color:#b7efdc;font-size:11px;line-height:1.6}
+.diagnostic-preview{margin-top:12px;padding:11px 13px;border:1px solid #324a55;border-radius:8px;background:#0a141c;color:#b9d2ce;font-size:11px}
+.diagnostic-preview summary{cursor:pointer;color:#87d9bd;font-weight:700}
+.diagnostic-preview pre{max-height:280px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;color:#b7c9d0;font:10px/1.7 ui-monospace,SFMono-Regular,Consolas,monospace}
+@media(max-width:760px){
+ .version-overview{grid-template-columns:1fr}
+ .support-diagnostic-grid{grid-template-columns:1fr}
+ .support-actions{flex-direction:column}
+ .support-actions>*{width:100%}
+}
+@media(max-width:600px){
+ .version-support-workspace .panel{padding:14px}
+ .version-current{min-height:140px}
+ .version-links{flex-direction:column;gap:12px}
+}
