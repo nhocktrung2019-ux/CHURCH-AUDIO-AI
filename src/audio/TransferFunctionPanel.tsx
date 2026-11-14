@@ -4,8 +4,9 @@ import { Activity, Play, Square, AlertTriangle, Download, Waves } from "lucide-r
 import { analyzeTransfer, makeReferenceNoise, type TransferResult } from "./transfer";
 import { suggestParametricEq } from "./acoustics";
 import { explainMicrophoneError, requestMicrophoneStream } from "./microphone";
+import type { MicCalibrationPoint } from "./micCalibration";
 
-export default function TransferFunctionPanel({ selectedInput, running }: { selectedInput: string; running: boolean }) {
+export default function TransferFunctionPanel({ selectedInput, running, calibrationPoints = [] }: { selectedInput: string; running: boolean; calibrationPoints?: MicCalibrationPoint[] }) {
   const [result, setResult] = usePersistentState<TransferResult | null>("church-audio-transfer-latest",null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -58,7 +59,7 @@ export default function TransferFunctionPanel({ selectedInput, running }: { sele
         for (let i = 0; i < samples.length; i++) captured[i] += samples[i] / decoded.numberOfChannels;
       }
       if (decoded.sampleRate !== audio.sampleRate) throw new Error("Sample rate của bản ghi và tín hiệu tham chiếu khác nhau. Dùng thiết bị/driver có sample rate đồng nhất rồi đo lại.");
-      const measured = analyzeTransfer(reference, captured, audio.sampleRate);
+      const measured = analyzeTransfer(reference, captured, audio.sampleRate, calibrationPoints);
       if (!measured) throw new Error("Không tìm được tín hiệu tham chiếu đủ rõ. Kiểm tra loa, micro, tiếng ồn và mức phát.");
       if (measured.averageCoherence < 0.6) setNotice("Coherence thấp: phép đo có thể bị nhiễu, phản xạ hoặc tín hiệu không ổn định. Không dùng EQ tự động từ lần đo này.");
       setResult(measured);
