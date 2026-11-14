@@ -1,4 +1,4 @@
-export type TransferPoint = { frequencyHz: number; magnitudeDb: number; phaseDeg: number; coherence: number };
+import { micCorrectionAt, type MicCalibrationPoint } from "./micCalibration";\n\nexport type TransferPoint = { frequencyHz: number; magnitudeDb: number; phaseDeg: number; coherence: number };
 export type TransferResult = {
   points: TransferPoint[];
   estimatedDelayMs: number;
@@ -91,7 +91,7 @@ function unwrapPhase(points: TransferPoint[]): void {
 }
 
 /** Welch H1 transfer estimate. Coherence is meaningful only with multiple independent averages. */
-export function analyzeTransfer(reference: Float32Array, recorded: Float32Array, sampleRate: number): TransferResult | null {
+export function analyzeTransfer(reference: Float32Array, recorded: Float32Array, sampleRate: number, calibrationPoints: MicCalibrationPoint[] = []): TransferResult | null {
   if (sampleRate < 8000 || reference.length < 8192 || recorded.length < reference.length * 0.7) return null;
   const { lag, score } = bestLag(reference, recorded, sampleRate);
   if (score < 0.025) return null;
@@ -139,7 +139,7 @@ export function analyzeTransfer(reference: Float32Array, recorded: Float32Array,
     const correctedIm = re * Math.sin(angle) + im * Math.cos(angle);
     points.push({
       frequencyHz,
-      magnitudeDb: 20 * Math.log10(magnitude),
+      magnitudeDb: 20 * Math.log10(magnitude) + micCorrectionAt(calibrationPoints, frequencyHz),
       phaseDeg: Math.atan2(correctedIm, correctedRe) * 180 / Math.PI,
       coherence,
     });
