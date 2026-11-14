@@ -316,12 +316,15 @@ export function useAudioAnalyzer(calibrationPoints: MicCalibrationPoint[] = []) 
     let frame = 0;
 
     if (running) {
+      const initialAnalyser = analyserRef.current;
+      const data = initialAnalyser ? new Float32Array(initialAnalyser.frequencyBinCount) : null;
+      const timeData = initialAnalyser ? new Float32Array(initialAnalyser.fftSize) : null;
       const tick = () => {
         const analyser = analyserRef.current;
-        if (analyser) {
+        if (analyser && data && timeData) {
+          // Reuse FFT/time-domain buffers to reduce allocation and garbage collection on Android WebView.
           // 30 Hz is sufficient for a live spectrum and reduces Android WebView CPU use.
           if (frame % 2 === 0) {
-            const data = new Float32Array(analyser.frequencyBinCount);
             analyser.getFloatFrequencyData(data);
 
             const context = contextRef.current;
@@ -347,7 +350,6 @@ export function useAudioAnalyzer(calibrationPoints: MicCalibrationPoint[] = []) 
               return Math.max(-100, Math.min(24, bandDb + correctionDb));
             });
 
-            const timeData = new Float32Array(fftSize);
             analyser.getFloatTimeDomainData(timeData);
             let inputPeak = 0, sumSquares = 0, mean = 0;
             for (let i = 0; i < timeData.length; i++) mean += timeData[i];
