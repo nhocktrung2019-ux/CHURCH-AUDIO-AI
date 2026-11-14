@@ -47,3 +47,9 @@ The application remains a responsive web app for laptop browsers and is wrapped 
 See [docs/ROADMAP.md](docs/ROADMAP.md).
 
 Audio input routing and delay-measurement limitations are documented in [docs/AUDIO_INPUT_AND_DELAY.md](docs/AUDIO_INPUT_AND_DELAY.md). JBL COL600/COL800 profile records are staged in [src/data/speakers/jbl-col-series.json](src/data/speakers/jbl-col-series.json); manufacturer curves/specifications remain pending exact datasheet verification.
+
+## Version updates and technical support
+
+Current application version: **0.12.0**. The in-app **Cập nhật & hỗ trợ** workspace opens GitHub Releases, provides Android update instructions, and can generate a privacy-conscious diagnostic report for a support request. The repository is private, so users need GitHub access to download releases.
+
+Official APK releases are built by [Android Signed Release](.github/workflows/android-release.yml) when a `vX.Y.Z` tag is pushed. Configure the four Android signing secrets before tagging a release; keep the signing keystore safe and unchanged. See [Android update and signing guide](docs/ANDROID_UPDATE.md) and [technical support guide](docs/TECHNICAL_SUPPORT.md). CI debug APKs are for testing and are not the stable update channel.
