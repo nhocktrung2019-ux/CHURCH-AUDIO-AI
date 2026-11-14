@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { usePersistentState } from "./usePersistentState";
 import { Plus, Speaker, Ruler, Activity, Trash2 } from "lucide-react";
 
