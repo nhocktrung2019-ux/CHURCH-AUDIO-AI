@@ -35,7 +35,15 @@ npm run preview
 ## Android APK
 Android packaging is configured with Capacitor. A GitHub Actions workflow builds a debug APK on pushes to `main` and can also be started manually. The build is an Android test build, not a signed Play Store release. See [Android build and install guide](docs/ANDROID_BUILD.md). The APK is a test build, not a signed Play Store release.
 
-## Measurement scope and limits\n- Absolute SPL requires a real acoustic calibrator and a calibrated measurement microphone. Import the mic correction file and set the one-point level offset.\n- Absolute loudspeaker delay and production-grade dual-channel transfer function require simultaneous, sample-synchronous loopback/reference and microphone channels on a shared clock.\n- RT60 is estimated by sweep deconvolution and Schroeder decay; repeat at multiple positions and review the fit/noise metrics.\n- CBT and room predictions are not certified EASE/GLL calculations. Use validated manufacturer GLL/CLF/polar/phase data and the official vendor tools for design approval.\n\n## Platform plan
+## Measurement scope and limits
+- Absolute SPL requires a real acoustic calibrator and a calibrated measurement microphone. Import the mic correction file and set the one-point level offset.
+- Absolute loudspeaker delay and production-grade dual-channel transfer function require simultaneous, sample-synchronous loopback/reference and microphone channels on a shared clock.
+- RT60 is estimated by sweep deconvolution and Schroeder decay; repeat at multiple positions and review the fit/noise metrics.
+- CBT and room predictions are not certified EASE/GLL calculations. Use validated manufacturer GLL/CLF/polar/phase data and the official vendor tools for design approval.
+
+## Platform plan
 The application remains a responsive web app for laptop browsers and is wrapped for Android with Capacitor. Hardware-specific USB/Bluetooth routing requires device-by-device testing.
 
-See [docs/ROADMAP.md](docs/ROADMAP.md).\n\nAudio input routing and delay-measurement limitations are documented in [docs/AUDIO_INPUT_AND_DELAY.md](docs/AUDIO_INPUT_AND_DELAY.md). JBL COL600/COL800 profile records are staged in [src/data/speakers/jbl-col-series.json](src/data/speakers/jbl-col-series.json); manufacturer curves/specifications remain pending exact datasheet verification.
+See [docs/ROADMAP.md](docs/ROADMAP.md).
+
+Audio input routing and delay-measurement limitations are documented in [docs/AUDIO_INPUT_AND_DELAY.md](docs/AUDIO_INPUT_AND_DELAY.md). JBL COL600/COL800 profile records are staged in [src/data/speakers/jbl-col-series.json](src/data/speakers/jbl-col-series.json); manufacturer curves/specifications remain pending exact datasheet verification.
