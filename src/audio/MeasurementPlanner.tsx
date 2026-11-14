@@ -1,10 +1,11 @@
 import {useMemo,useState} from "react";
+import { usePersistentState } from "./usePersistentState";
 import {MapPin,Plus,Trash2,SlidersHorizontal} from "lucide-react";
 import {averageResponse,calculateDelayMs,logBandFrequency,suggestCuts,type Measurement,type Zone} from "./acoustics";
 
 export default function MeasurementPlanner({running,spectrum}:{running:boolean;spectrum:number[]}){
- const [measurements,setMeasurements]=useState<Measurement[]>([]);
- const [zones,setZones]=useState<Zone[]>([{id:1,name:"Khu vực 1",distanceM:5},{id:2,name:"Khu vực 2",distanceM:10}]);
+ const [measurements,setMeasurements]=usePersistentState<Measurement[]>("church-audio-survey-measurements",[]);
+ const [zones,setZones]=usePersistentState<Zone[]>("church-audio-survey-zones",[{id:1,name:"Khu vực 1",distanceM:5},{id:2,name:"Khu vực 2",distanceM:10}]);
  const [position,setPosition]=useState("Vị trí 1"),[distance,setDistance]=useState(5),[zoneName,setZoneName]=useState("Khu vực 3"),[zoneDistance,setZoneDistance]=useState(15);
  const avg=useMemo(()=>averageResponse(measurements),[measurements]),eq=useMemo(()=>suggestCuts(avg),[avg]);
  const maxDistance=Math.max(0,...zones.map(z=>z.distanceM));
