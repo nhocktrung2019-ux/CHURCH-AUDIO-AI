@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type PointerEvent } from "react";
 import { APP_VERSION } from "./appVersion";
 import { usePersistentState } from "./audio/usePersistentState";
 import { micCorrectionAt, type MicCalibrationFile, type MicCalibrationPoint } from "./audio/micCalibration";
@@ -44,6 +44,20 @@ const tabs: { id: TabId; label: string; short: string; icon: typeof Activity }[]
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<TabId>("overview");
+  const [selectedRtaBand, setSelectedRtaBand] = useState<number | null>(null);
+  const [rtaCursorLocked, setRtaCursorLocked] = useState(false);
+  const selectRtaBand = (event: PointerEvent<HTMLDivElement>) => {
+    if (rtaCursorLocked) return;
+    const bounds = event.currentTarget.getBoundingClientRect();
+    if (!bounds.width) return;
+    const position = Math.max(0, Math.min(0.999999, (event.clientX - bounds.left) / bounds.width));
+    setSelectedRtaBand(Math.floor(position * 64));
+  };
+  const handleRtaPointerDown = (event: PointerEvent<HTMLDivElement>) => {
+    if (event.pointerType !== "mouse") event.currentTarget.setPointerCapture?.(event.pointerId);
+    selectRtaBand(event);
+  };
+  const selectedRtaFrequency = selectedRtaBand === null ? null : 20 * Math.pow(20000 / 20, (selectedRtaBand + 0.5) / 64);
   const [calibrationOffsetDb, setCalibrationOffsetDb] = usePersistentState("church-audio-mic-offset-db",0);
   const [micCalibration, setMicCalibration] = usePersistentState<MicCalibrationFile | null>("church-audio-mic-calibration-file",null);
   const calibrationPoints = micCalibration?.points ?? EMPTY_MIC_CALIBRATION_POINTS;
@@ -78,9 +92,10 @@ export default function App() {
 
   const RtaPanel = () => <article className="panel">
     <div className="heading"><Activity /><h2>RTA · Real-time Analyzer</h2><span>{a.running ? "LIVE" : "WAITING"}</span></div>
-    <div className="chart">{a.spectrum.map((value, index) => <i key={index} style={{ height: `${Math.max(2, (value + 100) * .98)}%` }} />)}</div>
+    <div className="chart" style={{ position: "relative", touchAction: "pan-y", cursor: rtaCursorLocked ? "default" : "crosshair", userSelect: "none" }} onPointerDown={handleRtaPointerDown} onPointerMove={(event) => { if (event.buttons === 1) selectRtaBand(event); }} aria-label="Biểu đồ RTA. Chạm hoặc kéo để chọn tần số." role="group">{a.spectrum.map((value, index) => <i key={index} style={{ height: `${Math.max(2, (value + 100) * .98)}%` }} />)}{selectedRtaBand !== null && <div style={{ position: "absolute", zIndex: 2, top: 0, bottom: 0, left: `${((selectedRtaBand + 0.5) / 64) * 100}%`, width: 2, background: "#f59e0b", boxShadow: "0 0 5px #f59e0b", pointerEvents: "none" }} />}</div>
     <div className="axis"><span>20 Hz</span><span>100 Hz</span><span>1 kHz</span><span>5 kHz</span><span>20 kHz</span></div>
-    <small className="muted">FFT 8192 · 64 LOG BANDS · dBFS POWER AVERAGE · 20 Hz–20 kHz</small><p className="calibrated-inline">INPUT RMS {a.rmsDbfs <= -99 ? "—" : (a.rmsDbfs + calibrationOffsetDb).toFixed(1) + (Math.abs(calibrationOffsetDb) > 0.001 ? " dB SPL" : " dBFS")} · {Math.abs(calibrationOffsetDb) > 0.001 ? "ONE-POINT LEVEL CALIBRATION ACTIVE" : "NO ABSOLUTE LEVEL CALIBRATION"}</p>
+    <div className="rta-cursor-readout"><div><small>CURSOR FREQUENCY</small><strong>{selectedRtaFrequency === null ? "Chạm biểu đồ để chọn" : selectedRtaFrequency >= 1000 ? `${(selectedRtaFrequency / 1000).toFixed(2)} kHz` : `${Math.round(selectedRtaFrequency)} Hz`}</strong></div><div><small>LEVEL · BAND</small><strong>{selectedRtaBand === null ? "—" : `${a.spectrum[selectedRtaBand].toFixed(1)} dBFS`}</strong></div><button type="button" className="secondary" onClick={() => setRtaCursorLocked((locked) => !locked)} disabled={selectedRtaBand === null}>{rtaCursorLocked ? "Mở khóa con trỏ" : "Khóa con trỏ"}</button><button type="button" className="secondary" onClick={() => { setSelectedRtaBand(null); setRtaCursorLocked(false); }}>Bỏ chọn</button></div>
+    <small className="muted">FFT 8192 · 64 LOG BANDS · dBFS POWER AVERAGE · 20 Hz–20 kHz · Chạm/kéo để quét tần số</small><p className="calibrated-inline">INPUT RMS {a.rmsDbfs <= -99 ? "—" : (a.rmsDbfs + calibrationOffsetDb).toFixed(1) + (Math.abs(calibrationOffsetDb) > 0.001 ? " dB SPL" : " dBFS")} · {Math.abs(calibrationOffsetDb) > 0.001 ? "ONE-POINT LEVEL CALIBRATION ACTIVE" : "NO ABSOLUTE LEVEL CALIBRATION"}</p>
   </article>;
 
   const SpectrogramPanel = () => <article className="panel">
