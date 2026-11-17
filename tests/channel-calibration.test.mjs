@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   applyChannelCalibration,
   applyDifferentialChannelCalibration,
+  assessChannelCalibrationRepeatability,
   channelCalibrationStorageKey,
   correctDifferentialLoopbackDelayMs,
   correctLoopbackDelayMs,
@@ -193,4 +194,36 @@ test("differential calibration trims uncalibrated bins to the shared measured ba
   assert.equal(corrected[0].frequencyHz, 1000);
   assert.equal(corrected[0].magnitudeDb, 9);
   assert.equal(corrected[0].phaseDeg, 40);
+});
+
+
+test("requires two repeatable captures with matching profile identity", () => {
+  const repeat = {
+    ...profile,
+    points: profile.points.map(point => ({
+      ...point,
+      magnitudeDb: point.magnitudeDb + 0.2,
+      phaseDeg: point.phaseDeg + 2,
+    })),
+    loopbackDelayMs: profile.loopbackDelayMs + 0.05,
+  };
+  const measured = assessChannelCalibrationRepeatability(profile, repeat, { minComparedPoints: 3 });
+  assert.ok(measured);
+  assert.equal(measured.stable, true);
+  assert.ok(measured.meanMagnitudeDeltaDb <= 0.75);
+  assert.ok(measured.rmsPhaseDeltaDeg <= 10);
+  assert.ok(measured.delayDeltaMs <= 0.15);
+
+  const unstable = {
+    ...repeat,
+    loopbackDelayMs: profile.loopbackDelayMs + 0.5,
+  };
+  assert.equal(
+    assessChannelCalibrationRepeatability(profile, unstable, { minComparedPoints: 3 })?.stable,
+    false,
+  );
+  assert.equal(
+    assessChannelCalibrationRepeatability(profile, { ...repeat, inputChannel: 0 }, { minComparedPoints: 3 }),
+    null,
+  );
 });
