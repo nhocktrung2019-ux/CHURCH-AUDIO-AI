@@ -102,3 +102,53 @@ export function classifySpeakerCabinet(model: string): SpeakerCabinetKind {
   if (/cbt|ma12|column/.test(normalized)) return "column";
   return "standard";
 }
+
+
+export type SpeakerCabinetDimensions = {
+  width: number;
+  height: number;
+  depth: number;
+};
+
+export function speakerCabinetDimensions(model: string): SpeakerCabinetDimensions {
+  const kind = classifySpeakerCabinet(model);
+  if (kind === "column") return { width: 0.28, height: 1.12, depth: 0.24 };
+  if (kind === "sub") return { width: 0.62, height: 0.48, depth: 0.58 };
+  return { width: 0.42, height: 0.68, depth: 0.32 };
+}
+
+export type RoomSpeakerBounds = {
+  x: number;
+  y: number;
+  z: number;
+  model: string;
+};
+
+export function clampRoomSpeaker<T extends RoomSpeakerBounds>(
+  speaker: T,
+  length: number,
+  width: number,
+  height: number,
+): T {
+  const dimensions = speakerCabinetDimensions(speaker.model);
+  const clearance = Math.max(dimensions.width, dimensions.depth) / 2;
+  const point = clampRoomPoint(
+    speaker.x,
+    speaker.y,
+    length,
+    width,
+    clearance,
+    clearance,
+  );
+  const safeHeight = Math.max(0.2, finiteOr(height, 0.2));
+  const halfHeight = Math.min(dimensions.height / 2, safeHeight / 2);
+  return {
+    ...speaker,
+    ...point,
+    z: clamp(
+      finiteOr(speaker.z, halfHeight),
+      halfHeight,
+      safeHeight - halfHeight,
+    ),
+  };
+}
