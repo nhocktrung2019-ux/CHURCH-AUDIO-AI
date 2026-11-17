@@ -119,7 +119,7 @@ export default function DSPIntegrationPanel() {
         </div>
         <p className="warning">Chưa có tài liệu giao thức mạng/port điều khiển công khai được xác minh cho CD48 trong dự án. Trạng thái cùng subnet không đồng nghĩa DSP đã online. Ứng dụng hiện chỉ kiểm tra IP nhập tay; chưa ping, dò thiết bị hay gửi lệnh. Không tự dùng IP mặc định/port của PH48D cho CD48.</p>
       </article>}
-      <p className="muted">Mức bằng chứng: {profile.evidenceGrade === "manufacturer-documentation" ? "Tài liệu hãng/nhà sản xuất" : "Tài liệu giao thức cộng đồng, chưa phải xác nhận của hãng"}</p>
+      <p className="muted">Mức bằng chứng: {profile.evidenceGrade === "manufacturer-documentation" ? "Tài liệu hãng/nhà sản xuất" : profile.evidenceGrade === "community-protocol-reference" ? "Tài liệu giao thức cộng đồng, chưa phải xác nhận của hãng" : "Ảnh thiết bị do người dùng cung cấp; chưa xác minh kết nối thực tế"}</p>
       <p className="warning">{profile.validationNeeded}</p>
       <a className="support-action" href={profile.documentationUrl} target="_blank" rel="noreferrer"><ExternalLink /> Tài liệu tham chiếu cho model đã chọn</a>
       <button onClick={exportWorksheet}><Download /> Xuất phiếu cấu hình JSON</button>
