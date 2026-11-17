@@ -341,3 +341,26 @@ footer{padding-bottom:calc(26px + env(safe-area-inset-bottom))}
 .project-backup-actions button{flex:1 1 160px;margin:0}
 .project-backup-actions .polar-upload{flex:1 1 190px}
 @media(max-width:600px){.project-backup-actions{flex-direction:column}.project-backup-actions>*{width:100%}.project-backup-stats{grid-template-columns:1fr}}
+
+
+/* RTA cursor, peak hold and saved frequency workbench */
+.rta-spectrum-bars{height:230px;display:flex;align-items:stretch;gap:3px;padding:8px 4px 0;border-bottom:1px solid #53616b;background:repeating-linear-gradient(to bottom,transparent 0,transparent 45px,#26333d 46px)}
+.panel button.rta-bar{position:relative;display:flex;align-items:flex-end;justify-content:center;flex:1;min-width:2px;height:100%!important;margin:0;padding:0;border:0;border-radius:3px 3px 0 0;background:transparent;box-shadow:none;overflow:hidden}
+.panel button.rta-bar .rta-bar-fill{display:block;width:100%;height:var(--bar-height);background:linear-gradient(0deg,#247b73,#69d9bd);border-radius:3px 3px 0 0;pointer-events:none}
+.panel button.rta-bar .rta-peak-marker{position:absolute;left:0;right:0;bottom:var(--peak-position);height:2px;background:#f1bd69;pointer-events:none}
+.panel button.rta-bar.selected .rta-bar-fill{background:linear-gradient(0deg,#b36a36,#ffe0a0)}
+.panel button.rta-bar:focus-visible{outline:2px solid #f1bd69;outline-offset:2px}
+.rta-cursor-readout{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:16px 0;padding:14px;background:#0d151d;border:1px solid #2b3a45;border-radius:9px}
+.rta-cursor-readout>div{min-width:0}.rta-cursor-readout small,.rta-cursor-readout strong{display:block}.rta-cursor-readout strong{font-size:19px;color:#e8f3f0;margin-top:6px;overflow-wrap:anywhere}
+.rta-workbench input[type=range]{width:100%;accent-color:#65d2b6}
+.rta-workbench input:not([type=range]),.mic-profile-fields input{width:100%;padding:11px;border-radius:6px;border:1px solid #394752;background:#0d151d;color:#e5edf1}
+.rta-saved-list{margin-top:18px}.rta-saved-list .room-toolbar{margin-bottom:10px}.rta-saved-list .room-toolbar button{width:auto;margin-top:0;padding:8px 10px;font-size:11px}
+.rta-inline-button{width:auto!important;min-width:34px;padding:7px!important;margin:0!important}
+.feedback-actions{display:flex;gap:6px;flex-wrap:wrap}.feedback-actions button{width:auto;margin:0;padding:7px 9px;font-size:11px}
+.mic-profile-fields{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.mic-profile-fields label{min-width:0}.mic-profile-fields label span{display:flex;align-items:center;gap:6px}
+.mic-profile-fields label svg{width:13px;height:13px;color:#65d2b6}
+.church-architecture{pointer-events:none;filter:drop-shadow(0 2px 3px #05090c88)}
+.room-canvas svg{background:radial-gradient(ellipse at 50% 45%,#1a2a34,#0b121a 75%);border-radius:10px}
+.room-view-switch button{min-width:130px}
+@media(max-width:760px){.rta-cursor-readout{grid-template-columns:1fr 1fr}.rta-cursor-readout>div:first-child{grid-column:1/-1}.mic-profile-fields{grid-template-columns:1fr}.rta-spectrum-bars{height:180px;gap:2px}.feedback-actions{flex-direction:column}.feedback-actions button{width:100%}}
