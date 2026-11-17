@@ -253,7 +253,7 @@ export default function TransferFunctionPanel({ selectedInput, running, calibrat
       status: "advisory-not-applied",
       generatedAt: new Date().toISOString(),
       requirements: "Verify by listening and repeat measurement before manual DSP entry. No parameters are written to hardware.",
-      measurement: { sampleRate: result?.sampleRate, averageCoherence: result?.averageCoherence, captureQuality: result?.captureQuality },
+      measurement: { sampleRate: result?.sampleRate, averageCoherence: result?.averageCoherence, captureQuality: result?.captureQuality, captureMetadata: result?.captureMetadata },
       filters: eq.map((filter, index) => ({
         band: index + 1, type: "PEQ", frequencyHz: filter.frequencyHz,
         gainDb: filter.gainDb, q: filter.q, coherence: Number(filter.coherence.toFixed(3)),
