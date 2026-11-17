@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { ShieldAlert, ShieldCheck, VolumeX, Bookmark, Trash2 } from "lucide-react";
 import { detectNarrowPeaks } from "./feedback";
+import { describeVietnameseFeedbackAlert } from "./feedbackAlerts";
 import { usePersistentState } from "./usePersistentState";
 
 type SavedFeedbackPoint = {
@@ -33,6 +34,7 @@ export default function FeedbackMonitor({
   selectedLevelDbfs = null,
 }: Props) {
   const peaks = useMemo(() => detectNarrowPeaks(history), [history]);
+  const feedbackAlert = useMemo(() => describeVietnameseFeedbackAlert(peaks), [peaks]);
   const [savedPoints, setSavedPoints] = usePersistentState<SavedFeedbackPoint[]>(
     "church-audio-saved-feedback-points",
     [],
@@ -68,13 +70,24 @@ export default function FeedbackMonitor({
     <section className="panel" id="feedback">
       <div className="heading">
         <ShieldAlert />
-        <h2>Feedback Watch · Lưu điểm hú rít</h2>
+        <h2>Cảnh báo hú rít · Lưu điểm tần số</h2>
         <span>{savedPoints.length} SAVED</span>
       </div>
       <p className="muted">
-        Phân tích đỉnh hẹp bền vững qua nhiều khung RTA. Các đỉnh chỉ là nghi vấn; cần nghe và
-        xác minh trong hệ thống trước khi kết luận đó là tần số hú thật.
+        Theo dõi các đỉnh tần số hẹp tồn tại qua nhiều khung RTA. Cảnh báo được hiển thị bằng tiếng Việt;
+        đây là dấu hiệu cần kiểm tra, không phải kết luận chắc chắn có vòng hú âm học.
       </p>
+      {feedbackAlert.severity === "clear" ? (
+        <div className="feedback-clear" role="status" aria-live="polite">
+          <ShieldCheck /><span><b>{feedbackAlert.title}</b> · {feedbackAlert.summary}</span>
+        </div>
+      ) : (
+        <div className={`feedback-warning-banner ${feedbackAlert.severity}`} role={feedbackAlert.severity === "high" ? "alert" : "status"} aria-live={feedbackAlert.severity === "high" ? "assertive" : "polite"} aria-atomic="true">
+          <div className="feedback-warning-title"><VolumeX /><b>{feedbackAlert.title}</b></div>
+          <p>{feedbackAlert.summary}</p>
+          <small>{feedbackAlert.recommendation}</small>
+        </div>
+      )}
       <div className="feedback-save-cursor">
         <div>
           <small>ĐIỂM RTA ĐANG CHỌN</small>
@@ -104,10 +117,10 @@ export default function FeedbackMonitor({
         <div className="feedback-clear"><ShieldCheck /><span>Chưa phát hiện đỉnh hẹp ổn định theo ngưỡng hiện tại.</span></div>
       ) : (
         <>
-          <div className="feedback-alert"><VolumeX /><b>Phát hiện {peaks.length} đỉnh phổ cần kiểm tra</b></div>
+          
           <div className="table-wrap">
             <table>
-              <thead><tr><th>Tần số</th><th>Độ nổi</th><th>Bền vững / tin cậy</th><th>Filter tham khảo</th><th>Q</th><th>Lưu</th></tr></thead>
+              <thead><tr><th>Tần số</th><th>Độ nổi</th><th>Độ ổn định / tin cậy</th><th>Lọc Notch tham khảo</th><th>Q</th><th>Lưu</th></tr></thead>
               <tbody>
                 {peaks.map((peak) => (
                   <tr key={peak.index}>

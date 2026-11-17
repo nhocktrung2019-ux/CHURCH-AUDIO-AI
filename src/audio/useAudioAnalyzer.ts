@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { micCorrectionAt, type MicCalibrationPoint } from "./micCalibration";
+import { getRtaSmoothing, type RtaSpeed } from "./rtaDisplaySettings";
 import { createLeqIntegrationState, getLeqLevels, integrateLeqSample } from "./leqIntegration";
 import {
   explainMicrophoneError,
@@ -71,7 +72,7 @@ function stopTracks(stream: MediaStream | null): void {
   stream?.getTracks().forEach((track) => track.stop());
 }
 
-export function useAudioAnalyzer(calibrationPoints: MicCalibrationPoint[] = []) {
+export function useAudioAnalyzer(calibrationPoints: MicCalibrationPoint[] = [], analysisSpeed: RtaSpeed = "medium") {
   const contextRef = useRef<AudioContext | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const sourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
@@ -180,7 +181,7 @@ export function useAudioAnalyzer(calibrationPoints: MicCalibrationPoint[] = []) 
       source = audio.createMediaStreamSource(stream);
       const analyser = audio.createAnalyser();
       analyser.fftSize = 8192;
-      analyser.smoothingTimeConstant = 0.72;
+      analyser.smoothingTimeConstant = getRtaSmoothing(analysisSpeed);
       source.connect(analyser);
 
       if (session !== sessionRef.current) {
@@ -311,6 +312,10 @@ export function useAudioAnalyzer(calibrationPoints: MicCalibrationPoint[] = []) 
       setCapturingRt60(false);
     }
   }, []);
+
+  useEffect(() => {
+    if (analyserRef.current) analyserRef.current.smoothingTimeConstant = getRtaSmoothing(analysisSpeed);
+  }, [analysisSpeed]);
 
   useEffect(() => {
     let frameId = 0;
