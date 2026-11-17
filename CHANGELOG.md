@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.25.0-beta.1 — Target-aware Auto EQ
+
+- Add selectable Flat / Spoken-word / Worship-music target contours for PEQ analysis.
+- Interpolate contours on a logarithmic frequency axis and compare the measured response against the chosen operator reference.
+- Keep strict readiness gates for coherent bins and raw PCM quality; synchronous dual-channel captures remain locked until per-channel ADC/DAC calibration is verified.
+- Continue to generate cut-only PEQ suggestions (maximum 4 dB per filter, maximum six filters, frequency separation guard); never create boosts or write to connected DSP/mixer hardware.
+- Include the target profile and its description in exported JSON worksheets.
+- Label the profiles as mild starting references, not acoustic standards or universal room targets. Repeat measurements at multiple listening positions and verify by listening before manual use.
+
+**Validation status:** this code change awaits its own CI run and Android debug packaging. Earlier v0.24.0-beta.1 CI passed and produced a debug APK artifact; no physical-device or hardware DSP tests are claimed.
+
+
 ## 0.24.0-beta.1 — Microphone dynamics advisor
 
 - Add an offline starting-point calculator for soft-expander Gate, Compressor and Limiter settings for dynamic handheld and gooseneck microphones.
@@ -8,7 +20,7 @@
 - Export the worksheet as JSON. No settings are sent to DSP or mixer hardware; dBFS references must be mapped to the exact device meter scale and confirmed by listening.
 - Keep the v0.23 multicolour RTA, selectable speed/sensitivity, visual Vietnamese feedback alerts and model catalogue.
 
-**Validation status:** automated tests and CI build are pending. No physical mixer/DSP or microphone test is claimed.
+**Validation status:** regression tests, TypeScript/Vite build, Capacitor sync and Android debug APK packaging passed in CI run #368. No physical mixer/DSP or microphone test is claimed.
 
 ## 0.23.0-beta.1 — Multicolour RTA, Vietnamese feedback warnings and expanded DSP catalogue
 

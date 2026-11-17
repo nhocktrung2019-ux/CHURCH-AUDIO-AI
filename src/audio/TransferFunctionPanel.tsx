@@ -4,7 +4,7 @@ import { Activity, Play, Square, AlertTriangle, Download, Waves } from "lucide-r
 import { analyzeSynchronousTransfer, analyzeTransfer, makeReferenceNoise, measurePcmCaptureQuality, type TransferResult } from "./transfer";
 import { deinterleaveInterleavedPcm, mixInterleavedPcmToMono } from "./pcmCapture.ts";
 import { PcmCaptureIntegrityMonitor } from "./pcmCaptureIntegrity";
-import { assessAutoEqReadiness, suggestParametricEq } from "./autoEq";
+import { AUTO_EQ_TARGETS, assessAutoEqReadiness, suggestParametricEq, type AutoEqTargetProfile } from "./autoEq";
 import { comparePhaseInBand } from "./phaseAlignment";
 import { explainMicrophoneError, requestMicrophoneStream } from "./microphone";
 import type { MicCalibrationPoint } from "./micCalibration";
@@ -25,6 +25,7 @@ export default function TransferFunctionPanel({ selectedInput, selectedOutput, r
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [eqCopied, setEqCopied] = useState(false);
+  const [eqTargetProfile, setEqTargetProfile] = usePersistentState<AutoEqTargetProfile>("church-audio-auto-eq-target-profile", "flat");
   const [referenceA, setReferenceA] = usePersistentState<TransferResult | null>("church-audio-transfer-reference-a",null);
   const [referenceB, setReferenceB] = usePersistentState<TransferResult | null>("church-audio-transfer-reference-b",null);
   const [crossoverHz, setCrossoverHz] = usePersistentState("church-audio-transfer-crossover",1000);
@@ -54,8 +55,8 @@ export default function TransferFunctionPanel({ selectedInput, selectedOutput, r
     return base;
   }, [result]);
   const eq = useMemo(
-    () => result && eqReadiness?.ready ? suggestParametricEq(result.points) : [],
-    [result, eqReadiness],
+    () => result && eqReadiness?.ready ? suggestParametricEq(result.points, eqTargetProfile) : [],
+    [result, eqReadiness, eqTargetProfile],
   );
 
   const measure = async () => {
@@ -500,6 +501,7 @@ export default function TransferFunctionPanel({ selectedInput, selectedOutput, r
       format: "Church Audio Parametric EQ Suggestion",
       status: "advisory-not-applied",
       generatedAt: new Date().toISOString(),
+      targetProfile: { id: eqTargetProfile, ...AUTO_EQ_TARGETS[eqTargetProfile] },
       requirements: "Verify by listening and repeat measurement before manual DSP entry. No parameters are written to hardware.",
       measurement: { sampleRate: result?.sampleRate, averageCoherence: result?.averageCoherence, captureQuality: result?.captureQuality, captureMetadata: result?.captureMetadata },
       filters: eq.map((filter, index) => ({
@@ -637,6 +639,17 @@ export default function TransferFunctionPanel({ selectedInput, selectedOutput, r
       </div>
       <div className="auto-eq-results">
         <div className="heading"><Waves /><h3>Auto EQ · PEQ cut suggestions</h3><span>{eq.length} FILTERS</span></div>
+        <div className="form-grid auto-eq-target-control">
+          <div>
+            <label htmlFor="auto-eq-target-profile">ĐƯỜNG CONG MỤC TIÊU</label>
+            <select id="auto-eq-target-profile" value={eqTargetProfile} onChange={(event) => setEqTargetProfile(event.target.value as AutoEqTargetProfile)}>
+              <option value="flat">Phẳng / trung tính</option>
+              <option value="spoken-word">Lời nói / giảng lễ</option>
+              <option value="worship-music">Nhạc thờ phượng / ban nhạc</option>
+            </select>
+          </div>
+        </div>
+        <p className="muted">{AUTO_EQ_TARGETS[eqTargetProfile].description} Đường cong chỉ ảnh hưởng cách đánh giá đỉnh; không tạo filter boost và không thay thế căn chỉnh theo nhiều vị trí nghe.</p>
         {eqReadiness && <div className={eqReadiness.ready ? "feedback-clear" : "device-notice"}>
           <b>{eqReadiness.ready ? "Đủ điều kiện tạo PEQ tư vấn" : "Auto EQ đang bị khóa an toàn"}</b>
           <span>{eqReadiness.reason}</span>

@@ -4,6 +4,50 @@ export type AutoEqMeasurementPoint = {
   coherence: number;
 };
 
+export type AutoEqTargetProfile = "flat" | "spoken-word" | "worship-music";
+
+export const AUTO_EQ_TARGETS: Record<AutoEqTargetProfile, {
+  label: string;
+  description: string;
+  /** Mild operator-selected contour; not an industry or room standard. */
+  curve: readonly (readonly [number, number])[];
+}> = {
+  flat: {
+    label: "Phẳng / trung tính",
+    description: "Mốc 0 dB trên toàn dải; dùng khi chưa chọn contour riêng.",
+    curve: [[20, 0], [20000, 0]],
+  },
+  "spoken-word": {
+    label: "Lời nói / giảng lễ",
+    description: "Contour nhẹ giảm trầm thấp, giữ vùng trung âm và nhấn hiện diện rất nhẹ; chỉ là điểm bắt đầu để nghe kiểm tra.",
+    curve: [[20, -3], [80, -3], [125, -2], [250, -0.7], [500, 0], [1000, 0], [2000, 0.3], [3150, 0.8], [4000, 0.6], [6300, 0], [10000, -1.2], [20000, -1.2]],
+  },
+  "worship-music": {
+    label: "Nhạc thờ phượng / ban nhạc",
+    description: "Contour nhẹ, không thay thế cân chỉnh theo loa, vị trí nghe và chương trình thực tế.",
+    curve: [[20, -0.5], [80, -0.5], [125, 0.2], [250, 0.4], [500, 0], [1000, 0], [2000, 0], [4000, -0.4], [6300, -0.8], [10000, -1.2], [20000, -1.2]],
+  },
+};
+
+export function autoEqTargetOffsetDb(
+  frequencyHz: number,
+  profile: AutoEqTargetProfile = "flat",
+): number {
+  if (!Number.isFinite(frequencyHz) || frequencyHz <= 0) return 0;
+  const curve = AUTO_EQ_TARGETS[profile]?.curve ?? AUTO_EQ_TARGETS.flat.curve;
+  const frequency = Math.max(curve[0]?.[0] ?? 20, Math.min(curve[curve.length - 1]?.[0] ?? 20000, frequencyHz));
+  for (let index = 1; index < curve.length; index++) {
+    const right = curve[index];
+    const left = curve[index - 1];
+    if (!right || !left || frequency > right[0]) continue;
+    const span = Math.log2(right[0] / left[0]);
+    if (span <= 0) return right[1];
+    const position = Math.log2(frequency / left[0]) / span;
+    return left[1] + (right[1] - left[1]) * position;
+  }
+  return curve[curve.length - 1]?.[1] ?? 0;
+}
+
 export type ParametricEqFilter = {
   frequencyHz: number;
   gainDb: number;
@@ -81,11 +125,16 @@ export function assessAutoEqReadiness(
  */
 export function suggestParametricEq(
   points: AutoEqMeasurementPoint[],
+  targetProfile: AutoEqTargetProfile = "flat",
 ): ParametricEqFilter[] {
   if (!assessAutoEqReadiness(points).ready) return [];
 
   const usable = points
     .filter((point) => isValidPoint(point) && point.coherence >= 0.8)
+    .map((point) => ({
+      ...point,
+      magnitudeDb: point.magnitudeDb - autoEqTargetOffsetDb(point.frequencyHz, targetProfile),
+    }))
     .sort((a, b) => a.frequencyHz - b.frequencyHz);
 
   const octaveWindow = Math.pow(2, 1 / 12);
