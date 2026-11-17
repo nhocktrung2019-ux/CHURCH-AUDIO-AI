@@ -3,8 +3,9 @@ class ChurchPcmCaptureProcessor extends AudioWorkletProcessor {
     super();
     this.stopped = false;
     this.blockSize = 2048;
-    this.pending = new Float32Array(this.blockSize);
+    this.pending = null;
     this.writeOffset = 0;
+    this.writeFrameCount = 0;
     this.blockStartFrame = currentFrame;
     this.inputChannelCount = null;
     this.expectedNextFrame = null;
@@ -19,19 +20,20 @@ class ChurchPcmCaptureProcessor extends AudioWorkletProcessor {
   }
 
   flush() {
-    if (!this.writeOffset) return;
+    if (!this.writeFrameCount || !this.pending || !this.inputChannelCount) return;
     const pcm = this.pending.slice(0, this.writeOffset);
     this.port.postMessage({
       type: "pcm",
       pcm: pcm.buffer,
       frameStart: this.blockStartFrame,
-      frameCount: pcm.length,
-      pcmChannelCount: 1,
-      inputChannelCount: this.inputChannelCount || 1,
-      channelMix: this.inputChannelCount > 1 ? "arithmetic-mean" : "direct-mono",
+      frameCount: this.writeFrameCount,
+      pcmChannelCount: this.inputChannelCount,
+      inputChannelCount: this.inputChannelCount,
+      channelMix: "interleaved-preserved",
       sampleRate,
     }, [pcm.buffer]);
     this.writeOffset = 0;
+    this.writeFrameCount = 0;
   }
 
   fail(reason) {
@@ -67,14 +69,18 @@ class ChurchPcmCaptureProcessor extends AudioWorkletProcessor {
       return false;
     }
 
-    this.inputChannelCount = input.length;
+    if (this.inputChannelCount === null) {
+      this.inputChannelCount = input.length;
+      this.pending = new Float32Array(this.blockSize * this.inputChannelCount);
+    }
     this.hasReceivedInput = true;
     for (let i = 0; i < frameCount; i++) {
-      if (this.writeOffset === 0) this.blockStartFrame = currentFrame + i;
-      let mono = 0;
-      for (const channel of input) mono += channel[i] / input.length;
-      this.pending[this.writeOffset++] = mono;
-      if (this.writeOffset === this.blockSize) this.flush();
+      if (this.writeFrameCount === 0) this.blockStartFrame = currentFrame + i;
+      for (let channel = 0; channel < this.inputChannelCount; channel++) {
+        this.pending[this.writeOffset++] = input[channel][i];
+      }
+      this.writeFrameCount++;
+      if (this.writeFrameCount === this.blockSize) this.flush();
     }
     this.expectedNextFrame = currentFrame + frameCount;
     return true;
