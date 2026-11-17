@@ -69,7 +69,7 @@ export default function VoiceAssistantPanel({ measuring, onIntent }: Props) {
   const recognitionErrorRef = useRef("");
 
   useEffect(() => {
-    const speechWindow = window as Window & {
+    const speechWindow = window as unknown as {
       SpeechRecognition?: SpeechRecognitionConstructor;
       webkitSpeechRecognition?: SpeechRecognitionConstructor;
     };
@@ -93,7 +93,7 @@ export default function VoiceAssistantPanel({ measuring, onIntent }: Props) {
       setResponse("Hãy dừng phép đo microphone trước khi bật nhận dạng giọng nói để tránh hai luồng cùng chiếm đầu vào.");
       return;
     }
-    const speechWindow = window as Window & {
+    const speechWindow = window as unknown as {
       SpeechRecognition?: SpeechRecognitionConstructor;
       webkitSpeechRecognition?: SpeechRecognitionConstructor;
     };
