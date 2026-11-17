@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.17.0-beta.1 — Raw PCM, Auto EQ quality gate and phase alignment
+
+- Replace compressed MediaRecorder capture in Transfer Function with raw Float32 PCM blocks from the Web Audio graph.
+- Track PCM RMS, peak, clipping and invalid-sample percentage; reject discontinuous capture sessions before analysis.
+- Compensate the known playback pre-roll when reporting total relative path latency.
+- Gate Auto EQ on in-band bin count, coherence coverage, raw-capture headroom and clipping checks.
+- Keep PEQ suggestions cut-only, capped at 4 dB, limited to six separated filters and exported as an advisory JSON worksheet.
+- Improve A/B crossover comparison with nearest-frequency pairing, coherence weighting and circular phase averaging.
+- Add a phase-slope delay estimator that refuses results unless simultaneous capture, common hardware clock, per-channel calibration and characterized latency are all declared.
+- Add regression tests for Auto EQ, phase/polarity comparison, synchronous delay gating, PCM quality and known pre-roll compensation.
+
+
 ## 0.16.0-beta.1 — Feedback confidence and measurement reliability
 
 - Calculate persistence against each RTA frame's own local spectral floor to reduce sensitivity to slow ambient-noise changes.
