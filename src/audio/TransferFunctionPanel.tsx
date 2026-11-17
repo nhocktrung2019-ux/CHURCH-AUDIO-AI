@@ -1,14 +1,14 @@
 import { useMemo, useState } from "react";
 import { usePersistentState } from "./usePersistentState";
 import { Activity, Play, Square, AlertTriangle, Download, Waves } from "lucide-react";
-import { analyzeTransfer, makeReferenceNoise, measurePcmCaptureQuality, type TransferResult } from "./transfer";
-import { countPcmFrameDiscontinuity, mixInterleavedPcmToMono, validatePcmBlockMetadata } from "./pcmCapture.ts";
+import { analyzeSynchronousTransfer, analyzeTransfer, makeReferenceNoise, measurePcmCaptureQuality, type TransferResult } from "./transfer";
+import { countPcmFrameDiscontinuity, deinterleaveInterleavedPcm, mixInterleavedPcmToMono, validatePcmBlockMetadata } from "./pcmCapture.ts";
 import { assessAutoEqReadiness, suggestParametricEq } from "./autoEq";
 import { comparePhaseInBand } from "./phaseAlignment";
 import { explainMicrophoneError, requestMicrophoneStream } from "./microphone";
 import type { MicCalibrationPoint } from "./micCalibration";
 
-export default function TransferFunctionPanel({ selectedInput, running, calibrationPoints = [] }: { selectedInput: string; running: boolean; calibrationPoints?: MicCalibrationPoint[] }) {
+export default function TransferFunctionPanel({ selectedInput, selectedOutput, running, calibrationPoints = [] }: { selectedInput: string; selectedOutput: string; running: boolean; calibrationPoints?: MicCalibrationPoint[] }) {
   const [result, setResult] = usePersistentState<TransferResult | null>("church-audio-transfer-latest",null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -17,9 +17,15 @@ export default function TransferFunctionPanel({ selectedInput, running, calibrat
   const [referenceA, setReferenceA] = usePersistentState<TransferResult | null>("church-audio-transfer-reference-a",null);
   const [referenceB, setReferenceB] = usePersistentState<TransferResult | null>("church-audio-transfer-reference-b",null);
   const [crossoverHz, setCrossoverHz] = usePersistentState("church-audio-transfer-crossover",1000);
+  const [analysisMode, setAnalysisMode] = usePersistentState<"mono-acoustic" | "synchronous-dual-channel">("church-audio-transfer-mode", "mono-acoustic");
+  const [referenceChannel, setReferenceChannel] = usePersistentState("church-audio-transfer-reference-channel", 0);
+  const [measurementChannel, setMeasurementChannel] = usePersistentState("church-audio-transfer-measurement-channel", 1);
   const eqReadiness = useMemo(() => {
     if (!result) return null;
     const base = assessAutoEqReadiness(result.points);
+    if (result.analysisMode === "synchronous-dual-channel") {
+      return { ...base, ready: false, reason: "Đo hai kênh chưa có hiệu chuẩn riêng cho từng kênh ADC/DAC; chưa mở khóa Auto EQ." };
+    }
     const quality = result.captureQuality;
     if (!quality) return { ...base, ready: false, reason: "Phép đo đã lưu từ phiên bản cũ chưa có metadata PCM thô. Hãy đo lại trước khi tạo Auto EQ." };
     if (quality.invalidSamplePercent > 0.01 || quality.clippedSamplePercent > 0.1) {
@@ -49,6 +55,12 @@ export default function TransferFunctionPanel({ selectedInput, running, calibrat
       stream = requested.stream;
       if (requested.usedFallbackInput) setNotice("Micro được chọn không khả dụng; đã chuyển sang micro mặc định.");
       audio = new AudioContext();
+      if (analysisMode === "synchronous-dual-channel") {
+        if (!selectedOutput) throw new Error("Chọn OUTPUT DEVICE của đúng USB interface đang dùng làm INPUT.");
+        const sinkable = audio as AudioContext & { setSinkId?: (sinkId: string) => Promise<void> };
+        if (typeof sinkable.setSinkId !== "function") throw new Error("WebView không hỗ trợ AudioContext.setSinkId; không thể xác nhận đường output đến interface đã chọn. Hãy cập nhật WebView.");
+        await sinkable.setSinkId(selectedOutput);
+      }
       await audio.resume();
       if (audio.state !== "running") throw new Error("Audio engine chưa chạy. Chạm đo lại và kiểm tra quyền micro.");
 
@@ -73,7 +85,7 @@ export default function TransferFunctionPanel({ selectedInput, running, calibrat
           await audio.audioWorklet.addModule("/audio/pcm-capture-worklet.js");
           workletNode = new AudioWorkletNode(audio, "church-pcm-capture", {
             numberOfInputs: 1, numberOfOutputs: 1, outputChannelCount: [1],
-            channelCountMode: "max", channelInterpretation: "speakers",
+            channelCountMode: "max", channelInterpretation: "discrete",
           });
           workletNode.port.onmessage = (event: MessageEvent<{ type?: string; pcm?: ArrayBuffer; frameStart?: number; frameCount?: number; pcmChannelCount?: number; inputChannelCount?: number; channelMix?: string; sampleRate?: number; reason?: string }>) => {
             const message = event.data;
@@ -137,6 +149,9 @@ export default function TransferFunctionPanel({ selectedInput, running, calibrat
         setNotice("WebView không hỗ trợ AudioWorklet; đang dùng ScriptProcessor dự phòng đã lỗi thời. Nên cập nhật Android System WebView.");
       }
 
+      if (analysisMode === "synchronous-dual-channel" && !workletNode) {
+        throw new Error("Đo đồng bộ hai kênh yêu cầu AudioWorklet; ScriptProcessor dự phòng chỉ hỗ trợ mono.");
+      }
       if (!workletNode) {
         if (typeof audio.createScriptProcessor !== "function") {
           throw new Error("Thiết bị không hỗ trợ AudioWorklet hoặc ScriptProcessor. Cập nhật Android System WebView/Chrome rồi thử lại.");
