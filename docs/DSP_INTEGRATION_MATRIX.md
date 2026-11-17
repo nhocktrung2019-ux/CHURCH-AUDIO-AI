@@ -35,3 +35,15 @@ This matrix separates manufacturer-documented connection methods from protocol a
 7. Do not merge model variants into a generic adapter unless the vendor documents identical protocol behavior.
 
 A model appearing in this matrix means only that a model-specific reference profile exists. It does not mean live compatibility, remote control, parameter read/write, or certification.
+
+## db Acoustics CD48 — Ethernet / Wi-Fi LAN distinction
+
+The model name alone is not enough to enable LAN:
+
+- The DBacoustic CD48 product page lists front USB control and rear RS232 control; it does not list an Ethernet port or Wi-Fi radio: https://dbacoustic.vn/crossover-dbacoustic-cd48
+- A third-party CD48 Premium product listing reports USB, RJ45/LAN and RS232: https://cdn.audioplus.com.vn/san-pham/thiet-bi-xu-ly-tin-hieu-crossover-dbacoustic-cd48-premium/
+- A PH48D page reports 100M Ethernet and a default IP, but PH48D is a different model; none of its IP defaults, service ports or protocol behavior may be copied to CD48: https://dbacoustic.vn/crossover-dbacoustic-ph48d
+
+The app therefore requires the operator to confirm the physical RJ45 jack on the exact CD48 revision before marking an Ethernet/Wi-Fi-LAN path as eligible. For Wi-Fi LAN, the processor is wired by Ethernet to a router/switch and the Android device joins that router's Wi-Fi; this does not imply built-in Wi-Fi on the DSP. A same-subnet check is only an addressing pre-check, not proof of reachability, device discovery, authentication or remote control.
+
+No CD48 network service port, TCP/UDP protocol, command schema, authentication handshake or acknowledgement behavior has been verified. The app must not scan the subnet or send guessed commands. A direct adapter requires the vendor's exact model/revision protocol specification or a vendor-supported interface, followed by read-only testing and safety-reviewed write tests.
