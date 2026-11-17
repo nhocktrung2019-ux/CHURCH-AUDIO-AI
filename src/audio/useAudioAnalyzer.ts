@@ -87,7 +87,7 @@ export function useAudioAnalyzer(calibrationPoints: MicCalibrationPoint[] = []) 
   const [leqLevels, setLeqLevels] = useState({ z: -100, a: -100, c: -100 });
   const [timeWeightedLevels, setTimeWeightedLevels] = useState({ af: -100, as: -100, cf: -100, cs: -100 });
   const [measurementSeconds, setMeasurementSeconds] = useState(0);
-  const integrationRef = useRef<{ z: number; a: number; c: number; frames: number; af: number; as: number; cf: number; cs: number; lastTime: number | null }>({ z: 0, a: 0, c: 0, frames: 0, af: 0, as: 0, cf: 0, cs: 0, lastTime: null });
+  const integrationRef = useRef<{ z: number; a: number; c: number; seconds: number; af: number; as: number; cf: number; cs: number; lastTime: number | null }>({ z: 0, a: 0, c: 0, seconds: 0, af: 0, as: 0, cf: 0, cs: 0, lastTime: null });
   const startedAtRef = useRef<number | null>(null);
   const [spectrum, setSpectrum] = useState<number[]>(Array(64).fill(-100));
   const [history, setHistory] = useState<number[][]>([]);
@@ -139,7 +139,7 @@ export function useAudioAnalyzer(calibrationPoints: MicCalibrationPoint[] = []) 
     setLeqLevels({ z: -100, a: -100, c: -100 });
     setTimeWeightedLevels({ af: -100, as: -100, cf: -100, cs: -100 });
     setMeasurementSeconds(0);
-    integrationRef.current = { z: 0, a: 0, c: 0, frames: 0, af: 0, as: 0, cf: 0, cs: 0, lastTime: null };
+    integrationRef.current = { z: 0, a: 0, c: 0, seconds: 0, af: 0, as: 0, cf: 0, cs: 0, lastTime: null };
     startedAtRef.current = null;
     setTrackInfo("");
   }, []);
@@ -209,7 +209,7 @@ export function useAudioAnalyzer(calibrationPoints: MicCalibrationPoint[] = []) 
           : "",
       );
       setHistory([]);
-      integrationRef.current = { z: 0, a: 0, c: 0, frames: 0, af: 0, as: 0, cf: 0, cs: 0, lastTime: null };
+      integrationRef.current = { z: 0, a: 0, c: 0, seconds: 0, af: 0, as: 0, cf: 0, cs: 0, lastTime: null };
       startedAtRef.current = Date.now();
       setLeqLevels({ z: -100, a: -100, c: -100 });
       setTimeWeightedLevels({ af: -100, as: -100, cf: -100, cs: -100 });
@@ -385,19 +385,25 @@ export function useAudioAnalyzer(calibrationPoints: MicCalibrationPoint[] = []) 
             const aLevel = rmsLevelDbfs + 10 * Math.log10(Math.max(1e-12, totalSpectrumPower > 0 ? aPower / totalSpectrumPower : 1));
             const cLevel = rmsLevelDbfs + 10 * Math.log10(Math.max(1e-12, totalSpectrumPower > 0 ? cPower / totalSpectrumPower : 1));
             const safeLevels = { z: Math.max(-100, Math.min(0, zLevel)), a: Math.max(-100, Math.min(0, aLevel)), c: Math.max(-100, Math.min(0, cLevel)) };
-            integrationRef.current.z += Math.pow(10, safeLevels.z / 10);
-            integrationRef.current.a += Math.pow(10, safeLevels.a / 10);
-            integrationRef.current.c += Math.pow(10, safeLevels.c / 10);
-            const nowSeconds = Date.now() / 1000;
+            const nowSeconds = performance.now() / 1000;
+            const previousTime = integrationRef.current.lastTime;
+            const elapsed = previousTime === null ? 0 : nowSeconds - previousTime;
+            integrationRef.current.lastTime = nowSeconds;
+            const instantaneousZ = Math.pow(10, safeLevels.z / 10);
             const instantaneousA = Math.pow(10, safeLevels.a / 10);
             const instantaneousC = Math.pow(10, safeLevels.c / 10);
-            if (integrationRef.current.lastTime === null) {
+            if (previousTime === null) {
               integrationRef.current.af = instantaneousA;
               integrationRef.current.as = instantaneousA;
               integrationRef.current.cf = instantaneousC;
               integrationRef.current.cs = instantaneousC;
-            } else {
-              const elapsed = Math.max(0.001, Math.min(0.5, nowSeconds - integrationRef.current.lastTime));
+            } else if (elapsed > 0 && elapsed <= 0.25) {
+              // Integrate acoustic energy over measured time, not animation-frame count.
+              // Ignore long scheduler gaps rather than treating one stale FFT frame as representative.
+              integrationRef.current.z += instantaneousZ * elapsed;
+              integrationRef.current.a += instantaneousA * elapsed;
+              integrationRef.current.c += instantaneousC * elapsed;
+              integrationRef.current.seconds += elapsed;
               const fastAlpha = 1 - Math.exp(-elapsed / 0.125);
               const slowAlpha = 1 - Math.exp(-elapsed / 1.0);
               integrationRef.current.af += (instantaneousA - integrationRef.current.af) * fastAlpha;
@@ -405,9 +411,6 @@ export function useAudioAnalyzer(calibrationPoints: MicCalibrationPoint[] = []) 
               integrationRef.current.cf += (instantaneousC - integrationRef.current.cf) * fastAlpha;
               integrationRef.current.cs += (instantaneousC - integrationRef.current.cs) * slowAlpha;
             }
-            integrationRef.current.lastTime = nowSeconds;
-            integrationRef.current.frames++;
-            const frameCount = integrationRef.current.frames;
             setWeightedLevels(safeLevels);
             setTimeWeightedLevels({
               af: 10 * Math.log10(Math.max(1e-12, integrationRef.current.af)),
@@ -416,9 +419,9 @@ export function useAudioAnalyzer(calibrationPoints: MicCalibrationPoint[] = []) 
               cs: 10 * Math.log10(Math.max(1e-12, integrationRef.current.cs)),
             });
             setLeqLevels({
-              z: 10 * Math.log10(integrationRef.current.z / frameCount),
-              a: 10 * Math.log10(integrationRef.current.a / frameCount),
-              c: 10 * Math.log10(integrationRef.current.c / frameCount),
+              z: integrationRef.current.seconds > 0 ? 10 * Math.log10(integrationRef.current.z / integrationRef.current.seconds) : -100,
+              a: integrationRef.current.seconds > 0 ? 10 * Math.log10(integrationRef.current.a / integrationRef.current.seconds) : -100,
+              c: integrationRef.current.seconds > 0 ? 10 * Math.log10(integrationRef.current.c / integrationRef.current.seconds) : -100,
             });
             setMeasurementSeconds(startedAtRef.current === null ? 0 : (Date.now() - startedAtRef.current) / 1000);
             setSpectrum(bins);
