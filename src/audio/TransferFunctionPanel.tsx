@@ -354,7 +354,30 @@ export default function TransferFunctionPanel({ selectedInput, selectedOutput, r
 
   return <section className="panel transfer-pro-panel" id="transfer">
     <div className="heading"><Activity /><h2>Transfer Function · Magnitude · Phase · Coherence</h2><span>WELCH H1</span></div>
-    <p className="muted">Tạo tín hiệu broadband tham chiếu, ghi micro, căn chỉnh thời gian và ước tính H1 transfer function bằng averaging. Coherence biểu thị mức tương quan giữa reference và response theo từng tần số.</p>
+    <p className="muted">{analysisMode === "synchronous-dual-channel"
+      ? "Đo H1 đồng thời từ hai kênh của cùng một USB interface và cùng AudioWorklet clock. Phase không bị căn chỉnh độc lập; độ chính xác cuối cùng vẫn phụ thuộc hiệu chuẩn đường tín hiệu và độ lệch ADC/DAC."
+      : "Tạo tín hiệu broadband tham chiếu, ghi micro, căn chỉnh thời gian và ước tính H1 transfer function bằng averaging. Chế độ mono này không dùng để xác định delay loa tuyệt đối."}</p>
+    <div className="phase-ab-controls">
+      <label>MEASUREMENT MODE
+        <select value={analysisMode} onChange={event => setAnalysisMode(event.target.value as typeof analysisMode)} disabled={busy}>
+          <option value="mono-acoustic">Single microphone · mono</option>
+          <option value="synchronous-dual-channel">Synchronous loopback · 2 channels</option>
+        </select>
+      </label>
+      {analysisMode === "synchronous-dual-channel" && <>
+        <label>REFERENCE INPUT
+          <select value={referenceChannel} onChange={event => setReferenceChannel(Number(event.target.value))} disabled={busy}>
+            {Array.from({length: 32}, (_, index) => <option key={index} value={index}>CH {index + 1}</option>)}
+          </select>
+        </label>
+        <label>MEASUREMENT INPUT
+          <select value={measurementChannel} onChange={event => setMeasurementChannel(Number(event.target.value))} disabled={busy}>
+            {Array.from({length: 32}, (_, index) => <option key={index} value={index}>CH {index + 1}</option>)}
+          </select>
+        </label>
+      </>}
+    </div>
+    {analysisMode === "synchronous-dual-channel" && <p className="warning">Đấu nối: OUTPUT L của đúng USB interface → LINE INPUT CH Reference (nên dùng pad/attenuator); micro đo → CH Measurement. Chọn OUTPUT DEVICE của chính interface đó. Không đưa ngõ công suất ampli vào input. Không ghép USB và Bluetooth làm hai kênh reference/measurement.</p>}
     {running && <p className="device-notice">Dừng RTA trực tiếp trước khi đo để tránh hai phiên ghi âm tranh microphone.</p>}
     <button disabled={busy || running} onClick={() => void measure()}>{busy ? <Square /> : <Play />}{busy ? "Đang phát và ghi 5 giây…" : "Chạy phép đo Transfer Function"}</button>
     {notice && <p className="device-notice">{notice}</p>}
@@ -368,6 +391,7 @@ export default function TransferFunctionPanel({ selectedInput, selectedOutput, r
       <p className="muted">Correlation { (result.confidence*100).toFixed(1) }% · {result.framesAveraged} Welch averages · {result.sampleRate.toLocaleString("vi-VN")} Hz · {result.points.length} bins</p>
       {result.captureQuality && <p className="muted">Analysis mono · raw PCM {result.captureMetadata?.pcmChannelCount ?? 1} ch · Peak {result.captureQuality.peakDbfs.toFixed(1)} dBFS · RMS {result.captureQuality.rmsDbfs.toFixed(1)} dBFS · clipping {result.captureQuality.clippedSamplePercent.toFixed(3)}%</p>}
       {result.captureMetadata && <p className="muted">Capture {result.captureMetadata.captureEngine} · input {result.captureMetadata.inputChannelCount ?? "unknown"} ch → raw PCM {result.captureMetadata.pcmChannelCount} ch ({result.captureMetadata.channelMix}) · track {result.captureMetadata.trackChannelCount ?? "unknown"} ch / {result.captureMetadata.trackSampleRate?.toLocaleString("vi-VN") ?? "unknown"} Hz</p>}
+      {result.captureMetadata.analysisMode === "synchronous-dual-channel" && <p className="device-notice">Synchronous pair · Reference CH {Number(result.captureMetadata.referenceChannel) + 1} → Measurement CH {Number(result.captureMetadata.measurementChannel) + 1} · common AudioWorklet frame clock</p>}
       <div className="response-chart"><span className="chart-label">RELATIVE MAGNITUDE · dB</span>{result.points.filter((_,i)=>i%2===0).map((point,index)=><i key={index} title={point.frequencyHz.toFixed(0)+" Hz · "+point.magnitudeDb.toFixed(1)+" dB · coh "+point.coherence.toFixed(2)} style={{height:Math.max(3,Math.min(100,(point.magnitudeDb+45)*1.5))+"%",opacity:point.coherence<.5?.28:1}} />)}</div>
       <div className="phase-panel"><div className="heading"><Waves /><h3>Time-aligned phase response</h3></div><svg viewBox="0 0 760 120" role="img" aria-label="Phase response"><path d="M10 12 H750 M10 56 H750 M10 100 H750" stroke="#354a55" strokeDasharray="4 4" fill="none"/><path d={phasePath} stroke="#e4b86f" strokeWidth="1.5" fill="none" vectorEffect="non-scaling-stroke"/></svg><div className="axis"><span>30 Hz</span><span>100 Hz</span><span>1 kHz</span><span>10 kHz</span><span>18 kHz</span></div></div>
       <div className="table-wrap"><table><thead><tr><th>Frequency</th><th>Magnitude</th><th>Phase aligned</th><th>Coherence</th></tr></thead><tbody>{result.points.filter((_,i)=>i%Math.max(1,Math.floor(result.points.length/16))===0).slice(0,16).map(point=><tr key={point.frequencyHz}><td>{point.frequencyHz.toFixed(0)} Hz</td><td>{point.magnitudeDb.toFixed(1)} dB</td><td>{point.phaseDeg.toFixed(0)}°</td><td><b className={point.coherence>=.8?"coherence-good":point.coherence>=.5?"coherence-mid":"coherence-low"}>{(point.coherence*100).toFixed(0)}%</b></td></tr>)}</tbody></table></div>
@@ -394,7 +418,9 @@ export default function TransferFunctionPanel({ selectedInput, selectedOutput, r
       </div>
       <p className="warning">Delay hiển thị đã bù pre-roll đã biết nhưng vẫn là tổng latency của chuỗi phát–loa–phòng–micro–input, không phải delay loa tuyệt đối. Pha đã loại phần delay phân số sau khi time-align. A/B độc lập chỉ dùng kiểm tra phase-shape/polarity. Auto EQ chỉ đề xuất PEQ cắt khi PCM không clipping và coherence đạt ngưỡng; không tự ghi vào DSP.</p>
     </>}
-    <p className="warning">Không thể chứng nhận pha/delay chuyên nghiệp qua một micro và loa mặc định: để căn delay tuyệt đối cần loopback/reference input có đồng hồ đồng bộ, thiết bị đo phù hợp và kiểm tra polarity. Giữ nguyên gain/processing giữa các lần đo.</p>
+    <p className="warning">{result?.analysisMode === "synchronous-dual-channel"
+      ? "Kết quả dùng hai kênh cùng AudioWorklet frame clock. Chưa bù skew phần cứng ADC/DAC, đáp tuyến từng kênh hoặc latency của dây loopback; phải hiệu chuẩn và so sánh với thiết bị tham chiếu trước khi căn delay/phase chính thức."
+      : "Không thể chứng nhận pha/delay chuyên nghiệp qua một micro và loa mặc định: để căn delay tuyệt đối cần loopback/reference input có đồng hồ đồng bộ, thiết bị đo phù hợp và kiểm tra polarity. Giữ nguyên gain/processing giữa các lần đo."}</p>
   </section>;
 }
 
