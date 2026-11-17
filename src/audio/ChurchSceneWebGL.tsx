@@ -411,6 +411,7 @@ export default function ChurchSceneWebGL(props: Props) {
     window.addEventListener("resize", resize);
 
     const pointerDown = (event: PointerEvent) => {
+      if (event.button !== 0) return;
       const rect = renderer.domElement.getBoundingClientRect();
       state.pointer.set((event.clientX - rect.left) / rect.width * 2 - 1, -((event.clientY - rect.top) / rect.height) * 2 + 1);
       state.raycaster.setFromCamera(state.pointer, camera);
