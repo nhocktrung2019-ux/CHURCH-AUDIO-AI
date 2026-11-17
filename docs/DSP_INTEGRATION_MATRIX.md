@@ -24,6 +24,11 @@ The catalogue is designed to let a technician select a named model rather than i
 
 ## Source references
 
+- Behringer product catalogue for X32/WING model listings: https://www.behringer.com/en/products?collection_id=x32-series
+- Midas official M32-series catalogue: https://www.midasconsoles.com/en/products?collection_id=m32-series
+- Yamaha ProVisionaire Control PLUS support matrix (DM/CL/QL/TF/RIVAGE PM and DME/MRX/MTX model families): https://vn.yamaha.com/vi/business/audio/products/provisionaire/provisionaire/provisionaire-control-plus/
+- Soundcraft official downloads and model catalogue (Ui, Si and Vi series): https://www.soundcraft.com/en-US/support_downloads/download_types/english-cutsheet
+- dbx official DriveRack product family (PA2, VENU360 and 260): https://dbxpro.com/en-US/product_families/driverack
 - Behringer X32 / Midas M32 OSC compatibility and UDP port reference: https://static.makemusic.tn/manuals/Consoles/Behringer/Behringer%20-%20X32%20OSC%20Unofficial.pdf
   - This is a community protocol document, not a manufacturer-issued integration contract. Use it only as a research starting point.
 - Soundcraft Ui Series browser control: https://www.soundcraft.com/en-US/get-started/ui-series
