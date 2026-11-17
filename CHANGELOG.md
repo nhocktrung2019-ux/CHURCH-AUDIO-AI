@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.16.0-beta.1 — Feedback confidence and measurement reliability
+
+- Calculate persistence against each RTA frame's own local spectral floor to reduce sensitivity to slow ambient-noise changes.
+- Require valid neighboring bins and enough usable frames before publishing a feedback candidate.
+- Keep one representative for flat-topped peaks and reject non-local maxima to reduce duplicate warnings.
+- Show persistence percentage and advisory confidence in Feedback Watch; no automatic EQ or gain changes are introduced.
+- Add regression coverage for stable peaks, transient spikes, flat-top peaks and incomplete/invalid histories.
+
 ## 0.14.0-beta.4 — Voice assistant and multi-source measurement
 
 - Add Vietnamese voice commands for scanning inputs, starting/stopping a multi-source session, and reading a spoken measurement summary.
