@@ -168,7 +168,7 @@ export const dspProfiles: DspProfile[] = [
     category: "processor",
     models: ["CD48", "CD48RTS", "CD48 Premium"],
     controlStatus: "manual-only",
-    transport: "Theo revision: USB Serial / Ethernet RJ45 trên một số phiên bản; cần đối chiếu nhãn và firmware",
+    transport: "CD48 theo ảnh tham chiếu: RJ45 100M Ethernet · LCD hiển thị IP 192.168.20.20 · USB COM2; CD48RTS/Premium cần xác minh revision riêng",
     evidenceGrade: "user-supplied-image",
     documentationUrl: "https://dbacoustic.vn/crossover-dbacoustic-cd48",
     integrationNote: "Ảnh tham chiếu đã gửi cho thấy một cấu hình CD48 có RJ45 100M Ethernet, LCD hiển thị IP 192.168.20.20 và Ver 2215, cùng USB COM2. Không suy luận CD48RTS/Premium có cùng phần cứng hoặc giao thức.",
