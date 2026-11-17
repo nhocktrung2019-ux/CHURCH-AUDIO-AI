@@ -58,7 +58,10 @@ export function validateCD48PresetDraft(draft: CD48PresetDraft): CD48PresetIssue
   if (draft.model !== "db-acoustics-cd48") issues.push({ path: "model", message: "Sai model DSP." });
   if (draft.modelEvidence !== "user-supplied-image") issues.push({ path: "modelEvidence", message: "Phải giữ nguồn bằng chứng ảnh thiết bị." });
   if (!Number.isInteger(draft.sceneSlot) || draft.sceneSlot < 1 || draft.sceneSlot > 128) issues.push({ path: "sceneSlot", message: "Scene phải nằm trong khoảng 1–128." });
-  if (!/^\\d{1,3}(\\.\\d{1,3}){3}$/.test(draft.deviceIp)) issues.push({ path: "deviceIp", message: "Địa chỉ IPv4 không hợp lệ." });
+  const ipOctets = draft.deviceIp.split(".");
+  if (ipOctets.length !== 4 || ipOctets.some((octet) => !/^\d{1,3}$/.test(octet) || Number(octet) > 255)) {
+    issues.push({ path: "deviceIp", message: "Địa chỉ IPv4 không hợp lệ." });
+  }
   if (draft.inputs.length !== 4 || draft.outputs.length !== 8) issues.push({ path: "channels", message: "CD48 yêu cầu đúng 4 input và 8 output." });
   if (draft.matrix.length !== 4 || draft.matrix.some((row) => row.length !== 8)) issues.push({ path: "matrix", message: "Matrix phải có 4 hàng × 8 cột." });
   for (const channel of [...draft.inputs, ...draft.outputs]) {
