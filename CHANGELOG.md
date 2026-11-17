@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.22.0-beta.1 — Synchronous dual-channel Transfer Function
+
+- Add a dedicated synchronous loopback mode with Reference and Measurement input-channel selectors.
+- Route the generated broadband signal to the selected AudioContext output when the browser exposes AudioContext.setSinkId; require the output to be selected explicitly for this mode.
+- Require AudioWorklet and at least two channels from the same MediaStream; preserve discrete channel mapping and reject ScriptProcessor fallback for synchronous analysis.
+- Calculate Welch H1, magnitude, phase and coherence from simultaneously captured channels without independently aligning the phase response.
+- Estimate relative Reference-to-Measurement delay with reduced-rate coarse search and native-rate peak refinement to bound mobile CPU cost.
+- Keep Auto EQ locked for synchronous captures until per-channel ADC/DAC and loopback calibration are available.
+- Add synthetic regression tests for delay, gain, phase slope, coherence, silence and unrelated channels.
+
+**Limitations:** The implementation requires a real electrical output loopback on the selected interface. It does not prove hardware ADC/DAC skew or calibrate input/output response. Physical Android USB acceptance and reference-analyser comparison remain release gates.
+
+
 ## 0.21.0-beta.1 — Multichannel PCM preservation
 
 - Request two microphone channels when the selected device supports them; mono inputs remain supported.
