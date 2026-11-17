@@ -1,4 +1,4 @@
-import { assessAutoEqReadiness, type AutoEqMeasurementPoint, type AutoEqReadiness } from "./autoEq";
+import { assessAutoEqReadiness, type AutoEqMeasurementPoint, type AutoEqReadiness } from "./autoEq.ts";
 import type { TransferResult } from "./transfer";
 
 export type MultiPositionAutoEqSample = {
