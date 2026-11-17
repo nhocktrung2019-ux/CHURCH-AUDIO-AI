@@ -46,24 +46,39 @@ function normalizedCorrelation(reference: Float32Array, recorded: Float32Array, 
   return count && xx > 1e-15 && yy > 1e-15 ? xy / Math.sqrt(xx * yy) : 0;
 }
 function bestLag(reference: Float32Array, recorded: Float32Array, sampleRate: number): { lag: number; score: number } {
-  const coarseStep = 32;
-  const limit = Math.min(Math.floor(sampleRate * 1.2), Math.floor(recorded.length * 0.3));
-  const length = Math.min(reference.length, Math.floor(sampleRate * 2.5));
-  let best = 0, score = 0;
-  for (let lag = -limit; lag <= limit; lag += coarseStep) {
-    const value = Math.abs(normalizedCorrelation(reference, recorded, lag, 16, length));
-    if (value > score) { score = value; best = lag; }
+  // Keep the coarse search bounded, but test every integer lag. A coarse lag
+  // stride of 32 can miss a sharp broadband correlation peak when the true
+  // playback offset is not a multiple of 32 samples.
+  const limit = Math.min(Math.floor(sampleRate * 0.75), Math.floor(recorded.length * 0.25));
+  const coarseLength = Math.min(reference.length, Math.floor(sampleRate * 0.25));
+  let best = 0;
+  let score = 0;
+  for (let lag = -limit; lag <= limit; lag++) {
+    const value = Math.abs(normalizedCorrelation(reference, recorded, lag, 16, coarseLength));
+    if (value > score) {
+      score = value;
+      best = lag;
+    }
   }
+
+  // Refine the integer lag with full-rate samples around the coarse maximum.
+  const fineLength = Math.min(reference.length, Math.floor(sampleRate * 1.5));
   const coarse = best;
-  for (let lag = Math.max(-limit, coarse - coarseStep); lag <= Math.min(limit, coarse + coarseStep); lag++) {
-    const value = Math.abs(normalizedCorrelation(reference, recorded, lag, 8, length));
-    if (value > score) { score = value; best = lag; }
+  for (let lag = Math.max(-limit, coarse - 16); lag <= Math.min(limit, coarse + 16); lag++) {
+    const value = Math.abs(normalizedCorrelation(reference, recorded, lag, 1, fineLength));
+    if (value > score) {
+      score = value;
+      best = lag;
+    }
   }
-  const ym = Math.abs(normalizedCorrelation(reference, recorded, best - 1, 4, length));
-  const y0 = Math.abs(normalizedCorrelation(reference, recorded, best, 4, length));
-  const yp = Math.abs(normalizedCorrelation(reference, recorded, best + 1, 4, length));
+
+  const ym = Math.abs(normalizedCorrelation(reference, recorded, best - 1, 1, fineLength));
+  const y0 = Math.abs(normalizedCorrelation(reference, recorded, best, 1, fineLength));
+  const yp = Math.abs(normalizedCorrelation(reference, recorded, best + 1, 1, fineLength));
   const denominator = ym - 2 * y0 + yp;
-  const fraction = Math.abs(denominator) > 1e-12 ? Math.max(-0.5, Math.min(0.5, 0.5 * (ym - yp) / denominator)) : 0;
+  const fraction = Math.abs(denominator) > 1e-12
+    ? Math.max(-0.5, Math.min(0.5, 0.5 * (ym - yp) / denominator))
+    : 0;
   return { lag: best + fraction, score };
 }
 function fft(real: Float64Array, imag: Float64Array): void {
