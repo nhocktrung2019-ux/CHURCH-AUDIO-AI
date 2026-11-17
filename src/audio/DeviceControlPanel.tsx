@@ -366,6 +366,10 @@ export default function DeviceControlPanel() {
 
   const prepareGuardedWrite = async () => {
     if (!nativeOscAvailable || !isOsc || scope !== "channels" || liveMonitoring || queryBusyRef.current) return;
+    if (writeMeta.toggle && writeValue === "") {
+      setWriteMessage("Chọn rõ trạng thái OFF hoặc ON trước khi chuẩn bị lệnh.");
+      return;
+    }
     const desired = Number(writeValue);
     if (!Number.isFinite(desired) || desired < writeMeta.min || desired > writeMeta.max
       || (writeMeta.step > 0 && Math.abs((desired - writeMeta.min) / writeMeta.step - Math.round((desired - writeMeta.min) / writeMeta.step)) > 0.02)) {
@@ -657,7 +661,7 @@ export default function DeviceControlPanel() {
                 setPreparedWrite(null);
                 setWriteConfirm(false);
                 const nextMeta = getGuardedControlMeta(next);
-                setWriteValue(nextMeta.toggle ? "1" : next === "mix/fader" ? "-10" : next === "preamp/trim" ? "-3" : next === "eq/f" ? "1000" : next === "eq/g" ? "-3" : next === "eq/q" ? "1" : next === "delay/time" ? "1" : "1");
+                setWriteValue(nextMeta.toggle ? "" : next === "mix/fader" ? "-10" : next === "preamp/trim" ? "-3" : next === "eq/f" ? "1000" : next === "eq/g" ? "-3" : next === "eq/q" ? "1" : next === "delay/time" ? "1" : "1");
               }}>
                 <option value="mix/fader">Fader level (dB)</option>
                 <option value="mix/on">Channel ON / OFF</option>
@@ -680,7 +684,7 @@ export default function DeviceControlPanel() {
             <div className="protection-field">
               <label>GIÁ TRỊ MỚI · {writeMeta.unit}</label>
               {writeMeta.toggle ? <select value={writeValue} onChange={event => { setWriteValue(event.target.value); setPreparedWrite(null); setWriteConfirm(false); }}>
-                <option value="0">OFF · 0</option><option value="1">ON · 1</option>
+                <option value="">Chọn OFF / ON</option><option value="0">OFF · 0</option><option value="1">ON · 1</option>
               </select> : <input type="number" min={writeMeta.min} max={writeMeta.max} step={writeMeta.step || "any"} value={writeValue} onChange={event => { setWriteValue(event.target.value); setPreparedWrite(null); setWriteConfirm(false); }} />}
               <small className="muted">Giới hạn cho phép: {writeMeta.min} → {writeMeta.max} {writeMeta.unit}</small>
             </div>
