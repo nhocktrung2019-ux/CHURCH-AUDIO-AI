@@ -2,6 +2,7 @@ import { useState } from "react";
 import { APP_VERSION } from "./appVersion";
 import { usePersistentState } from "./audio/usePersistentState";
 import { micCorrectionAt, type MicCalibrationFile, type MicCalibrationPoint } from "./audio/micCalibration";
+import { logBandFrequency } from "./audio/acoustics";
 import { Activity, AudioWaveform, Mic, Radio, Volume2, Waves, RefreshCw, Square, Layers3, CheckCircle2, AlertCircle, LayoutDashboard, SlidersHorizontal, ShieldCheck, Box, Settings2, Ruler, Speaker, LifeBuoy } from "lucide-react";
 import { useAudioAnalyzer } from "./audio/useAudioAnalyzer";
 import { useToneGenerator } from "./audio/useToneGenerator";
@@ -22,6 +23,7 @@ import VersionSupportPanel from "./audio/VersionSupportPanel";
 
 type TabId = "overview" | "rta" | "room" | "align" | "system" | "design" | "tools" | "support";
 const EMPTY_MIC_CALIBRATION_POINTS: MicCalibrationPoint[] = [];
+type RtaFrequencyBookmark = { id: string; frequencyHz: number; levelDb: number; savedAt: string };
 
 function getInputTypeLabel(label: string): string {
   const value = label.toLowerCase();
@@ -43,6 +45,8 @@ const tabs: { id: TabId; label: string; short: string; icon: typeof Activity }[]
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<TabId>("overview");
+  const [selectedRtaIndex, setSelectedRtaIndex] = useState<number | null>(null);
+  const [rtaFrequencyBookmarks, setRtaFrequencyBookmarks] = usePersistentState<RtaFrequencyBookmark[]>("church-audio-rta-frequency-bookmarks", []);
   const [calibrationOffsetDb, setCalibrationOffsetDb] = usePersistentState("church-audio-mic-offset-db",0);
   const [micCalibration, setMicCalibration] = usePersistentState<MicCalibrationFile | null>("church-audio-mic-calibration-file",null);
   const calibrationPoints = micCalibration?.points ?? EMPTY_MIC_CALIBRATION_POINTS;
@@ -75,11 +79,42 @@ export default function App() {
     {a.error && <p className="error">{a.error}</p>}
   </article>;
 
+  const selectedRtaFrequencyHz = selectedRtaIndex === null ? null : Math.round(logBandFrequency(selectedRtaIndex, a.spectrum.length));
+  const selectedRtaLevelDb = selectedRtaIndex === null ? null : a.spectrum[selectedRtaIndex];
+  const saveSelectedRtaFrequency = () => {
+    if (selectedRtaFrequencyHz === null || selectedRtaLevelDb === null) return;
+    const bookmark: RtaFrequencyBookmark = {
+      id: String(selectedRtaFrequencyHz) + "-" + Date.now(),
+      frequencyHz: selectedRtaFrequencyHz,
+      levelDb: selectedRtaLevelDb,
+      savedAt: new Date().toISOString(),
+    };
+    setRtaFrequencyBookmarks((current) => [
+      bookmark,
+      ...current.filter((item) => Math.abs(item.frequencyHz - bookmark.frequencyHz) > Math.max(15, bookmark.frequencyHz * 0.02)),
+    ].slice(0, 30));
+  };
+
   const RtaPanel = () => <article className="panel">
     <div className="heading"><Activity /><h2>RTA · Real-time Analyzer</h2><span>{a.running ? "LIVE" : "WAITING"}</span></div>
-    <div className="chart">{a.spectrum.map((value, index) => <i key={index} style={{ height: `${Math.max(2, (value + 100) * .98)}%` }} />)}</div>
+    <div className="chart rta-interactive-chart" role="group" aria-label="Biểu đồ RTA. Chạm vào một cột để chọn tần số">
+      {a.spectrum.map((value, index) => {
+        const frequency = Math.round(logBandFrequency(index, a.spectrum.length));
+        return <button type="button" key={index} className={selectedRtaIndex === index ? "rta-bin selected" : "rta-bin"} aria-label={"Chọn " + frequency + " héc, mức " + value.toFixed(1) + " dBFS"} aria-pressed={selectedRtaIndex === index} title={frequency.toLocaleString("vi-VN") + " Hz · " + value.toFixed(1) + " dBFS"} style={{ height: Math.max(2, (value + 100) * .98) + "%" }} onClick={() => setSelectedRtaIndex(index)} />
+      })}
+    </div>
     <div className="axis"><span>20 Hz</span><span>100 Hz</span><span>1 kHz</span><span>5 kHz</span><span>20 kHz</span></div>
-    <small className="muted">FFT 8192 · 64 LOG BANDS · dBFS POWER AVERAGE · 20 Hz–20 kHz</small><p className="calibrated-inline">INPUT RMS {a.rmsDbfs <= -99 ? "—" : (a.rmsDbfs + calibrationOffsetDb).toFixed(1) + (Math.abs(calibrationOffsetDb) > 0.001 ? " dB SPL" : " dBFS")} · {Math.abs(calibrationOffsetDb) > 0.001 ? "ONE-POINT LEVEL CALIBRATION ACTIVE" : "NO ABSOLUTE LEVEL CALIBRATION"}</p>
+    {selectedRtaFrequencyHz !== null && <div className="rta-frequency-cursor">
+      <div><small>SELECTED FREQUENCY</small><strong>{selectedRtaFrequencyHz.toLocaleString("vi-VN")} Hz</strong><span>{selectedRtaLevelDb === null ? "—" : selectedRtaLevelDb.toFixed(1) + " dBFS"}</span></div>
+      <button type="button" onClick={saveSelectedRtaFrequency}>Lưu tần số</button>
+    </div>}
+    {rtaFrequencyBookmarks.length > 0 && <details className="rta-frequency-bookmarks">
+      <summary>Nhật ký tần số đã lưu · {rtaFrequencyBookmarks.length} điểm</summary>
+      <div className="table-wrap"><table><thead><tr><th>Tần số</th><th>Mức lúc lưu</th><th>Thời điểm</th><th></th></tr></thead><tbody>
+        {rtaFrequencyBookmarks.slice(0, 8).map((item) => <tr key={item.id}><td><b>{item.frequencyHz.toLocaleString("vi-VN")} Hz</b></td><td>{item.levelDb.toFixed(1)} dBFS</td><td>{new Date(item.savedAt).toLocaleString("vi-VN")}</td><td><button type="button" className="icon-button" aria-label={"Xóa điểm " + item.frequencyHz + " Hz"} onClick={() => setRtaFrequencyBookmarks((current) => current.filter((saved) => saved.id !== item.id))}>×</button></td></tr>)}
+      </tbody></table></div>
+    </details>}
+    <small className="muted">FFT 8192 · 64 LOG BANDS · dBFS POWER AVERAGE · 20 Hz–20 kHz · Chạm cột để chọn tần số</small><p className="calibrated-inline">INPUT RMS {a.rmsDbfs <= -99 ? "—" : (a.rmsDbfs + calibrationOffsetDb).toFixed(1) + (Math.abs(calibrationOffsetDb) > 0.001 ? " dB SPL" : " dBFS")} · {Math.abs(calibrationOffsetDb) > 0.001 ? "ONE-POINT LEVEL CALIBRATION ACTIVE" : "NO ABSOLUTE LEVEL CALIBRATION"}</p>
   </article>;
 
   const SpectrogramPanel = () => <article className="panel">
