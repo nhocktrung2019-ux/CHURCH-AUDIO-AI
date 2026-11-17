@@ -1,11 +1,105 @@
+export type DspEvidenceGrade = "manufacturer-documentation" | "community-protocol-reference";
+
 export type DspProfile = {
-  id: string; name: string; family: string; controlStatus: "manual-only";
-  integrationNote: string; validationNeeded: string;
+  id: string;
+  name: string;
+  family: string;
+  models: string[];
+  controlStatus: "manual-only";
+  transport: string;
+  evidenceGrade: DspEvidenceGrade;
+  documentationUrl: string;
+  integrationNote: string;
+  validationNeeded: string;
 };
+
 export const dspProfiles: DspProfile[] = [
-  { id: "behringer-x32-m32", name: "Behringer X32 / M32", family: "Digital mixer", controlStatus: "manual-only", integrationNote: "Tạo phiếu cấu hình để kỹ thuật viên nhập thủ công trên mixer. Chưa có network bridge hoặc lệnh điều khiển được bật trong ứng dụng.", validationNeeded: "Xác minh model, firmware, quyền mạng, transport, mapping kênh/bus và phản hồi thiết bị trên mixer thật." },
-  { id: "soundcraft", name: "Soundcraft (Ui / Si / Vi)", family: "Digital mixer", controlStatus: "manual-only", integrationNote: "Hỗ trợ lưu sơ đồ channel/bus và thông số đề xuất dưới dạng phiếu thao tác thủ công.", validationNeeded: "Phải xác định chính xác dòng mixer và firmware trước khi thiết kế adapter riêng; không dùng một protocol chung cho mọi model." },
-  { id: "dbx-driverack", name: "dbx DriveRack", family: "Loudspeaker management DSP", controlStatus: "manual-only", integrationNote: "Xuất ghi chú crossover, HPF, delay và PEQ để nhập thủ công sau khi đo kiểm.", validationNeeded: "Xác minh model DriveRack, routing, crossover, limiter và dải giá trị thực tế theo tài liệu của đúng model." },
-  { id: "db-acoustics-cd48", name: "db Acoustics CD48", family: "Loudspeaker management DSP", controlStatus: "manual-only", integrationNote: "Lưu cấu hình dự kiến và checklist commissioning; không gửi lệnh đến thiết bị.", validationNeeded: "Cần tài liệu giao thức, phần mềm hãng, firmware và xác nhận kết nối trên phần cứng CD48 thực tế." },
+  {
+    id: "behringer-x32-midas-m32",
+    name: "Behringer X32 / Midas M32",
+    family: "Digital mixing console",
+    models: ["X32 family", "M32 family"],
+    controlStatus: "manual-only",
+    transport: "Ethernet · OSC-compatible UDP reference (commonly documented at port 10023)",
+    evidenceGrade: "community-protocol-reference",
+    documentationUrl: "https://static.makemusic.tn/manuals/Consoles/Behringer/Behringer%20-%20X32%20OSC%20Unofficial.pdf",
+    integrationNote: "The available protocol reference describes OSC-compatible control for X32/M32. This app does not send OSC packets yet; port, subscriptions and parameter paths must be checked against the exact firmware and model.",
+    validationNeeded: "Obtain the exact console firmware/protocol revision, verify read-only query and response handling on a separate test console, then validate write acknowledgement, reconnect, rate limiting and rollback before enabling control.",
+  },
+  {
+    id: "soundcraft-ui",
+    name: "Soundcraft Ui Series",
+    family: "Digital mixing console",
+    models: ["Ui12", "Ui16", "Ui24R"],
+    controlStatus: "manual-only",
+    transport: "Built-in Wi-Fi / Ethernet · HTML5 browser control interface",
+    evidenceGrade: "manufacturer-documentation",
+    documentationUrl: "https://www.soundcraft.com/en-US/get-started/ui-series",
+    integrationNote: "Manufacturer documentation describes control from an HTML5 browser over a network connection to the mixer. This is a browser control surface, not a published generic DSP API for this app.",
+    validationNeeded: "Confirm the exact Ui model/firmware, LAN address, authentication/session behavior and browser-origin restrictions. Do not assume the mixer web interface is safe to embed or automate.",
+  },
+  {
+    id: "soundcraft-si-vi",
+    name: "Soundcraft Si / Vi Series",
+    family: "Digital mixing console",
+    models: ["Si Compact", "Si Expression", "Si Performer", "Vi Series", "Vi3000"],
+    controlStatus: "manual-only",
+    transport: "Ethernet · HiQnet network / ViSi Remote ecosystem",
+    evidenceGrade: "manufacturer-documentation",
+    documentationUrl: "https://www.soundcraft.com/en-US/products/visi-remote.html",
+    integrationNote: "Manufacturer documentation describes ViSi Remote control for listed Si/Vi console families over Harman HiQnet. HiQnet is not interchangeable with the Ui browser control interface.",
+    validationNeeded: "Confirm console software and ViSi compatibility table, configure a dedicated network, and test discovery/access control on the exact model. A generic OSC adapter must not be used.",
+  },
+  {
+    id: "dbx-driverack-pa2",
+    name: "dbx DriveRack PA2",
+    family: "Loudspeaker management processor",
+    models: ["DriveRack PA2"],
+    controlStatus: "manual-only",
+    transport: "Manufacturer PA2 Control App; no public packet API verified for this app",
+    evidenceGrade: "manufacturer-documentation",
+    documentationUrl: "https://dbxpro.com/en-US/products/driverack-pa2",
+    integrationNote: "dbx publishes a dedicated PA2 Control App and owner documentation. This does not establish a supported third-party control protocol for Church Audio AI.",
+    validationNeeded: "Confirm firmware, supported official app workflow and available vendor integration interface. Until a public protocol is verified, use manual worksheet/export only.",
+  },
+  {
+    id: "dbx-driverack-venu360",
+    name: "dbx DriveRack VENU360",
+    family: "Loudspeaker management processor",
+    models: ["DriveRack VENU360"],
+    controlStatus: "manual-only",
+    transport: "Ethernet · vendor VENU360 Control App",
+    evidenceGrade: "manufacturer-documentation",
+    documentationUrl: "https://dbxpro.com/en/product_documents/dbx_driverack_venu360_manual-pdf",
+    integrationNote: "The owner manual documents Ethernet connection and a dedicated VENU360 control app. The application does not implement the proprietary command channel.",
+    validationNeeded: "Verify direct/network topology, addressing, firmware and exact command protocol from vendor material before implementing read/write operations.",
+  },
+  {
+    id: "dbx-driverack-4800-4820",
+    name: "dbx DriveRack 4800 / 4820",
+    family: "Loudspeaker management processor",
+    models: ["DriveRack 4800", "DriveRack 4820"],
+    controlStatus: "manual-only",
+    transport: "Ethernet · HiQnet network control",
+    evidenceGrade: "manufacturer-documentation",
+    documentationUrl: "https://dbxpro.com/en-US/products/driverack-4820/features",
+    integrationNote: "dbx product documentation lists Ethernet HiQnet networking control for the 4800/4820 family. This is distinct from an open OSC interface.",
+    validationNeeded: "Obtain the correct HiQnet integration specification and device software/firmware, then prove read-back, write acknowledgement, reconnect and rollback on each model.",
+  },
+  {
+    id: "db-acoustics-cd48",
+    name: "db Acoustics CD48",
+    family: "Loudspeaker management processor",
+    models: ["CD48 (verify standard / Premium / regional revision)"],
+    controlStatus: "manual-only",
+    transport: "Front USB control port · rear RS232 control port (manufacturer product page)",
+    evidenceGrade: "manufacturer-documentation",
+    documentationUrl: "https://dbacoustic.vn/crossover-dbacoustic-cd48",
+    integrationNote: "The manufacturer product page identifies USB and RS232 control connections and a vendor calibration application. No public packet/command specification has been verified in this project.",
+    validationNeeded: "Confirm the exact CD48 hardware revision, USB driver, serial pinout/baud/parity, vendor software version and protocol documentation before building an adapter. Do not assume CD48 Premium or other processors share the same protocol.",
+  },
 ];
-export function getDspProfile(id: string): DspProfile | undefined { return dspProfiles.find((profile) => profile.id === id); }
+
+export function getDspProfile(id: string): DspProfile | undefined {
+  return dspProfiles.find((profile) => profile.id === id);
+}
