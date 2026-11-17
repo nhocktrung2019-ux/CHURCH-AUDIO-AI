@@ -1,4 +1,4 @@
-import { micCorrectionAt, type MicCalibrationPoint } from "./micCalibration";
+import { micCorrectionAt, type MicCalibrationPoint } from "./micCalibration.ts";
 
 export type TransferPoint = { frequencyHz: number; magnitudeDb: number; phaseDeg: number; coherence: number };
 export type PcmCaptureQuality = {
