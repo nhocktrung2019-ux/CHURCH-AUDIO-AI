@@ -63,3 +63,37 @@ The app now includes a local draft editor for the pictured CD48 family:
 Seller documentation for CD48 Premium describes 4 inputs, 8 outputs, 11-band EQ per input/output, delay up to 2000 ms, crossover filter families, matrix, gate/compressor/limiter, USB/LAN/RS232 and 128 scenes: https://cdn.audioplus.com.vn/san-pham/thiet-bi-xu-ly-tin-hieu-crossover-dbacoustic-cd48-premium/ . The official DBacoustic CD48 page links a guide labelled CD48RTS: https://dbacoustic.vn/crossover-dbacoustic-cd48 . The guide file could not be inspected in this development pass, and no CD48-specific LAN command framing, service port, authentication, read-response format or write acknowledgement has been verified.
 
 The editor deliberately excludes live gate/compressor/limiter/crossover writes until the exact device revision, firmware, command schema and parameter ranges are confirmed. Do not assume that the CD48RTS guide is protocol-compatible with the pictured Ver 2215 device until the vendor confirms it. No network scan, guessed TCP/UDP port, packet send, or DSP write is performed.
+
+
+## CD48 USB Serial connection — INTEK procedure (documented)
+
+Reference: INTEK's guide "Hướng dẫn kết nối Phần mềm Crossover CD48 / CD48RTS – CD48 / CD48RTS PREMIUM qua USB", published 10 March 2026:
+https://intekvietnam.com/huong-dan-ket-noi-phan-mem-crossover-cd48-cd48rts-cd48-cd48rts-premium-qua-usb/
+
+The guide documents the Windows desktop workflow:
+1. Install the matching CD48 control software and USB driver where required.
+2. Connect the processor over USB and inspect Windows Device Manager → Ports (COM & LPT) to identify its USB Serial Port (example COM3).
+3. In CD48 Control Software, add a device; select **Serial port (login)** and **Use processor USB serial port**.
+4. Confirm, then press **Login**. A successful connection shows Online and synchronizes the processor parameters.
+5. Verify response using a controlled EQ, Delay or Mute change.
+6. For "Must login first", select the login-enabled serial interface. For a missing COM port, check driver, cable and USB port.
+
+This is evidence for a USB-serial + login session workflow in the vendor desktop application. It does NOT publish the serial baud rate, framing, command bytes, authentication exchange, parameter serialization, or a supported Android USB API. The example COM3 is a Windows enumeration example, not a fixed port number.
+
+### Church Audio AI implementation plan
+
+- Add a dedicated CD48 USB transport, separate from Ethernet/Wi-Fi LAN.
+- On Android, implement a native USB Host/OTG bridge with runtime permission request, USB device/interface/endpoint enumeration and explicit detach/reconnect handling. Do not assume browser Web Serial is available in Android WebView.
+- Implement a CD48 protocol adapter only after obtaining vendor-approved protocol documentation or a lawful protocol specification from the matching CD48 software/driver package.
+- Preserve the login state machine: disconnected → USB device detected → permission granted → serial interface opened → login required → authenticated/online → parameter sync.
+- Treat "Online" as authenticated session state, not merely successful USB open.
+- First milestone is read-only identity/status and a captured parameter snapshot; parameter writes remain disabled until read-back, error handling and rollback are verified.
+
+No serial baud rate, parity, data bits, stop bits, flow control, packet format or login payload is inferred from the COM-port tutorial. No serial bytes are sent by the current app. USB and LAN are distinct transports and must not share an unverified protocol implementation.
+
+## CD48 software version matching
+
+INTEK's software index lists separate packages for CD48 v2, CD48RTS v2, legacy CD48/CD48RTS, V3 2025 CD48/CD48RTS and V4 PREMIUM CD48/CD48RTS:
+https://intekvietnam.com/tong-hop-phan-mem-vang-so-dbacoustic-intek/
+
+Do not select a package based on the generic "CD48" name alone. Match the exact hardware label, front-panel firmware display, and vendor confirmation. The pictured device's LCD shows Ver 2215; this display alone does not prove which Windows package or wire protocol applies.
