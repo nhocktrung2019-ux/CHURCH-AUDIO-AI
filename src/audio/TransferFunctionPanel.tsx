@@ -101,13 +101,17 @@ export default function TransferFunctionPanel({ selectedInput, running, calibrat
               pcmChannelCount: message.pcmChannelCount!,
               inputChannelCount: message.inputChannelCount!,
               byteLength: message.pcm.byteLength,
-            }, audio!.sampleRate, stableInputChannelCount, 1);
+            }, audio!.sampleRate, stableInputChannelCount, message.inputChannelCount!);
             if (!validation.valid) {
               metadataError = validation.reason;
               missedBlocks++;
               return;
             }
-            if (message.pcmChannelCount !== message.inputChannelCount) {\n              metadataError = "AudioWorklet did not preserve every input channel in the PCM payload.";\n              missedBlocks++;\n              return;\n            }\n            stableInputChannelCount = validation.inputChannelCount;
+            if (message.pcmChannelCount !== message.inputChannelCount) {
+              metadataError = "AudioWorklet did not preserve every input channel in the PCM payload.";
+              missedBlocks++;
+              return;
+            }\n            stableInputChannelCount = validation.inputChannelCount;
             if (previousFrameEnd !== null && message.frameStart !== previousFrameEnd) {
               missedBlocks += countPcmFrameDiscontinuity(previousFrameEnd, message.frameStart!, blockSize);
             }
@@ -195,9 +199,15 @@ export default function TransferFunctionPanel({ selectedInput, running, calibrat
         throw new Error("Luồng PCM bị mất hoặc sai thứ tự frame trong lúc đo. Hãy đóng ứng dụng dùng micro, giảm tải thiết bị và đo lại; kết quả không được dùng cho Auto EQ.");
       }
       const totalSamples = blocks.reduce((sum, block) => sum + block.length, 0);
-      const captured = new Float32Array(totalSamples);
+      const interleavedCaptured = new Float32Array(totalSamples);
       let writeOffset = 0;
-      for (const block of blocks) { captured.set(block, writeOffset); writeOffset += block.length; }
+      for (const block of blocks) { interleavedCaptured.set(block, writeOffset); writeOffset += block.length; }
+      const rawPcmChannelCount = captureEngine === "AudioWorklet" ? (stableInputChannelCount ?? 1) : 1;
+      if (totalSamples % rawPcmChannelCount !== 0) throw new Error("PCM đa kênh có số mẫu không chia hết theo số kênh.");
+      const captured = captureEngine === "AudioWorklet"
+        ? mixInterleavedPcmToMono(interleavedCaptured, totalSamples / rawPcmChannelCount, rawPcmChannelCount)
+        : interleavedCaptured;
+      if (!captured) throw new Error("Không thể giải mã PCM đa kênh; dữ liệu bị sai cấu trúc hoặc có mẫu không hợp lệ.");
       const playbackOffsetSeconds = playbackStartTime - firstBlockPlaybackTime;
       if (!Number.isFinite(playbackOffsetSeconds) || playbackOffsetSeconds < 0 || playbackOffsetSeconds > 1) {
         throw new Error("Không xác định được thời điểm bắt đầu phát so với PCM capture. Hãy đo lại.");
@@ -224,8 +234,10 @@ export default function TransferFunctionPanel({ selectedInput, running, calibrat
       const captureMetadata = {
         captureEngine,
         inputChannelCount: stableInputChannelCount,
-        pcmChannelCount: 1 as const,
-        channelMix: (stableInputChannelCount ?? 1) > 1 ? "arithmetic-mean" as const : "direct-mono" as const,
+        pcmChannelCount: rawPcmChannelCount,
+        channelMix: captureEngine === "AudioWorklet" && rawPcmChannelCount > 1
+          ? "interleaved-preserved-then-arithmetic-mean" as const
+          : rawPcmChannelCount > 1 ? "arithmetic-mean" as const : "direct-mono" as const,
         trackChannelCount: Number.isInteger(trackSettings.channelCount) ? trackSettings.channelCount! : null,
         trackSampleRate: Number.isFinite(trackSettings.sampleRate) ? trackSettings.sampleRate! : null,
       };
