@@ -26,6 +26,7 @@ import VoiceAssistantPanel from "./audio/VoiceAssistantPanel";
 import { describeVoiceIntent, type VoiceIntent } from "./audio/voiceCommands";
 import { APP_VERSION } from "./appVersion";
 import { LifeBuoy } from "lucide-react";
+import SystemHealthPanel from "./audio/SystemHealthPanel";
 
 type TabId = "overview" | "rta" | "room" | "align" | "system" | "design" | "tools" | "dsp" | "support";
 const EMPTY_MIC_CALIBRATION_POINTS: MicCalibrationPoint[] = [];
@@ -220,7 +221,7 @@ export default function App() {
     {activeTab === "design" && <section className="tab-stack"><CBTCalculator /><PolarDataStudio /><RoomPlanner3D /></section>}
     {activeTab === "tools" && <section className="tab-stack"><section className="grid"><GeneratorPanel /><DevicePanel /><article className="panel"><div className="heading"><Speaker /><h2>Thư viện thiết bị</h2><span>{equipment.length} ITEMS</span></div>{equipment.map(item => <div className="item" key={item.name}><b>{item.name}</b><small>{item.type} · Cần xác minh thông số hãng</small></div>)}</article></section><ProjectBackupPanel /></section>}
     {activeTab === "dsp" && <DSPIntegrationPanel />}
-    {activeTab === "support" && <section className="tab-stack"><VersionSupportPanel /></section>}
+    {activeTab === "support" && <section className="tab-stack"><SystemHealthPanel /><VersionSupportPanel /></section>}
     <section className="roadmap"><small>PHƯƠNG PHÁP / WORKFLOW</small><p>01 KHẢO SÁT <b>→</b> 02 ĐO LƯỜNG <b>→</b> 03 CĂN CHỈNH <b>→</b> 04 KIỂM SOÁT HỆ THỐNG <b>→</b> 05 THIẾT KẾ PHỦ ÂM</p></section>
     <footer>CHURCH AUDIO ANALYZER <span>PRO MEASUREMENT BETA · BUILD {APP_VERSION}</span></footer>
   </main>;
