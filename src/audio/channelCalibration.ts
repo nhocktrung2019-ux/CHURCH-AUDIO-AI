@@ -91,8 +91,8 @@ export function validateChannelCalibrationProfile(
       || (frequencyHz as number) > Math.min(40000, (profile.sampleRate as number) * 0.45)) {
       return { valid: false, reason: "Calibration frequencies must be finite, strictly increasing and below Nyquist." };
     }
-    if (!Number.isFinite(magnitudeDb) || Math.abs(magnitudeDb as number) > 60
-      || !Number.isFinite(phaseDeg) || Math.abs(phaseDeg as number) > 36000) {
+    if (!isFiniteNumber(magnitudeDb) || Math.abs(magnitudeDb) > 60
+      || !isFiniteNumber(phaseDeg) || Math.abs(phaseDeg) > 36000) {
       return { valid: false, reason: "Calibration magnitude or phase is outside the supported range." };
     }
     previousFrequency = frequencyHz as number;
