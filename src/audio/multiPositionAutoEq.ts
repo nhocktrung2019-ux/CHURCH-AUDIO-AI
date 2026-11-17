@@ -9,10 +9,19 @@ export type MultiPositionAutoEqSample = {
   sameChainConfirmed: boolean;
   result: TransferResult;
 };
+export type MultiPositionAutoEqDiagnostic = {
+  frequencyHz: number;
+  coverageCount: number;
+  coveragePercent: number;
+  spreadDb: number | null;
+  status: "included" | "insufficient-coverage" | "spatial-variance";
+};
+
 export type MultiPositionAutoEqSummary = {
   positionCount: number;
   contributingBinCount: number;
   suppressedVariableBinCount: number;
+  insufficientCoverageBinCount: number;
   medianSpatialSpreadDb: number;
   maximumSpatialSpreadDb: number;
   minimumPositionCoverage: number;
@@ -24,6 +33,7 @@ export type MultiPositionAutoEqAnalysis = {
   points: AutoEqMeasurementPoint[];
   readiness: AutoEqReadiness;
   summary: MultiPositionAutoEqSummary;
+  diagnostics: MultiPositionAutoEqDiagnostic[];
   issues: string[];
 };
 
@@ -100,17 +110,18 @@ export function aggregateMultiPositionAutoEq(samples:MultiPositionAutoEqSample[]
   const gate=assessMultiPositionAutoEq(samples);
   const empty=assessAutoEqReadiness([]);
   const emptySummary:MultiPositionAutoEqSummary={positionCount:samples.length,contributingBinCount:0,
-    suppressedVariableBinCount:0,medianSpatialSpreadDb:0,maximumSpatialSpreadDb:0,
+    suppressedVariableBinCount:0,insufficientCoverageBinCount:0,medianSpatialSpreadDb:0,maximumSpatialSpreadDb:0,
     minimumPositionCoverage:0,maximumAllowedSpreadDb:MAX_SPREAD_DB};
-  if(!gate.ready)return {ready:false,reason:gate.reason,issues:gate.issues,points:[],readiness:empty,summary:emptySummary};
+  if(!gate.ready)return {ready:false,reason:gate.reason,issues:gate.issues,points:[],readiness:empty,summary:emptySummary,diagnostics:[]};
 
   const prepared=samples.map(s=>({sample:s,points:usablePoints(s.result.points)}));
   const anchor=[...prepared].sort((a,b)=>b.points.length-a.points.length)[0];
-  if(!anchor)return {ready:false,reason:"Không có dữ liệu tần số chung.",issues:["Thiếu điểm đo."],points:[],readiness:empty,summary:emptySummary};
+  if(!anchor)return {ready:false,reason:"Không có dữ liệu tần số chung.",issues:["Thiếu điểm đo."],points:[],readiness:empty,summary:emptySummary,diagnostics:[]};
   const minCount=Math.max(MIN_POSITIONS,Math.ceil(samples.length*MIN_COVERAGE));
   const output:AutoEqMeasurementPoint[]=[];
   const spreads:number[]=[];
-  let suppressed=0,minObserved=samples.length;
+  const diagnostics:MultiPositionAutoEqDiagnostic[]=[];
+  let suppressed=0,insufficientCoverage=0,minObserved=samples.length;
 
   for(const p of anchor.points){
     const values=prepared.flatMap(({sample,points})=>{
@@ -118,11 +129,20 @@ export function aggregateMultiPositionAutoEq(samples:MultiPositionAutoEqSample[]
       return v?[{...v,weight:sample.weight}]:[];
     });
     minObserved=Math.min(minObserved,values.length);
-    if(values.length<minCount)continue;
+    const coveragePercent=100*values.length/samples.length;
+    if(values.length<minCount){
+      insufficientCoverage++;
+      diagnostics.push({frequencyHz:p.frequencyHz,coverageCount:values.length,coveragePercent,spreadDb:null,status:"insufficient-coverage"});
+      continue;
+    }
     const levels=values.map(v=>v.magnitudeDb);
     const spread=Math.max(...levels)-Math.min(...levels);
     if(!Number.isFinite(spread))continue;
-    if(spread>MAX_SPREAD_DB){suppressed++;continue;}
+    if(spread>MAX_SPREAD_DB){
+      suppressed++;
+      diagnostics.push({frequencyHz:p.frequencyHz,coverageCount:values.length,coveragePercent,spreadDb:spread,status:"spatial-variance"});
+      continue;
+    }
     const center=median(levels);
     let sum=0,coherence=0,totalWeight=0;
     for(const v of values){
@@ -132,15 +152,17 @@ export function aggregateMultiPositionAutoEq(samples:MultiPositionAutoEqSample[]
     if(totalWeight<=0)continue;
     output.push({frequencyHz:p.frequencyHz,magnitudeDb:sum/totalWeight,coherence:coherence/totalWeight});
     spreads.push(spread);
+    diagnostics.push({frequencyHz:p.frequencyHz,coverageCount:values.length,coveragePercent,spreadDb:spread,status:"included"});
   }
   const readiness=assessAutoEqReadiness(output);
   const summary:MultiPositionAutoEqSummary={positionCount:samples.length,contributingBinCount:output.length,
-    suppressedVariableBinCount:suppressed,medianSpatialSpreadDb:spreads.length?median(spreads):0,
+    suppressedVariableBinCount:suppressed,insufficientCoverageBinCount:insufficientCoverage,
+    medianSpatialSpreadDb:spreads.length?median(spreads):0,
     maximumSpatialSpreadDb:spreads.length?Math.max(...spreads):0,minimumPositionCoverage:minObserved,
     maximumAllowedSpreadDb:MAX_SPREAD_DB};
   const ready=readiness.ready;
   const reason=ready
     ? `Đã tổng hợp ${samples.length} vị trí, ${output.length} bin; loại ${suppressed} bin có biến thiên không gian trên ${MAX_SPREAD_DB} dB.`
     : `Đáp tuyến tổng hợp chưa đủ điều kiện Auto EQ: ${readiness.reason}`;
-  return {ready,reason,issues:ready?[]:[reason],points:output,readiness,summary};
+  return {ready,reason,issues:ready?[]:[reason],points:output,readiness,summary,diagnostics};
 }

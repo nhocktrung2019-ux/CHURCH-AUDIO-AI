@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.27.0-beta.1 — Spatial consistency diagnostics
+
+- Add per-frequency multi-position diagnostics with position coverage, spatial spread and an explicit included / insufficient-coverage / spatial-variance status.
+- Surface the highest-variance and under-covered bins in the Auto EQ workspace instead of only reporting a total rejected-bin count.
+- Add insufficient-coverage and spatial-variance counts to the summary and exported PEQ worksheet.
+- Preserve the existing safeguards: minimum three positions, clean AudioWorklet mono captures, unchanged signal-chain confirmation, high coherence, and cut-only PEQ. No automatic DSP writes.
+
+**Validation status:** regression tests and Android debug packaging await CI. Real-room multi-position validation is still required.
+
+
 ## 0.26.0-beta.1 — Multi-position weighted Auto EQ
 
 - Save up to eight named church listening positions with operator weights from 0.5 to 2.0; at least three positions are required.

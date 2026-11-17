@@ -40,3 +40,22 @@ test("requires operator confirmation of unchanged signal chain",()=>{
  const a=assessMultiPositionAutoEq([sample("A"),sample("B"),{...sample("C"),sameChainConfirmed:false}]);
  assert.equal(a.ready,false);assert.ok(a.issues.some(x=>x.includes("chưa xác nhận giữ nguyên")));
 });
+
+
+test("reports frequency bins suppressed by spatial variation",()=>{
+ const result=aggregateMultiPositionAutoEq([sample("A",0),sample("B",1),sample("C",15)]);
+ const rejected=result.diagnostics.filter(d=>d.status==="spatial-variance");
+ assert.ok(rejected.length>0);
+ assert.ok(rejected.every(d=>d.spreadDb!==null&&d.spreadDb>8));
+ assert.equal(result.summary.suppressedVariableBinCount,rejected.length);
+});
+
+test("reports bins that do not meet the minimum position coverage",()=>{
+ const reduced=sample("C");
+ reduced.result.points=reduced.result.points.filter(p=>p.frequencyHz<700||p.frequencyHz>1400);
+ const result=aggregateMultiPositionAutoEq([sample("A"),sample("B"),reduced]);
+ const missing=result.diagnostics.filter(d=>d.status==="insufficient-coverage");
+ assert.ok(missing.length>0);
+ assert.ok(missing.every(d=>d.coverageCount<3&&d.spreadDb===null));
+ assert.equal(result.summary.insufficientCoverageBinCount,missing.length);
+});

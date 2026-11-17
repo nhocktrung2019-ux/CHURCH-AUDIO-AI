@@ -536,6 +536,7 @@ export default function TransferFunctionPanel({ selectedInput, selectedOutput, r
       source:"multi-position-aggregate",
       positions:multiPositionSamples.map(s=>({id:s.id,label:s.label,weight:s.weight,savedAt:s.savedAt,sampleRate:s.result.sampleRate})),
       spatialSummary:multiPositionAnalysis.summary,
+      spatialDiagnostics:multiPositionAnalysis.diagnostics.filter(d=>d.status!=="included").slice(0,100),
     }:null;
     const payload = {
       format: "Church Audio Parametric EQ Suggestion",
@@ -701,8 +702,19 @@ export default function TransferFunctionPanel({ selectedInput, selectedOutput, r
           <article><small>BIN ĐƯỢC DÙNG</small><b>{multiPositionAnalysis.summary.contributingBinCount}</b></article>
           <article><small>BIN ĐÃ LOẠI</small><b>{multiPositionAnalysis.summary.suppressedVariableBinCount}</b></article>
           <article><small>SPREAD TRUNG VỊ</small><b>{multiPositionAnalysis.summary.medianSpatialSpreadDb.toFixed(1)} dB</b></article>
-          <article><small>SPREAD TỐI ĐA</small><b>{multiPositionAnalysis.summary.maximumSpatialSpreadDb.toFixed(1)} dB</b></article>
+          <article><small>BIN BIẾN THIÊN</small><b>{multiPositionAnalysis.summary.suppressedVariableBinCount}</b></article>
+          <article><small>BIN THIẾU PHỦ</small><b>{multiPositionAnalysis.summary.insufficientCoverageBinCount}</b></article>
           <p>{multiPositionAnalysis.reason}</p>
+          {multiPositionAnalysis.diagnostics.some(d=>d.status!=="included")&&<div className="table-wrap">
+            <table><thead><tr><th>Tần số</th><th>Phủ vị trí</th><th>Spread</th><th>Đánh giá</th></tr></thead>
+              <tbody>{multiPositionAnalysis.diagnostics.filter(d=>d.status!=="included")
+                .sort((a,b)=>(b.spreadDb??-1)-(a.spreadDb??-1)).slice(0,12).map(d=><tr key={d.frequencyHz}>
+                  <td>{d.frequencyHz.toFixed(0)} Hz</td><td>{d.coverageCount}/{multiPositionAnalysis.summary.positionCount}</td>
+                  <td>{d.spreadDb===null?"—":d.spreadDb.toFixed(1)+" dB"}</td>
+                  <td>{d.status==="spatial-variance"?"Biến thiên không gian":"Thiếu dữ liệu"}</td>
+                </tr>)}</tbody>
+            </table>
+          </div>}
         </div>}
         <div className="phase-ab-controls"><label>NGUỒN DỮ LIỆU AUTO EQ<select value={eqSource} onChange={event=>setEqSource(event.target.value as "single"|"multi-position")}>
           <option value="single">Phép đo đơn hiện tại</option><option value="multi-position">Tổng hợp đa vị trí ({multiPositionSamples.length})</option>
