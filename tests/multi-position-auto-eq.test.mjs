@@ -16,7 +16,6 @@ function sample(label,offset=0,weight=1,meta={}){
   ...meta,
  },repeatability:{passed:true,captureCount:3,includedBinCount:300,unstableBinCount:0,insufficientCoverageBinCount:0,medianSpreadDb:0.6,maximumSpreadDb:1,maximumAllowedSpreadDb:3}};
 }
-}
 test("requires at least three different listening positions",()=>{
  const check=assessMultiPositionAutoEq([sample("A"),sample("B")]);
  assert.equal(check.ready,false);assert.match(check.reason,/tối thiểu 3 vị trí/);
