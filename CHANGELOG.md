@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.23.0-beta.1 — Multicolour RTA, Vietnamese feedback warnings and expanded DSP catalogue
+
+- Add selectable RTA display sensitivity: High (-100 dBFS floor), Medium (-85 dBFS) and Low (-70 dBFS). These are display floors only; the captured PCM and underlying analysis values are unchanged.
+- Add selectable RTA update response: Fast (~30 updates/s), Medium (~20 updates/s) and Slow (~10 updates/s), with matching analyser smoothing. Values depend on the device display refresh rate.
+- Render 64-band RTA bars with a blue-to-red colour scale, peak emphasis, frequency/level tooltips and responsive controls that persist between sessions.
+- Expand the manual DSP/mixer catalogue to named Behringer, Midas, Yamaha, Soundcraft, dbx and db Acoustics model families. Add exact model selection to the configuration worksheet/export.
+- Remove the general voice-command assistant and speech recognition UI. Keep an operator-controlled Vietnamese spoken feedback warning for persistent, prominent narrow peaks; each frequency warning is rate-limited.
+- Keep all DSP/mixer profiles in manual/offline worksheet mode. No guessed network scan, direct mixer control, automatic EQ, gain, mute or routing writes are enabled.
+
+**Validation status:** code and regression tests are added, but this beta has not yet been verified on physical Android devices, calibrated microphones, external reference analysers, or the listed DSP/mixer hardware. RTA sensitivity does not calibrate microphone sensitivity or SPL.
+
 ## 0.22.0-beta.1 — Synchronous dual-channel Transfer Function
 
 - Add a dedicated synchronous loopback mode with Reference and Measurement input-channel selectors.
