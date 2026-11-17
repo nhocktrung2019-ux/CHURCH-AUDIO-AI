@@ -34,3 +34,10 @@ test("X32/M32 community protocol evidence is distinguished from manufacturer evi
   assert.equal(x32.evidenceGrade, "community-protocol-reference");
   assert.equal(ui.evidenceGrade, "manufacturer-documentation");
 });
+
+test("CD48 Ethernet profile evidence is attributed to user-supplied hardware images", () => {
+  const cd48 = getDspProfile("db-acoustics-cd48");
+  assert.equal(cd48.evidenceGrade, "user-supplied-image");
+  assert.match(cd48.transport, /RJ45 100M Ethernet/);
+  assert.match(cd48.transport, /192\\.168\\.20\\.20/);
+});
