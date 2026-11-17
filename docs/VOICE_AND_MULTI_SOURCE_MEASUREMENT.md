@@ -4,15 +4,15 @@
 
 The general voice-command assistant, Web Speech Recognition and typed voice-command fallback are not part of the current application workspace.
 
-The multi-source feedback monitor can optionally speak a Vietnamese warning using the device's speech-synthesis service. It is an operator notification only:
+The multi-source feedback monitor displays an optional Vietnamese on-screen warning. Speech recognition and speech synthesis are not included:
 - It monitors persistent narrow spectral peaks for each separately captured input.
 - A warning candidate requires at least 60% persistence and 5 dB prominence in the current detector.
 - Repeated announcements for the same source/frequency bucket are rate-limited to 30 seconds.
 - The warning names the input and approximate frequency, and tells the operator to lower the system level and inspect the microphone/monitor path.
-- Speech synthesis can be disabled with the in-app checkbox. When unavailable, the visual Vietnamese warning remains.
+- Visual warnings can be enabled or disabled with the in-app checkbox.
 - A narrow peak is not proof of an acoustic feedback loop. The operator must confirm by listening and controlled channel isolation.
 
-No automatic mixer gain, mute, automix, ducker or hardware EQ action is triggered by a warning. Speech synthesis is not a control path and does not send commands to DSP or mixer devices.
+No automatic mixer gain, mute, automix, ducker or hardware EQ action is triggered by a warning. Visual warnings do not send commands to DSP or mixer devices.
 
 ## One measurement with multiple sources
 
