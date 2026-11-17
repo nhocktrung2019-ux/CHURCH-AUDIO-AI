@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { usePersistentState } from "./usePersistentState";
 import { Activity, Play, Square, AlertTriangle, Download, Waves } from "lucide-react";
 import { analyzeTransfer, makeReferenceNoise, measurePcmCaptureQuality, type TransferResult } from "./transfer";
-import { countPcmFrameDiscontinuity } from "./pcmCapture.ts";
+import { countPcmFrameDiscontinuity, validatePcmBlockMetadata } from "./pcmCapture.ts";
 import { assessAutoEqReadiness, suggestParametricEq } from "./autoEq";
 import { comparePhaseInBand } from "./phaseAlignment";
 import { explainMicrophoneError, requestMicrophoneStream } from "./microphone";
@@ -61,6 +61,10 @@ export default function TransferFunctionPanel({ selectedInput, running, calibrat
       let previousBlockPlaybackTime: number | null = null;
       let previousFrameEnd: number | null = null;
       let missedBlocks = 0;
+      let metadataError = "";
+      let stableChannelCount: number | null = null;
+      let workletStopped = false;
+      let resolveWorkletStopped: (() => void) | null = null;
       let captureEngine: "AudioWorklet" | "ScriptProcessor fallback" = "AudioWorklet";
       microphoneSource = audio.createMediaStreamSource(stream);
 
@@ -71,19 +75,44 @@ export default function TransferFunctionPanel({ selectedInput, running, calibrat
             numberOfInputs: 1, numberOfOutputs: 1, outputChannelCount: [1],
             channelCountMode: "max", channelInterpretation: "speakers",
           });
-          workletNode.port.onmessage = (event: MessageEvent<{ pcm: ArrayBuffer; frameStart: number; channelCount: number }>) => {
-            const { pcm, frameStart } = event.data;
-            if (!(pcm instanceof ArrayBuffer) || !Number.isInteger(frameStart)) {
+          workletNode.port.onmessage = (event: MessageEvent<{ type?: string; pcm?: ArrayBuffer; frameStart?: number; channelCount?: number; sampleRate?: number; reason?: string }>) => {
+            const message = event.data;
+            if (message?.type === "stopped") {
+              workletStopped = true;
+              resolveWorkletStopped?.();
+              return;
+            }
+            if (message?.type === "capture-error") {
+              metadataError = message.reason || "AudioWorklet capture error.";
+              return;
+            }
+            if (message?.type !== "pcm" || !(message.pcm instanceof ArrayBuffer)
+              || !Number.isSafeInteger(message.frameStart) || !Number.isInteger(message.channelCount)
+              || !Number.isFinite(message.sampleRate)) {
+              metadataError = "AudioWorklet gửi metadata PCM không hợp lệ.";
               missedBlocks++;
               return;
             }
-            if (previousFrameEnd !== null && frameStart !== previousFrameEnd) {
-              missedBlocks += countPcmFrameDiscontinuity(previousFrameEnd, frameStart, blockSize);
+            const validation = validatePcmBlockMetadata({
+              frameStart: message.frameStart!,
+              sampleRate: message.sampleRate!,
+              channelCount: message.channelCount!,
+              byteLength: message.pcm.byteLength,
+            }, audio!.sampleRate, stableChannelCount);
+            if (!validation.valid) {
+              metadataError = validation.reason;
+              missedBlocks++;
+              return;
             }
-            previousFrameEnd = frameStart + pcm.byteLength / Float32Array.BYTES_PER_ELEMENT;
-            if (firstBlockPlaybackTime === null) firstBlockPlaybackTime = frameStart / audio!.sampleRate;
-            blocks.push(new Float32Array(pcm));
+            stableChannelCount = validation.channelCount;
+            if (previousFrameEnd !== null && message.frameStart !== previousFrameEnd) {
+              missedBlocks += countPcmFrameDiscontinuity(previousFrameEnd, message.frameStart!, blockSize);
+            }
+            previousFrameEnd = message.frameStart! + message.pcm.byteLength / Float32Array.BYTES_PER_ELEMENT;
+            if (firstBlockPlaybackTime === null) firstBlockPlaybackTime = message.frameStart! / audio!.sampleRate;
+            blocks.push(new Float32Array(message.pcm));
           };
+          workletNode.onprocessorerror = () => { metadataError = "AudioWorklet processor gặp lỗi trong khi thu."; };
           microphoneSource.connect(workletNode);
           silentGain = audio.createGain();
           silentGain.gain.value = 0;
@@ -140,8 +169,16 @@ export default function TransferFunctionPanel({ selectedInput, running, calibrat
       source.start(playbackStartTime);
       await new Promise<void>(resolve => window.setTimeout(resolve, 5600));
       if (legacyProcessor) legacyProcessor.onaudioprocess = null;
-      if (workletNode) workletNode.port.postMessage({ command: "stop" });
+      if (workletNode) {
+        await new Promise<void>((resolve) => {
+          const timeout = window.setTimeout(resolve, 750);
+          resolveWorkletStopped = () => { window.clearTimeout(timeout); resolve(); };
+          workletNode.port.postMessage({ command: "stop" });
+        });
+        if (!workletStopped) throw new Error("AudioWorklet không xác nhận kết thúc và xả block PCM cuối. Hãy đo lại.");
+      }
 
+      if (metadataError) throw new Error(metadataError);
       if (!blocks.length || firstBlockPlaybackTime === null) {
         throw new Error("Không nhận được khung PCM từ microphone. Kiểm tra quyền, input và kết nối USB/OTG.");
       }
