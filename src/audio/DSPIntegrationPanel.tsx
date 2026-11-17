@@ -4,6 +4,7 @@ import { assessCD48NetworkConfig, type CD48HardwareRevision, type CD48NetworkLin
 import { Download, Network, ShieldCheck, ClipboardCheck, ExternalLink } from "lucide-react";
 import { dspProfiles } from "../data/dspProfiles";
 import CD48PresetEditor from "./CD48PresetEditor";
+import DSPDynamicsAdvisor from "./DSPDynamicsAdvisor";
 import { assessMeasurementReadiness, type MeasurementEvidence } from "./measurementReadiness";
 const initialEvidence: MeasurementEvidence = {
   knownInputChain: false, measurementMicCalibrated: false, acousticCalibratorVerified: false,
@@ -129,6 +130,7 @@ export default function DSPIntegrationPanel() {
       <button onClick={exportWorksheet}><Download /> Xuất phiếu cấu hình JSON</button>
       <p className="muted">Kỹ thuật viên phải kiểm tra đúng model, firmware, routing, limiter và mức đầu ra trước khi nhập thông số. Không áp dụng trực tiếp các giá trị đề xuất trong buổi lễ đang diễn ra.</p>
     </article>
+    <DSPDynamicsAdvisor />
     <article className="panel">
       <div className="heading"><ClipboardCheck /><h2>Measurement Readiness · Kiểm định chuỗi đo</h2><span>OPERATOR CHECKLIST</span></div>
       <p className="muted">Đánh dấu chỉ khi đã xác minh bằng thiết bị/thử nghiệm thực tế. Đây là checklist do kỹ thuật viên khai báo, không phải chức năng tự chứng nhận hay đo tự động.</p>
