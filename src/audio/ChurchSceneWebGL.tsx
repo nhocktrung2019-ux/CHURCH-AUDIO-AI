@@ -162,6 +162,7 @@ function createSpeakerGroup(speaker: WebGLSpeaker, index: number): THREE.Group {
   );
   sector.rotation.set(-Math.PI / 2, 0, 0);
   sector.position.y = -speaker.z - 0.025;
+  sector.userData.noDrag = true;
   group.add(sector);
 
   const halo = new THREE.Mesh(
@@ -170,6 +171,7 @@ function createSpeakerGroup(speaker: WebGLSpeaker, index: number): THREE.Group {
   );
   halo.rotation.x = Math.PI / 2;
   halo.position.y = -speaker.z + 0.03;
+  halo.userData.noDrag = true;
   group.add(halo);
   return group;
 }
@@ -353,7 +355,12 @@ export default function ChurchSceneWebGL(props: Props) {
       const rect = renderer.domElement.getBoundingClientRect();
       state.pointer.set((event.clientX - rect.left) / rect.width * 2 - 1, -((event.clientY - rect.top) / rect.height) * 2 + 1);
       state.raycaster.setFromCamera(state.pointer, camera);
-      const hit = state.raycaster.intersectObjects([...groups.values()], true)[0];
+      const hit = state.raycaster.intersectObjects([...groups.values()], true).find((candidate) => {
+        if (candidate.object.userData.noDrag) return false;
+        let root: THREE.Object3D | null = candidate.object;
+        while (root && !root.userData.kind) root = root.parent;
+        return root !== null;
+      });
       if (!hit) return;
       let node: THREE.Object3D | null = hit.object;
       while (node && !node.userData.kind) node = node.parent;
