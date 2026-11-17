@@ -679,7 +679,9 @@ export default function DeviceControlPanel() {
             </div>}
             <div className="protection-field">
               <label>GIÁ TRỊ MỚI · {writeMeta.unit}</label>
-              <input type="number" min={writeMeta.min} max={writeMeta.max} step={writeMeta.step || "any"} value={writeValue} onChange={event => { setWriteValue(event.target.value); setPreparedWrite(null); setWriteConfirm(false); }} />
+              {writeMeta.toggle ? <select value={writeValue} onChange={event => { setWriteValue(event.target.value); setPreparedWrite(null); setWriteConfirm(false); }}>
+                <option value="0">OFF · 0</option><option value="1">ON · 1</option>
+              </select> : <input type="number" min={writeMeta.min} max={writeMeta.max} step={writeMeta.step || "any"} value={writeValue} onChange={event => { setWriteValue(event.target.value); setPreparedWrite(null); setWriteConfirm(false); }} />}
               <small className="muted">Giới hạn cho phép: {writeMeta.min} → {writeMeta.max} {writeMeta.unit}</small>
             </div>
           </div>
