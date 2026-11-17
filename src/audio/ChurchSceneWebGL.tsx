@@ -160,7 +160,7 @@ function createSpeakerGroup(speaker: WebGLSpeaker, index: number): THREE.Group {
       side: THREE.DoubleSide, depthWrite: false,
     }),
   );
-  sector.rotation.set(-Math.PI / 2, 0, -THREE.MathUtils.degToRad(speaker.azimuth));
+  sector.rotation.set(-Math.PI / 2, 0, 0);
   sector.position.y = -speaker.z - 0.025;
   group.add(sector);
 
@@ -449,7 +449,7 @@ export default function ChurchSceneWebGL(props: Props) {
         state.scene.add(group);
         state.groups.set(key, group);
       }
-      if (state.drag?.id !== item.id || state.drag.kind !== "object") {
+      if (!state.drag || state.drag.id !== item.id || state.drag.kind !== "object") {
         group.position.set(item.x, 0, item.y);
         group.rotation.y = -item.rotation * Math.PI / 180;
       }
@@ -472,7 +472,7 @@ export default function ChurchSceneWebGL(props: Props) {
         state.scene.add(group);
         state.groups.set(key, group);
       }
-      if (state.drag?.id !== speaker.id || state.drag.kind !== "speaker") {
+      if (!state.drag || state.drag.id !== speaker.id || state.drag.kind !== "speaker") {
         group.position.set(speaker.x, speaker.z, speaker.y);
       }
       group.rotation.y = -THREE.MathUtils.degToRad(speaker.azimuth);
