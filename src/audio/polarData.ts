@@ -9,6 +9,7 @@ export type PolarPoint = {
 
 export type NormalizedPolarPoint = PolarPoint & {
   relativeDb: number;
+  onAxisLevelDb: number;
 };
 
 export type PolarBeamwidth = {
@@ -157,7 +158,7 @@ export function getPolarOnAxisLevel(points: PolarPoint[]): number | null {
 export function normalizePolarCurve(points: PolarPoint[]): NormalizedPolarPoint[] | null {
   const onAxisLevelDb = getPolarOnAxisLevel(points);
   if (onAxisLevelDb === null) return null;
-  return points.map(point => ({ ...point, relativeDb: point.levelDb - onAxisLevelDb }));
+  return points.map(point => ({ ...point, relativeDb: point.levelDb - onAxisLevelDb, onAxisLevelDb }));
 }
 
 function interpolateThreshold(
@@ -175,8 +176,7 @@ export function calculatePolarBeamwidth(
   thresholdDb = -6,
 ): PolarBeamwidth | null {
   if (!Array.isArray(points) || points.length < 3 || !Number.isFinite(thresholdDb) || thresholdDb >= 0) return null;
-  const zero = points.find(point => Math.abs(point.angleDeg) < 1e-9);
-  const axis = zero?.levelDb ?? points.reduce((sum, point) => sum + point.relativeDb, 0) / points.length;
+  const axis = points[0].onAxisLevelDb;
   const positive = points.filter(point => point.angleDeg >= 0).sort((a, b) => a.angleDeg - b.angleDeg);
   const negative = points.filter(point => point.angleDeg <= 0).sort((a, b) => b.angleDeg - a.angleDeg);
   const findEdge = (side: NormalizedPolarPoint[]): number | null => {
