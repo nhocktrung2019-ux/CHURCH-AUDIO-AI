@@ -24,9 +24,9 @@ export default function DSPIntegrationPanel() {
   const [delayMs, setDelayMs] = useState(0);
   const [notes, setNotes] = useState("");
   const [evidence, setEvidence] = useState<MeasurementEvidence>(initialEvidence);
-  const [cd48Revision, setCd48Revision] = usePersistentState<CD48HardwareRevision>("church-audio-cd48-hardware-revision", "unverified");
+  const [cd48Revision, setCd48Revision] = usePersistentState<CD48HardwareRevision>("church-audio-cd48-hardware-revision", "cd48-100m-rj45-observed");
   const [cd48Link, setCd48Link] = usePersistentState<CD48NetworkLink>("church-audio-cd48-network-link", "ethernet");
-  const [cd48DeviceIp, setCd48DeviceIp] = usePersistentState("church-audio-cd48-device-ip", "");
+  const [cd48DeviceIp, setCd48DeviceIp] = usePersistentState("church-audio-cd48-device-ip", "192.168.20.20");
   const [cd48ControllerIp, setCd48ControllerIp] = usePersistentState("church-audio-cd48-controller-ip", "");
   const [cd48SubnetPrefix, setCd48SubnetPrefix] = usePersistentState("church-audio-cd48-subnet-prefix", 24);
   const cd48Network = useMemo(() => assessCD48NetworkConfig({
@@ -85,14 +85,15 @@ export default function DSPIntegrationPanel() {
       <p className="device-notice">{profile.integrationNote}</p>
       {profile.id === "db-acoustics-cd48" && <article className="panel cd48-network-panel">
         <div className="heading"><Network /><h3>CD48 · Ethernet / Wi-Fi LAN</h3><span>NETWORK SETUP</span></div>
-        <p className="muted">Cấu hình mạng chỉ áp dụng khi đúng phiên bản CD48 có cổng RJ45. Xác minh tem model và mặt sau thiết bị trước khi chọn LAN.</p>
+        <p className="muted">Ảnh tham chiếu bạn gửi cho thấy RJ45 ghi 100M Ethernet và LCD hiển thị IP 192.168.20.20 / Ver 2215. IP được điền sẵn theo ảnh; hãy đối chiếu màn hình của thiết bị thực tế vì địa chỉ có thể đã được đổi.</p>
         <div className="form-grid">
           <div>
             <label htmlFor="cd48-hardware-revision">PHIÊN BẢN / CỔNG VẬT LÝ</label>
             <select id="cd48-hardware-revision" value={cd48Revision} onChange={(event) => setCd48Revision(event.target.value as CD48HardwareRevision)}>
-              <option value="unverified">Chưa xác minh mặt sau</option>
-              <option value="standard-usb-rs232">CD48 tiêu chuẩn · USB + RS232</option>
-              <option value="rj45-confirmed">Phiên bản có RJ45 · đã xác nhận trực tiếp</option>
+              <option value="cd48-100m-rj45-observed">CD48 theo ảnh gửi · RJ45 100M Ethernet · Ver 2215</option>
+              <option value="unverified">Chưa xác minh mặt sau thiết bị thực tế</option>
+              <option value="standard-usb-rs232">Phiên bản chỉ có USB + RS232</option>
+              <option value="rj45-confirmed">Phiên bản khác có RJ45 · đã xác nhận trực tiếp</option>
             </select>
           </div>
           <div>
@@ -102,7 +103,7 @@ export default function DSPIntegrationPanel() {
               <option value="wifi-lan">Wi-Fi LAN · Android qua Wi-Fi router</option>
             </select>
           </div>
-          <div><label htmlFor="cd48-device-ip">IP CỦA CD48</label><input id="cd48-device-ip" value={cd48DeviceIp} onChange={(event) => setCd48DeviceIp(event.target.value)} placeholder="Nhập IP đã đọc từ thiết bị/tài liệu" inputMode="decimal" /></div>
+          <div><label htmlFor="cd48-device-ip">IP CỦA CD48 · THEO ẢNH: 192.168.20.20</label><input id="cd48-device-ip" value={cd48DeviceIp} onChange={(event) => setCd48DeviceIp(event.target.value)} placeholder="Đọc IP trên màn hình LCD CD48" inputMode="decimal" /></div>
           <div><label htmlFor="cd48-controller-ip">IP ĐIỆN THOẠI / THIẾT BỊ ĐIỀU KHIỂN</label><input id="cd48-controller-ip" value={cd48ControllerIp} onChange={(event) => setCd48ControllerIp(event.target.value)} placeholder="Xem trong chi tiết Wi-Fi/LAN Android" inputMode="decimal" /></div>
           <div><label htmlFor="cd48-subnet-prefix">SUBNET PREFIX</label><select id="cd48-subnet-prefix" value={String(cd48SubnetPrefix)} onChange={(event) => setCd48SubnetPrefix(Number(event.target.value))}>
             {[24, 23, 22, 16, 25, 26, 27, 28, 29, 30].map((value) => <option key={value} value={value}>/{value}</option>)}
