@@ -28,6 +28,24 @@ This document separates implemented beta capabilities from hardware-dependent wo
 - Inspect clipping, SNR, decay range, curve fit and uncertainty at every measurement location.
 - Do not claim IEC 61672 or ISO 3382 compliance from a browser/phone measurement chain.
 
+### v0.17.0-beta.1 — Auto EQ and phase reliability
+
+**Implemented beta workspaces**
+- Transfer measurement captures raw Float32 PCM through the Web Audio graph instead of encoding microphone audio with MediaRecorder.
+- Capture metadata records peak/RMS, clipped-sample percentage and invalid-sample percentage; missed PCM blocks abort the measurement.
+- The known playback pre-roll is subtracted from the reported total path latency.
+- Auto EQ requires a minimum in-band sample count, coherent-bin coverage and a valid PCM capture with headroom.
+- PEQ suggestions are cut-only, limited to 4 dB per filter and six frequency-separated filters.
+- A/B phase comparison uses nearest-frequency pairing, coherence weighting and circular phase averaging.
+- A phase-slope delay estimator is available only with simultaneous capture, common hardware clock, per-channel calibration and characterized latency evidence.
+
+**Acceptance still required**
+- Compare raw PCM Transfer Function magnitude/phase/coherence against a reference analyzer and a known electrical/acoustic loopback.
+- Stress-test ScriptProcessor block continuity and scheduling on supported Android WebView versions; migrate to AudioWorklet/native PCM capture where supported and validated.
+- Confirm microphone/speaker routing and sample-rate stability across USB interfaces.
+- Do not treat sequential A/B phase-shape comparisons as arrival-time alignment. The current A/B captures are independently time-aligned.
+- The current single-microphone workflow does not provide absolute speaker delay or phase certification; a simultaneous dual-channel common-clock path is required.
+
 ## Stage 3 — Feedback monitoring and AI assistance
 
 **Implemented beta workspaces**
