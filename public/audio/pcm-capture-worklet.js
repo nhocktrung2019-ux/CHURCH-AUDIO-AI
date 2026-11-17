@@ -10,6 +10,7 @@ class ChurchPcmCaptureProcessor extends AudioWorkletProcessor {
     this.inputChannelCount = null;
     this.expectedNextFrame = null;
     this.hasReceivedInput = false;
+    this.blockSequence = 0;
     this.port.onmessage = (event) => {
       if (event.data && event.data.command === "stop" && !this.stopped) {
         this.flush();
@@ -30,6 +31,8 @@ class ChurchPcmCaptureProcessor extends AudioWorkletProcessor {
       pcmChannelCount: this.inputChannelCount,
       inputChannelCount: this.inputChannelCount,
       channelMix: "interleaved-preserved",
+      sampleFormat: "float32",
+      sequence: this.blockSequence++,
       sampleRate,
     }, [pcm.buffer]);
     this.writeOffset = 0;
@@ -60,6 +63,10 @@ class ChurchPcmCaptureProcessor extends AudioWorkletProcessor {
       this.fail("Inconsistent AudioWorklet input channel frame lengths.");
       return false;
     }
+    if (input.length > 32) {
+      this.fail("AudioWorklet input exposes more than 32 channels; refusing an unsupported PCM layout.");
+      return false;
+    }
     if (this.inputChannelCount !== null && input.length !== this.inputChannelCount) {
       this.fail("AudioWorklet input channel count changed during capture.");
       return false;
@@ -77,7 +84,12 @@ class ChurchPcmCaptureProcessor extends AudioWorkletProcessor {
     for (let i = 0; i < frameCount; i++) {
       if (this.writeFrameCount === 0) this.blockStartFrame = currentFrame + i;
       for (let channel = 0; channel < this.inputChannelCount; channel++) {
-        this.pending[this.writeOffset++] = input[channel][i];
+        const sample = input[channel][i];
+        if (!Number.isFinite(sample)) {
+          this.fail("AudioWorklet received a non-finite PCM sample.");
+          return false;
+        }
+        this.pending[this.writeOffset++] = sample;
       }
       this.writeFrameCount++;
       if (this.writeFrameCount === this.blockSize) this.flush();

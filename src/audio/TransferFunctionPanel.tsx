@@ -2,7 +2,8 @@ import { useMemo, useState } from "react";
 import { usePersistentState } from "./usePersistentState";
 import { Activity, Play, Square, AlertTriangle, Download, Waves } from "lucide-react";
 import { analyzeSynchronousTransfer, analyzeTransfer, makeReferenceNoise, measurePcmCaptureQuality, type TransferResult } from "./transfer";
-import { countPcmFrameDiscontinuity, deinterleaveInterleavedPcm, mixInterleavedPcmToMono, validatePcmBlockMetadata } from "./pcmCapture.ts";
+import { deinterleaveInterleavedPcm, mixInterleavedPcmToMono } from "./pcmCapture.ts";
+import { PcmCaptureIntegrityMonitor } from "./pcmCaptureIntegrity";
 import { assessAutoEqReadiness, suggestParametricEq } from "./autoEq";
 import { comparePhaseInBand } from "./phaseAlignment";
 import { explainMicrophoneError, requestMicrophoneStream } from "./microphone";
@@ -90,9 +91,9 @@ export default function TransferFunctionPanel({ selectedInput, selectedOutput, r
       const blocks: Float32Array[] = [];
       let firstBlockPlaybackTime: number | null = null;
       let previousBlockPlaybackTime: number | null = null;
-      let previousFrameEnd: number | null = null;
       let missedBlocks = 0;
       let metadataError = "";
+      const pcmIntegrity = new PcmCaptureIntegrityMonitor(audio.sampleRate);
       let stableInputChannelCount: number | null = null;
       let workletStopped = false;
       let resolveWorkletStopped: (() => void) | null = null;
@@ -106,7 +107,7 @@ export default function TransferFunctionPanel({ selectedInput, selectedOutput, r
             numberOfInputs: 1, numberOfOutputs: 1, outputChannelCount: [1],
             channelCountMode: "max", channelInterpretation: "discrete",
           });
-          workletNode.port.onmessage = (event: MessageEvent<{ type?: string; pcm?: ArrayBuffer; frameStart?: number; frameCount?: number; pcmChannelCount?: number; inputChannelCount?: number; channelMix?: string; sampleRate?: number; reason?: string }>) => {
+          workletNode.port.onmessage = (event: MessageEvent<{ type?: string; pcm?: ArrayBuffer; frameStart?: number; frameCount?: number; pcmChannelCount?: number; inputChannelCount?: number; channelMix?: string; sampleFormat?: string; sequence?: number; sampleRate?: number; reason?: string }>) => {
             const message = event.data;
             if (message?.type === "stopped") {
               workletStopped = true;
@@ -120,36 +121,31 @@ export default function TransferFunctionPanel({ selectedInput, selectedOutput, r
             if (message?.type !== "pcm" || !(message.pcm instanceof ArrayBuffer)
               || !Number.isSafeInteger(message.frameStart) || !Number.isSafeInteger(message.frameCount)
               || !Number.isInteger(message.pcmChannelCount) || !Number.isInteger(message.inputChannelCount)
-              || !Number.isFinite(message.sampleRate)) {
+              || !Number.isFinite(message.sampleRate)
+              || !Number.isSafeInteger(message.sequence)
+              || message.channelMix !== "interleaved-preserved"
+              || message.sampleFormat !== "float32") {
               metadataError = "AudioWorklet gửi metadata PCM không hợp lệ.";
               missedBlocks++;
               return;
             }
-            const validation = validatePcmBlockMetadata({
+            const pcm = new Float32Array(message.pcm);
+            const accepted = pcmIntegrity.accept({
               frameStart: message.frameStart!,
               frameCount: message.frameCount!,
               sampleRate: message.sampleRate!,
               pcmChannelCount: message.pcmChannelCount!,
               inputChannelCount: message.inputChannelCount!,
               byteLength: message.pcm.byteLength,
-            }, audio!.sampleRate, stableInputChannelCount, message.inputChannelCount!);
-            if (!validation.valid) {
-              metadataError = validation.reason;
+            }, pcm, message.sequence!, message.channelMix!, message.sampleFormat!);
+            if (!accepted.valid) {
+              metadataError = accepted.reason;
               missedBlocks++;
               return;
             }
-            if (message.pcmChannelCount !== message.inputChannelCount) {
-              metadataError = "AudioWorklet did not preserve every input channel in the PCM payload.";
-              missedBlocks++;
-              return;
-            }
-            stableInputChannelCount = validation.inputChannelCount;
-            if (previousFrameEnd !== null && message.frameStart !== previousFrameEnd) {
-              missedBlocks += countPcmFrameDiscontinuity(previousFrameEnd, message.frameStart!, blockSize);
-            }
-            previousFrameEnd = message.frameStart! + validation.frameCount;
+            stableInputChannelCount = pcmIntegrity.getSnapshot().channelCount;
             if (firstBlockPlaybackTime === null) firstBlockPlaybackTime = message.frameStart! / audio!.sampleRate;
-            blocks.push(new Float32Array(message.pcm));
+            blocks.push(pcm);
           };
           workletNode.onprocessorerror = () => { metadataError = "AudioWorklet processor gặp lỗi trong khi thu."; };
           microphoneSource.connect(workletNode);
@@ -240,6 +236,15 @@ export default function TransferFunctionPanel({ selectedInput, selectedOutput, r
       const rawPcmChannelCount = captureEngine === "AudioWorklet" ? (stableInputChannelCount ?? 1) : 1;
       if (totalSamples % rawPcmChannelCount !== 0) throw new Error("PCM đa kênh có số mẫu không chia hết theo số kênh.");
       const frameCount = totalSamples / rawPcmChannelCount;
+      const integritySnapshot = captureEngine === "AudioWorklet" ? pcmIntegrity.getSnapshot() : null;
+      if (captureEngine === "AudioWorklet" && (
+        !integritySnapshot
+        || integritySnapshot.blocksReceived !== blocks.length
+        || integritySnapshot.framesCaptured !== frameCount
+        || integritySnapshot.channelCount !== rawPcmChannelCount
+      )) {
+        throw new Error("PCM integrity totals do not match the assembled capture buffer. Measurement was rejected.");
+      }
       const trackSettings = stream.getAudioTracks()[0]?.getSettings() ?? {};
 
       if (capturePurpose === "channel-calibration") {
@@ -378,6 +383,8 @@ export default function TransferFunctionPanel({ selectedInput, selectedOutput, r
           referenceChannel,
           measurementChannel,
           clockBasis: "same-mediastream-audioworklet-frame-clock" as const,
+          hardwareClockStatus: "not-verified" as const,
+          pcmIntegrity: integritySnapshot,
           referenceCaptureQuality,
         };
         const deviceKey = typeof trackSettings.deviceId === "string" && trackSettings.deviceId
@@ -467,6 +474,7 @@ export default function TransferFunctionPanel({ selectedInput, selectedOutput, r
         trackChannelCount: Number.isInteger(trackSettings.channelCount) ? trackSettings.channelCount! : null,
         trackSampleRate: Number.isFinite(trackSettings.sampleRate) ? trackSettings.sampleRate! : null,
         analysisMode,
+        pcmIntegrity: integritySnapshot,
       };
       setResult({ ...measured, captureQuality, captureMetadata });
     } catch (cause) {
@@ -612,7 +620,8 @@ export default function TransferFunctionPanel({ selectedInput, selectedOutput, r
       </div>
       <p className="muted">Correlation { (result.confidence*100).toFixed(1) }% · {result.framesAveraged} Welch averages · {result.sampleRate.toLocaleString("vi-VN")} Hz · {result.points.length} bins</p>
       {result.captureQuality && <p className="muted">Analysis mono · raw PCM {result.captureMetadata?.pcmChannelCount ?? 1} ch · Peak {result.captureQuality.peakDbfs.toFixed(1)} dBFS · RMS {result.captureQuality.rmsDbfs.toFixed(1)} dBFS · clipping {result.captureQuality.clippedSamplePercent.toFixed(3)}%</p>}
-      {result.captureMetadata && <p className="muted">Capture {result.captureMetadata.captureEngine} · input {result.captureMetadata.inputChannelCount ?? "unknown"} ch → raw PCM {result.captureMetadata.pcmChannelCount} ch ({result.captureMetadata.channelMix}) · track {result.captureMetadata.trackChannelCount ?? "unknown"} ch / {result.captureMetadata.trackSampleRate?.toLocaleString("vi-VN") ?? "unknown"} Hz</p>}
+      {result.captureMetadata && <p className="muted">Capture {result.captureMetadata.captureEngine} · input {result.captureMetadata.inputChannelCount ?? "unknown"} ch → raw PCM {result.captureMetadata.pcmChannelCount} ch ({result.captureMetadata.channelMix}) · track {result.captureMetadata.trackChannelCount ?? "unknown"} ch / {result.captureMetadata.trackSampleRate?.toLocaleString("vi-VN") ?? "unknown"} Hz</p>
+      {result.captureMetadata.pcmIntegrity && <p className="muted">PCM integrity · {result.captureMetadata.pcmIntegrity.blocksReceived} blocks · {result.captureMetadata.pcmIntegrity.framesCaptured.toLocaleString("vi-VN")} frames · {result.captureMetadata.pcmIntegrity.durationSeconds.toFixed(2)} s · {result.captureMetadata.pcmIntegrity.channelStats.map(channel => "CH" + (channel.channelIndex + 1) + " peak " + (channel.peakDbfs === null ? "—" : channel.peakDbfs.toFixed(1)) + " dBFS / near-full-scale " + channel.nearFullScalePercent.toFixed(3) + "%").join(" · ")}</p>}}
       {result.captureMetadata?.analysisMode === "synchronous-dual-channel" && <p className="device-notice">Synchronous pair · Reference CH {Number(result.captureMetadata.referenceChannel) + 1} → Measurement CH {Number(result.captureMetadata.measurementChannel) + 1} · common AudioWorklet frame clock</p>}
       {result.captureMetadata?.referenceCaptureQuality && <p className="muted">Reference · peak {result.captureMetadata.referenceCaptureQuality.peakDbfs.toFixed(1)} dBFS · RMS {result.captureMetadata.referenceCaptureQuality.rmsDbfs.toFixed(1)} dBFS · Measurement · peak {result.captureQuality?.peakDbfs.toFixed(1)} dBFS · RMS {result.captureQuality?.rmsDbfs.toFixed(1)} dBFS</p>}
       <div className="response-chart"><span className="chart-label">RELATIVE MAGNITUDE · dB</span>{result.points.filter((_,i)=>i%2===0).map((point,index)=><i key={index} title={point.frequencyHz.toFixed(0)+" Hz · "+point.magnitudeDb.toFixed(1)+" dB · coh "+point.coherence.toFixed(2)} style={{height:Math.max(3,Math.min(100,(point.magnitudeDb+45)*1.5))+"%",opacity:point.coherence<.5?.28:1}} />)}</div>

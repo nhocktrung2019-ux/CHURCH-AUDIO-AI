@@ -53,7 +53,17 @@ The regression tests in this branch are authored but still require a successful 
 - For phase/transfer/delay, use a single multichannel hardware interface with verified common clock and preserved PCM channels. Independent Bluetooth/USB capture streams are not accepted as synchronous.
 
 
-## Increment 3 — verified multichannel capture foundation (next)
+## Increment 3 — PCM capture integrity foundation (software implemented; hardware validation pending)
+
+### Software foundation implemented in V4
+
+- AudioWorklet emits monotonically sequenced PCM blocks with explicit `Float32` format and a preserved interleaved channel-layout marker.
+- The capture path validates sequence order, frame continuity, sample rate, channel count, frame count and exact byte length before admitting a block to analysis.
+- Non-finite samples, channel-layout changes, missing/duplicated/reordered blocks and mismatched frame totals fail the capture closed.
+- Measurement metadata records frame count, block count, duration and per-channel peak/RMS/near-full-scale statistics. Near-full-scale is a digital-level warning, not proof of ADC clipping.
+- The same stream's AudioWorklet frame counter establishes application-level alignment only. It does not expose native ADC bit depth or prove the interface's physical clock implementation.
+
+### Native and physical acceptance still pending
 
 ### Scope
 - Add a hardware capability profile for one USB-OTG multichannel interface at a time.
@@ -74,6 +84,7 @@ The regression tests in this branch are authored but still require a successful 
 6. Acoustic delay validation is compared with a known-distance reference and documented uncertainty.
 7. Android devices / WebView versions and USB interfaces tested are listed explicitly.
 8. Full unit tests, Vite build, Android Gradle build and APK artifact are green before the feature is enabled by default.
+9. Native input format / ADC bit depth and physical shared-clock evidence are obtained from a supported Android capture layer or vendor documentation; Web Audio Float32 metadata must not be presented as native ADC format.
 
 ### Out of scope until protocol evidence exists
 - Claiming sample-accurate sync for independent Bluetooth and USB streams.
