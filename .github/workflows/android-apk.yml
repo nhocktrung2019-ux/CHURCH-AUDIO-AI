@@ -28,7 +28,7 @@ permissions:
 
 # Avoid stacking duplicate push + pull_request runs for the same feature branch.
 concurrency:
-  group: android-apk-${{ github.head_ref || github.ref }}
+  group: android-apk-${{ github.event.pull_request.head.ref || github.ref_name }}
   cancel-in-progress: true
 
 jobs:
