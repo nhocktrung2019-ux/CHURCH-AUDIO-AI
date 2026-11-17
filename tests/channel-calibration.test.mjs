@@ -2,7 +2,9 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   applyChannelCalibration,
+  applyDifferentialChannelCalibration,
   channelCalibrationStorageKey,
+  correctDifferentialLoopbackDelayMs,
   correctLoopbackDelayMs,
   deleteChannelCalibrationProfile,
   interpolateChannelCalibration,
@@ -126,4 +128,47 @@ test("ignores malformed or tampered persisted profiles", () => {
   storage.setItem(key, JSON.stringify({ ...profile, outputKey: "another-output" }));
   assert.equal(loadChannelCalibrationProfile(storage, target), null);
   assert.equal(saveChannelCalibrationProfile(storage, { ...profile, loopbackDelayMs: 999 }), false);
+});
+
+
+test("corrects synchronous Reference-to-Measurement transfer by channel calibration delta", () => {
+  const referenceProfile = { ...profile, inputChannel: 0, loopbackDelayMs: 1.25 };
+  const measurementProfile = {
+    ...profile,
+    inputChannel: 1,
+    loopbackDelayMs: 1.75,
+    points: [
+      { frequencyHz: 50, magnitudeDb: 3, phaseDeg: 15 },
+      { frequencyHz: 1000, magnitudeDb: 6, phaseDeg: 40 },
+      { frequencyHz: 10000, magnitudeDb: 8, phaseDeg: 50 },
+    ],
+  };
+  const corrected = applyDifferentialChannelCalibration([{
+    frequencyHz: 1000, magnitudeDb: 10, phaseDeg: 90, coherence: 0.97,
+  }], referenceProfile, measurementProfile);
+  assert.ok(corrected);
+  assert.equal(corrected[0].magnitudeDb, 8);
+  assert.equal(corrected[0].phaseDeg, 70);
+  assert.equal(corrected[0].coherence, 0.97);
+  assert.equal(correctDifferentialLoopbackDelayMs(5, referenceProfile, measurementProfile), 4.5);
+});
+
+test("rejects differential profiles from different interfaces or incomplete overlap", () => {
+  const referenceProfile = { ...profile, inputChannel: 0 };
+  const otherInterface = { ...profile, inputChannel: 1, deviceKey: "usb-interface-B" };
+  assert.equal(applyDifferentialChannelCalibration([
+    { frequencyHz: 1000, magnitudeDb: 1, phaseDeg: 0, coherence: 0.9 },
+  ], referenceProfile, otherInterface), null);
+  const narrowMeasurement = {
+    ...profile,
+    inputChannel: 1,
+    points: [
+      { frequencyHz: 1000, magnitudeDb: 0, phaseDeg: 0 },
+      { frequencyHz: 5000, magnitudeDb: 0, phaseDeg: 0 },
+      { frequencyHz: 10000, magnitudeDb: 0, phaseDeg: 0 },
+    ],
+  };
+  assert.equal(applyDifferentialChannelCalibration([
+    { frequencyHz: 500, magnitudeDb: 1, phaseDeg: 0, coherence: 0.9 },
+  ], referenceProfile, narrowMeasurement), null);
 });
