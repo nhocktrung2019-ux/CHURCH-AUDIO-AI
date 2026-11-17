@@ -5,9 +5,9 @@ type Target = "x32" | "m32" | "cd48" | "dbx" | "soundcraft";
 const targets: { id: Target; label: string; protocol: string; port: number; readiness: string; note: string }[] = [
   { id: "x32", label: "Behringer X32 family", protocol: "OSC over UDP", port: 10023, readiness: "Protocol profile available", note: "X32, Compact, Producer, Rack và Core dùng OSC. Mạng LAN; UDP port 10023." },
   { id: "m32", label: "Midas M32 family", protocol: "OSC over UDP", port: 10023, readiness: "Protocol profile available", note: "M32/M32R/M32C dùng cùng họ giao thức OSC với X32." },
-  { id: "cd48", label: "dBacoustics CD48", protocol: "Needs model protocol verification", port: 0, readiness: "Awaiting manufacturer protocol", note: "Chưa gửi lệnh điều khiển vì cần xác minh đúng phiên bản firmware, cổng kết nối và tài liệu protocol CD48." },
-  { id: "dbx", label: "dbx processor", protocol: "Model-specific", port: 0, readiness: "Select exact model", note: "DriveRack PA2, VENU360, 260 và ZonePRO có phần mềm/giao thức khác nhau; không dùng chung lệnh." },
-  { id: "soundcraft", label: "Soundcraft mixer", protocol: "Model-specific", port: 0, readiness: "Select exact model", note: "Ui, Si, Vi và dòng khác nhau có khả năng điều khiển khác nhau. Cần model cụ thể trước khi bật lệnh." },
+  { id: "cd48", label: "dBacoustics CD48", protocol: "USB / RS232 (command set pending)", port: 0, readiness: "Hardware interfaces identified; command protocol pending", note: "CD48 có USB điều khiển và RS232; DSP 4 In / 8 Out, PEQ, crossover, delay và 128 preset. Cần tài liệu lệnh/driver đúng phiên bản trước khi ghi tham số." },
+  { id: "dbx", label: "dbx processor", protocol: "Model-specific control app / protocol", port: 0, readiness: "Select exact model", note: "dbx có PA2, VENU360, DriveRack 260 và ZonePRO; hãng phát hành phần mềm điều khiển riêng theo model. Chưa giả định một giao thức chung." },
+  { id: "soundcraft", label: "Soundcraft mixer", protocol: "Ui web control / model-specific", port: 0, readiness: "Ui browser control documented; API integration pending", note: "Soundcraft Ui dùng web server tích hợp, điều khiển bằng trình duyệt qua Wi-Fi/LAN. Si/Vi và các dòng khác cần xác minh riêng." },
 ];
 
 export default function DeviceControlPanel() {
