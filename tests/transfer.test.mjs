@@ -27,8 +27,9 @@ test("PCM capture quality rejects empty data and accounts for invalid samples", 
 test("transfer delay subtracts the known playback pre-roll", () => {
   const sampleRate = 8000;
   const reference = makeReferenceNoise(sampleRate, 2.5);
-  const preRollSamples = 1600;
-  const pathDelaySamples = 80;
+  // Neither offset is aligned to the old 16/32-sample coarse search grid.
+  const preRollSamples = 1603;
+  const pathDelaySamples = 83;
   const recorded = new Float32Array(preRollSamples + pathDelaySamples + reference.length);
   recorded.set(reference, preRollSamples + pathDelaySamples);
 
@@ -40,7 +41,7 @@ test("transfer delay subtracts the known playback pre-roll", () => {
     preRollSamples / sampleRate,
   );
   assert.ok(result);
-  assert.ok(Math.abs(result.estimatedDelayMs - 10) < 1.5);
+  assert.ok(Math.abs(result.estimatedDelayMs - (pathDelaySamples / sampleRate * 1000)) < 1.5);
 });
 
 test("transfer analysis rejects an invalid pre-roll value", () => {
