@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { Activity, Mic2, ShieldCheck, Square, VolumeX, Radio, Brain, Volume2, MessageSquareText } from "lucide-react";
 import { detectNarrowPeaks } from "./feedback";
+import { assessMultiSourceInput, multiSourceSynchronizationWarning, type MultiSourceInputAssessment } from "./multiSourceDiagnostics";
 
 type InputDevice = { deviceId: string; label: string };
-type ChannelState = { id: string; label: string; history: number[][]; error?: string };
-type Session = { id: string; label: string; stream: MediaStream; analyser: AnalyserNode; data: Float32Array };
+type ChannelState = { id: string; label: string; history: number[][]; diagnostics: MultiSourceInputAssessment; trackState: "live" | "muted" | "ended" };
+type Session = { id: string; label: string; stream: MediaStream; track: MediaStreamTrack; diagnostics: MultiSourceInputAssessment; analyser: AnalyserNode; data: Float32Array };
 type SpeechResultEvent = { results: ArrayLike<ArrayLike<{ transcript: string }>> };
 type SpeechRecognitionLike = {
   lang: string;
@@ -90,8 +91,11 @@ export default function MultiMicFeedbackPanel() {
       try { s.stream.getTracks().forEach(t => t.stop()); } catch { /* device may already be closed */ }
     });
     sessionsRef.current = [];
-    void audioRef.current?.close();
+    const previousAudio = audioRef.current;
     audioRef.current = null;
+    if (previousAudio && previousAudio.state !== "closed") {
+      void previousAudio.close().catch(() => undefined);
+    }
     setRunning(false);
   };
 
@@ -122,6 +126,14 @@ export default function MultiMicFeedbackPanel() {
   };
 
   const start = async () => {
+    if (running || busy) {
+      speak("Phép đo đa nguồn đã hoạt động hoặc đang khởi tạo. Hãy dừng phiên hiện tại trước khi bắt đầu phiên mới.");
+      return;
+    }
+    // Stop speech recognition before opening measurement streams to avoid competing microphone capture.
+    recognitionRef.current?.stop();
+    recognitionRef.current = null;
+    setListening(false);
     if (!selected.length) {
       setError("Hãy chọn ít nhất một đầu vào micro.");
       speak("Bạn hãy chọn ít nhất một nguồn micro trước khi bắt đầu đo.");
@@ -130,17 +142,28 @@ export default function MultiMicFeedbackPanel() {
     setBusy(true);
     setError("");
     setNotice("");
-    const audio = new AudioContext();
-    audioRef.current = audio;
+    let audio: AudioContext | null = null;
     const opened: Session[] = [];
     const failed: string[] = [];
     try {
-      await audio.resume();
+      const audioWindow = window as Window & { webkitAudioContext?: typeof AudioContext };
+      const AudioContextClass = window.AudioContext || audioWindow.webkitAudioContext;
+      if (!AudioContextClass) {
+        throw new Error("Thiết bị không hỗ trợ Web Audio API. Hãy cập nhật Android System WebView/Chrome.");
+      }
+      audio = new AudioContextClass();
+      const activeAudio = audio;
+      audioRef.current = activeAudio;
+      await activeAudio.resume();
+      if (activeAudio.state !== "running") {
+        throw new Error("Audio engine chưa chạy. Kiểm tra chế độ tiết kiệm pin hoặc chạm Bắt đầu đo lần nữa.");
+      }
       for (const id of selected) {
         const device = devices.find(d => d.deviceId === id);
         if (!device) continue;
+        let stream: MediaStream | null = null;
         try {
-          const stream = await navigator.mediaDevices.getUserMedia({
+          stream = await navigator.mediaDevices.getUserMedia({
             audio: {
               deviceId: { exact: id },
               channelCount: { ideal: 1 },
@@ -150,31 +173,54 @@ export default function MultiMicFeedbackPanel() {
             },
             video: false
           });
-          const analyser = audio.createAnalyser();
+          const track = stream.getAudioTracks()[0];
+          if (!track || track.readyState !== "live") {
+            throw new Error("Thiết bị không trả về audio track đang hoạt động.");
+          }
+          const settings = track.getSettings?.() as (MediaTrackSettings & { latency?: number }) | undefined;
+          const diagnostics = assessMultiSourceInput({
+            requestedDeviceId: id,
+            actualDeviceId: settings?.deviceId,
+            trackState: track.muted ? "muted" : "live",
+            sampleRate: settings?.sampleRate,
+            channelCount: settings?.channelCount,
+            latencySeconds: settings?.latency,
+            echoCancellation: settings?.echoCancellation,
+            noiseSuppression: settings?.noiseSuppression,
+            autoGainControl: settings?.autoGainControl,
+          });
+          if (diagnostics.routeState === "mismatch") {
+            throw new Error("Android/WebView trả về input khác với thiết bị đã chọn; nguồn này bị loại để tránh đo nhầm.");
+          }
+          const analyser = activeAudio.createAnalyser();
           analyser.fftSize = 8192;
           analyser.smoothingTimeConstant = 0.35;
-          audio.createMediaStreamSource(stream).connect(analyser);
+          activeAudio.createMediaStreamSource(stream).connect(analyser);
           opened.push({
             id,
             label: device.label,
             stream,
+            track,
+            diagnostics,
             analyser,
             data: new Float32Array(analyser.frequencyBinCount)
           });
+          stream = null; // ownership moves to the session list
           historiesRef.current.set(id, []);
         } catch (e) {
+          stream?.getTracks().forEach(track => track.stop());
           failed.push(device.label + ": " + (e instanceof Error ? e.message : "không mở được"));
         }
       }
       if (!opened.length) throw new Error("Không mở được nguồn nào. Android/WebView hoặc driver có thể giới hạn luồng thu đồng thời.");
       sessionsRef.current = opened;
-      setChannels(opened.map(s => ({ id: s.id, label: s.label, history: [] })));
+      setChannels(opened.map(s => ({ id: s.id, label: s.label, history: [], diagnostics: s.diagnostics, trackState: s.track.muted ? ("muted" as const) : ("live" as const) })));
       setCombinedSpectrum([]);
       setRunning(true);
       setNotice(
         failed.length
-          ? "Đang đo " + opened.length + " nguồn; không mở được: " + failed.join(" · ")
-          : "Đang đo đồng thời " + opened.length + " nguồn trong cùng phiên. Mỗi nguồn vẫn có phổ riêng."
+          ? "Đang giám sát " + opened.length + " luồng input độc lập; không mở được: " + failed.join(" · ")
+          : multiSourceSynchronizationWarning(opened.length)
       );
       let lastTick = 0;
       const tick = (time: number) => {
@@ -182,10 +228,11 @@ export default function MultiMicFeedbackPanel() {
           lastTick = time;
           const next: ChannelState[] = sessionsRef.current.map(s => {
             s.analyser.getFloatFrequencyData(s.data);
-            const bands = toLogBands(s.data, audio.sampleRate);
+            const bands = toLogBands(s.data, activeAudio.sampleRate);
             const history = [...(historiesRef.current.get(s.id) ?? []), bands].slice(-24);
             historiesRef.current.set(s.id, history);
-            return { id: s.id, label: s.label, history };
+            const trackState = s.track.readyState === "ended" ? "ended" : s.track.muted ? "muted" : "live";
+            return { id: s.id, label: s.label, history, diagnostics: s.diagnostics, trackState };
           });
           setChannels(next);
 
@@ -205,8 +252,8 @@ export default function MultiMicFeedbackPanel() {
       speak("Bắt đầu đo thành công. Có " + opened.length + " nguồn âm thanh đang hoạt động.");
     } catch (e) {
       opened.forEach(s => s.stream.getTracks().forEach(t => t.stop()));
-      await audio.close().catch(() => undefined);
-      audioRef.current = null;
+      if (audio && audio.state !== "closed") await audio.close().catch(() => undefined);
+      if (audioRef.current === audio) audioRef.current = null;
       setError(e instanceof Error ? e.message : "Không thể khởi động giám sát.");
       speak("Không thể bắt đầu phép đo. Hãy kiểm tra quyền micro và thiết bị đầu vào.");
     } finally {
@@ -253,6 +300,10 @@ export default function MultiMicFeedbackPanel() {
   };
 
   const toggleListening = () => {
+    if (running || busy) {
+      speak("Hãy dừng phép đo trước khi bật nhận dạng giọng nói để tránh hai phiên cùng tranh quyền microphone.");
+      return;
+    }
     if (listening) {
       recognitionRef.current?.stop();
       setListening(false);
@@ -291,7 +342,7 @@ export default function MultiMicFeedbackPanel() {
 
   return <section className="panel multi-mic-panel" id="multi-mic">
     <div className="heading"><Activity /><h2>Multi-Source Measurement · Đo đa nguồn</h2><span>{running ? "LIVE SESSION" : "STANDBY"}</span></div>
-    <p className="muted">Chọn tối đa 4 đầu vào được hệ điều hành liệt kê riêng. Các nguồn được lấy mẫu trong cùng phiên đo, có RTA riêng và một phổ tổng hợp tham khảo.</p>
+    <p className="muted">Chọn tối đa 4 đầu vào được hệ điều hành liệt kê riêng. Ứng dụng mở từng input thành luồng độc lập, hiển thị RTA riêng và phổ tổng hợp tham khảo; không giả định các luồng dùng chung hardware clock hoặc lấy mẫu đồng bộ.</p>
 
     <section className="multi-source-assistant">
       <div className="heading"><Brain /><h3>AI Voice Assistant · Trợ lý giọng nói</h3><span>VIETNAMESE</span></div>
@@ -307,7 +358,7 @@ export default function MultiMicFeedbackPanel() {
         <button onClick={() => void executeCommand(voiceText)}><MessageSquareText />Gửi lệnh</button>
       </div>
       <div className="voice-assistant-status">{voiceStatus}</div>
-      <p className="warning">Nhận dạng giọng nói phụ thuộc WebView/trình duyệt và dịch vụ speech trên thiết bị. Phần trợ lý xử lý lệnh và tóm tắt tín hiệu tại máy, không gửi tín hiệu đo sang mô hình AI. Nhận dạng giọng nói có thể dùng dịch vụ speech do Android/WebView cấu hình.</p>
+      <p className="warning">Nhận dạng giọng nói phụ thuộc WebView/trình duyệt và dịch vụ speech trên thiết bị. Phần trợ lý xử lý lệnh và tóm tắt tín hiệu tại máy, không gửi tín hiệu đo sang mô hình AI. Nhận dạng giọng nói có thể dùng dịch vụ speech do Android/WebView cấu hình; chức năng nghe lệnh bị khóa khi phiên đo đang chạy.</p>
     </section>
 
     <div className="multi-mic-toolbar">
@@ -318,9 +369,9 @@ export default function MultiMicFeedbackPanel() {
     {notice && <p className="device-notice">{notice}</p>}{error && <p className="error">{error}</p>}
 
     {channels.length > 0 && <section className="multi-source-composite">
-      <div className="multi-mic-channel-head"><b><Activity /> Phổ tổng hợp · {channels.length} nguồn</b><span>POWER AVERAGE</span></div>
+      <div className="multi-mic-channel-head"><b><Activity /> Phổ xu hướng · {channels.length} nguồn</b><span>RELATIVE POWER VIEW</span></div>
       <div className="mini-spectrum composite-spectrum">{combinedSpectrum.map((v, i) => <i key={i} style={{ height: Math.max(3, Math.min(100, (v + 100) * 1.05)) + "%" }} />)}</div>
-      <p>Đây là trung bình công suất tuyến tính theo từng dải tần, không phải cộng dB trực tiếp. Phổ tổng hợp chỉ dùng xem xu hướng chung; không đại diện phép cộng pha, không phải SPL đã hiệu chuẩn.</p>
+      <p>Đây là trung bình công suất tuyến tính theo từng dải tần, không phải cộng dB trực tiếp. Phổ xu hướng chỉ dùng tham khảo tổng quan giữa các input; chênh lệch độ nhạy, gain và latency từng micro có thể làm thay đổi kết quả. Không đại diện phép cộng pha và không phải SPL đã hiệu chuẩn.</p>
     </section>}
 
     {channels.map(channel => {
@@ -328,7 +379,9 @@ export default function MultiMicFeedbackPanel() {
       const latest = channel.history[channel.history.length - 1] ?? [];
       const level = latest.length ? Math.max(...latest) : -100;
       return <article className="multi-mic-channel" key={channel.id}>
-        <div className="multi-mic-channel-head"><b><Mic2 /> {channel.label}</b><span>{level.toFixed(1)} dBFS</span></div>
+        <div className="multi-mic-channel-head"><b><Mic2 /> {channel.label}</b><span>{channel.trackState.toUpperCase()} · {level.toFixed(1)} dBFS</span></div>
+        <div className="permission-help"><b>{channel.diagnostics.routeState === "verified" ? "Đã xác nhận input" : channel.diagnostics.routeState === "mismatch" ? "Input không khớp" : "Chưa xác nhận chính xác input"}</b><span>{channel.diagnostics.summary}</span></div>
+        {channel.diagnostics.warnings.length > 0 && <p className="warning">{channel.diagnostics.warnings.join(" ")}</p>}
         <div className="mini-spectrum">{latest.map((v, i) => <i key={i} style={{ height: Math.max(3, Math.min(100, (v + 100) * 1.05)) + "%" }} />)}</div>
         {peaks.length ? <div className="feedback-alert"><VolumeX /><b>{peaks.length} đỉnh nghi vấn:</b><span>{peaks.slice(0, 3).map(p => p.frequencyHz + " Hz").join(" · ")}</span></div> : <div className="feedback-clear"><ShieldCheck /><span>Chưa phát hiện đỉnh hẹp ổn định theo ngưỡng.</span></div>}
         {peaks.length > 0 && <div className="table-wrap"><table><thead><tr><th>Hz</th><th>Prominence</th><th>Persistence</th><th>Notch gợi ý</th><th>Q</th></tr></thead><tbody>{peaks.slice(0, 4).map(p => <tr key={p.index}><td>{p.frequencyHz}</td><td>{p.prominenceDb.toFixed(1)} dB</td><td>{p.persistence}%</td><td>{p.recommendedCutDb.toFixed(1)} dB</td><td>{p.q.toFixed(1)}</td></tr>)}</tbody></table></div>}

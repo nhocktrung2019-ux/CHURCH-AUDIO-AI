@@ -180,7 +180,8 @@ test("differential calibration trims uncalibrated bins to the shared measured ba
     ...profile,
     inputChannel: 1,
     points: [
-      { frequencyHz: 1000, magnitudeDb: 3, phaseDeg: 10 },
+      { frequencyHz: 50, magnitudeDb: 2, phaseDeg: 5 },
+      { frequencyHz: 1000, magnitudeDb: 5, phaseDeg: 30 },
       { frequencyHz: 5000, magnitudeDb: 4, phaseDeg: 20 },
       { frequencyHz: 10000, magnitudeDb: 5, phaseDeg: 30 },
     ],

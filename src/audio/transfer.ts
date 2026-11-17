@@ -1,3 +1,4 @@
+import type { PcmCaptureIntegritySnapshot } from "./pcmCaptureIntegrity";
 import { micCorrectionAt, type MicCalibrationPoint } from "./micCalibration.ts";
 import { estimateSynchronousRelativeDelay } from "./dualChannel.ts";
 
@@ -21,6 +22,8 @@ export type TransferCaptureMetadata = {
   referenceChannel?: number;
   measurementChannel?: number;
   clockBasis?: "same-mediastream-audioworklet-frame-clock";
+  hardwareClockStatus?: "not-verified";
+  pcmIntegrity?: PcmCaptureIntegritySnapshot | null;
   referenceCaptureQuality?: PcmCaptureQuality;
 };
 
