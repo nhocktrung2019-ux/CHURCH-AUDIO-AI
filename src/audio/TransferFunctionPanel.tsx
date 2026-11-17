@@ -62,7 +62,7 @@ export default function TransferFunctionPanel({ selectedInput, running, calibrat
       let previousFrameEnd: number | null = null;
       let missedBlocks = 0;
       let metadataError = "";
-      let stableChannelCount: number | null = null;
+      let stableInputChannelCount: number | null = null;
       let workletStopped = false;
       let resolveWorkletStopped: (() => void) | null = null;
       let captureEngine: "AudioWorklet" | "ScriptProcessor fallback" = "AudioWorklet";
@@ -75,7 +75,7 @@ export default function TransferFunctionPanel({ selectedInput, running, calibrat
             numberOfInputs: 1, numberOfOutputs: 1, outputChannelCount: [1],
             channelCountMode: "max", channelInterpretation: "speakers",
           });
-          workletNode.port.onmessage = (event: MessageEvent<{ type?: string; pcm?: ArrayBuffer; frameStart?: number; channelCount?: number; sampleRate?: number; reason?: string }>) => {
+          workletNode.port.onmessage = (event: MessageEvent<{ type?: string; pcm?: ArrayBuffer; frameStart?: number; frameCount?: number; pcmChannelCount?: number; inputChannelCount?: number; channelMix?: string; sampleRate?: number; reason?: string }>) => {
             const message = event.data;
             if (message?.type === "stopped") {
               workletStopped = true;
@@ -87,7 +87,8 @@ export default function TransferFunctionPanel({ selectedInput, running, calibrat
               return;
             }
             if (message?.type !== "pcm" || !(message.pcm instanceof ArrayBuffer)
-              || !Number.isSafeInteger(message.frameStart) || !Number.isInteger(message.channelCount)
+              || !Number.isSafeInteger(message.frameStart) || !Number.isSafeInteger(message.frameCount)
+              || !Number.isInteger(message.pcmChannelCount) || !Number.isInteger(message.inputChannelCount)
               || !Number.isFinite(message.sampleRate)) {
               metadataError = "AudioWorklet gửi metadata PCM không hợp lệ.";
               missedBlocks++;
@@ -95,20 +96,22 @@ export default function TransferFunctionPanel({ selectedInput, running, calibrat
             }
             const validation = validatePcmBlockMetadata({
               frameStart: message.frameStart!,
+              frameCount: message.frameCount!,
               sampleRate: message.sampleRate!,
-              channelCount: message.channelCount!,
+              pcmChannelCount: message.pcmChannelCount!,
+              inputChannelCount: message.inputChannelCount!,
               byteLength: message.pcm.byteLength,
-            }, audio!.sampleRate, stableChannelCount);
+            }, audio!.sampleRate, stableInputChannelCount, 1);
             if (!validation.valid) {
               metadataError = validation.reason;
               missedBlocks++;
               return;
             }
-            stableChannelCount = validation.channelCount;
+            stableInputChannelCount = validation.inputChannelCount;
             if (previousFrameEnd !== null && message.frameStart !== previousFrameEnd) {
               missedBlocks += countPcmFrameDiscontinuity(previousFrameEnd, message.frameStart!, blockSize);
             }
-            previousFrameEnd = message.frameStart! + message.pcm.byteLength / Float32Array.BYTES_PER_ELEMENT;
+            previousFrameEnd = message.frameStart! + validation.frameCount;
             if (firstBlockPlaybackTime === null) firstBlockPlaybackTime = message.frameStart! / audio!.sampleRate;
             blocks.push(new Float32Array(message.pcm));
           };
@@ -148,6 +151,12 @@ export default function TransferFunctionPanel({ selectedInput, running, calibrat
           previousBlockPlaybackTime = playbackTime;
           const input = event.inputBuffer;
           if (!input.numberOfChannels) return;
+          if (stableInputChannelCount !== null && input.numberOfChannels !== stableInputChannelCount) {
+            metadataError = "ScriptProcessor input channel count changed during capture.";
+            missedBlocks++;
+            return;
+          }
+          stableInputChannelCount = input.numberOfChannels;
           const pcm = new Float32Array(input.length);
           for (let channel = 0; channel < input.numberOfChannels; channel++) {
             const samples = input.getChannelData(channel);
@@ -211,7 +220,16 @@ export default function TransferFunctionPanel({ selectedInput, running, calibrat
       } else {
         setNotice("Đã thu PCM bằng ScriptProcessor dự phòng; kết quả cần được kiểm tra lại bằng AudioWorklet trước khi dùng cho nghiệm thu." + fallbackWarning);
       }
-      setResult({ ...measured, captureQuality });
+      const trackSettings = stream.getAudioTracks()[0]?.getSettings() ?? {};
+      const captureMetadata = {
+        captureEngine,
+        inputChannelCount: stableInputChannelCount,
+        pcmChannelCount: 1 as const,
+        channelMix: (stableInputChannelCount ?? 1) > 1 ? "arithmetic-mean" as const : "direct-mono" as const,
+        trackChannelCount: Number.isInteger(trackSettings.channelCount) ? trackSettings.channelCount! : null,
+        trackSampleRate: Number.isFinite(trackSettings.sampleRate) ? trackSettings.sampleRate! : null,
+      };
+      setResult({ ...measured, captureQuality, captureMetadata });
     } catch (cause) {
       setError(explainMicrophoneError(cause));
     } finally {
@@ -278,7 +296,8 @@ export default function TransferFunctionPanel({ selectedInput, running, calibrat
         <article><small>COHERENT BINS · ≥0.80</small><strong>{result.reliableBandPercent.toFixed(0)} <small>%</small></strong></article>
       </div>
       <p className="muted">Correlation { (result.confidence*100).toFixed(1) }% · {result.framesAveraged} Welch averages · {result.sampleRate.toLocaleString("vi-VN")} Hz · {result.points.length} bins</p>
-      {result.captureQuality && <p className="muted">Raw PCM · Peak {result.captureQuality.peakDbfs.toFixed(1)} dBFS · RMS {result.captureQuality.rmsDbfs.toFixed(1)} dBFS · clipping {result.captureQuality.clippedSamplePercent.toFixed(3)}%</p>}
+      {result.captureQuality && <p className="muted">Raw PCM mono · Peak {result.captureQuality.peakDbfs.toFixed(1)} dBFS · RMS {result.captureQuality.rmsDbfs.toFixed(1)} dBFS · clipping {result.captureQuality.clippedSamplePercent.toFixed(3)}%</p>}
+      {result.captureMetadata && <p className="muted">Capture {result.captureMetadata.captureEngine} · input {result.captureMetadata.inputChannelCount ?? "unknown"} ch → PCM {result.captureMetadata.pcmChannelCount} ch ({result.captureMetadata.channelMix}) · track {result.captureMetadata.trackChannelCount ?? "unknown"} ch / {result.captureMetadata.trackSampleRate?.toLocaleString("vi-VN") ?? "unknown"} Hz</p>}
       <div className="response-chart"><span className="chart-label">RELATIVE MAGNITUDE · dB</span>{result.points.filter((_,i)=>i%2===0).map((point,index)=><i key={index} title={point.frequencyHz.toFixed(0)+" Hz · "+point.magnitudeDb.toFixed(1)+" dB · coh "+point.coherence.toFixed(2)} style={{height:Math.max(3,Math.min(100,(point.magnitudeDb+45)*1.5))+"%",opacity:point.coherence<.5?.28:1}} />)}</div>
       <div className="phase-panel"><div className="heading"><Waves /><h3>Time-aligned phase response</h3></div><svg viewBox="0 0 760 120" role="img" aria-label="Phase response"><path d="M10 12 H750 M10 56 H750 M10 100 H750" stroke="#354a55" strokeDasharray="4 4" fill="none"/><path d={phasePath} stroke="#e4b86f" strokeWidth="1.5" fill="none" vectorEffect="non-scaling-stroke"/></svg><div className="axis"><span>30 Hz</span><span>100 Hz</span><span>1 kHz</span><span>10 kHz</span><span>18 kHz</span></div></div>
       <div className="table-wrap"><table><thead><tr><th>Frequency</th><th>Magnitude</th><th>Phase aligned</th><th>Coherence</th></tr></thead><tbody>{result.points.filter((_,i)=>i%Math.max(1,Math.floor(result.points.length/16))===0).slice(0,16).map(point=><tr key={point.frequencyHz}><td>{point.frequencyHz.toFixed(0)} Hz</td><td>{point.magnitudeDb.toFixed(1)} dB</td><td>{point.phaseDeg.toFixed(0)}°</td><td><b className={point.coherence>=.8?"coherence-good":point.coherence>=.5?"coherence-mid":"coherence-low"}>{(point.coherence*100).toFixed(0)}%</b></td></tr>)}</tbody></table></div>
