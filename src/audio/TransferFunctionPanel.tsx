@@ -8,6 +8,7 @@ import { comparePhaseInBand } from "./phaseAlignment";
 import { explainMicrophoneError, requestMicrophoneStream } from "./microphone";
 import type { MicCalibrationPoint } from "./micCalibration";
 import {
+  assessChannelCalibrationRepeatability,
   applyDifferentialChannelCalibration,
   correctDifferentialLoopbackDelayMs,
   deleteChannelCalibrationProfile,
@@ -34,6 +35,7 @@ export default function TransferFunctionPanel({ selectedInput, selectedOutput, r
   );
   const [calibrationChannel, setCalibrationChannel] = usePersistentState("church-audio-calibration-channel", 0);
   const [lastCalibrationProfile, setLastCalibrationProfile] = useState<ChannelCalibrationProfile | null>(null);
+  const [pendingCalibrationProfile, setPendingCalibrationProfile] = useState<ChannelCalibrationProfile | null>(null);
   const eqReadiness = useMemo(() => {
     if (!result) return null;
     const base = assessAutoEqReadiness(result.points);
@@ -292,6 +294,33 @@ export default function TransferFunctionPanel({ selectedInput, selectedOutput, r
         };
         const validation = validateChannelCalibrationProfile(profile);
         if (!validation.valid) throw new Error("Hồ sơ loopback không đạt kiểm tra: " + validation.reason);
+        if (!pendingCalibrationProfile
+          || pendingCalibrationProfile.deviceKey !== profile.deviceKey
+          || pendingCalibrationProfile.inputChannel !== profile.inputChannel
+          || pendingCalibrationProfile.outputKey !== profile.outputKey
+          || pendingCalibrationProfile.sampleRate !== profile.sampleRate) {
+          setPendingCalibrationProfile(profile);
+          setNotice(
+            "Đã ghi nhận mẫu loopback lần 1 cho CH " + (calibrationChannel + 1)
+            + ". Chưa lưu hồ sơ chính thức. Giữ nguyên dây/gain/interface và chạy lại để kiểm tra độ lặp.",
+          );
+          return;
+        }
+
+        const repeatability = assessChannelCalibrationRepeatability(pendingCalibrationProfile, profile);
+        if (!repeatability?.stable) {
+          setPendingCalibrationProfile(profile);
+          throw new Error(
+            "Độ lặp loopback chưa đạt nên không lưu hồ sơ. "
+            + (repeatability
+              ? "Δ magnitude trung bình " + repeatability.meanMagnitudeDeltaDb.toFixed(2)
+                + " dB; Δ phase RMS " + repeatability.rmsPhaseDeltaDeg.toFixed(1)
+                + "°; Δ delay " + repeatability.delayDeltaMs.toFixed(3) + " ms. "
+              : "Không đủ điểm tần số chung để so sánh. ")
+            + "Mẫu hiện tại được dùng làm mốc mới; hãy đo lại và giữ nguyên route/gain.",
+          );
+        }
+
         let saved = false;
         try {
           saved = saveChannelCalibrationProfile(window.localStorage, profile);
@@ -299,11 +328,14 @@ export default function TransferFunctionPanel({ selectedInput, selectedOutput, r
           saved = false;
         }
         if (!saved) throw new Error("Không lưu được hồ sơ hiệu chuẩn vào bộ nhớ thiết bị. Kiểm tra dung lượng/quyền lưu trữ.");
+        setPendingCalibrationProfile(null);
         setLastCalibrationProfile(profile);
         setNotice(
-          "Đã lưu loopback profile cho input CH " + (calibrationChannel + 1)
-          + " · " + Math.round(audio.sampleRate).toLocaleString("vi-VN") + " Hz. "
-          + "Hãy chạy lại ít nhất một lần để kiểm tra độ lặp trước khi sử dụng căn phase/delay. Hồ sơ này chỉ hiệu chuẩn đường điện interface.",
+          "Đã lưu loopback profile sau 2 lần đo lặp đạt yêu cầu cho input CH " + (calibrationChannel + 1)
+          + ". Δmag " + repeatability.meanMagnitudeDeltaDb.toFixed(2)
+          + " dB · Δphase RMS " + repeatability.rmsPhaseDeltaDeg.toFixed(1)
+          + "° · Δdelay " + repeatability.delayDeltaMs.toFixed(3)
+          + " ms. Hồ sơ chỉ hiệu chuẩn đường điện interface.",
         );
         return;
       }
@@ -555,6 +587,11 @@ export default function TransferFunctionPanel({ selectedInput, selectedOutput, r
     </div>
     {capturePurpose === "channel-calibration" && <p className="warning">Hiệu chuẩn từng kênh: chọn INPUT và OUTPUT của cùng USB interface, nối LINE OUTPUT → LINE INPUT đang hiệu chuẩn qua pad/attenuator phù hợp; lặp lại cho từng CH. Tắt đường loa/ampli đến hệ thống PA trong lúc loopback. Tuyệt đối không nối ngõ công suất ampli/loa vào input. Cần AudioWorklet, thiết bị phải trả về đúng kênh PCM và không được tự fallback sang micro khác.</p>}
     {analysisMode === "synchronous-dual-channel" && capturePurpose !== "channel-calibration" && <p className="warning">Đấu nối: OUTPUT L của đúng USB interface → LINE INPUT CH Reference (nên dùng pad/attenuator); micro đo → CH Measurement. Chọn OUTPUT DEVICE của chính interface đó. Không đưa ngõ công suất ampli vào input. Không ghép USB và Bluetooth làm hai kênh reference/measurement.</p>}
+    {pendingCalibrationProfile && <div className="device-notice">
+      <b>Loopback capture đang chờ đo lặp · CH {pendingCalibrationProfile.inputChannel + 1}</b>
+      <span>{pendingCalibrationProfile.deviceKey} · output {pendingCalibrationProfile.outputKey} · {pendingCalibrationProfile.sampleRate.toLocaleString("vi-VN")} Hz</span>
+      <button className="secondary" onClick={() => setPendingCalibrationProfile(null)}>Hủy mẫu chờ</button>
+    </div>}
     {lastCalibrationProfile && <div className="device-notice">
       <b>Loopback profile đã lưu · CH {lastCalibrationProfile.inputChannel + 1}</b>
       <span>{lastCalibrationProfile.deviceKey} · output {lastCalibrationProfile.outputKey} · {lastCalibrationProfile.sampleRate.toLocaleString("vi-VN")} Hz · {lastCalibrationProfile.points.length} calibration points</span>
