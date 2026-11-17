@@ -611,11 +611,11 @@ export default function DeviceControlPanel() {
       <div className="protection-field"><label>HÃNG / MANUFACTURER</label><select value={manufacturer} onChange={event => chooseManufacturer(event.target.value as Manufacturer)}>{manufacturers.map(item => <option key={item} value={item}>{item}</option>)}</select></div>
       <div className="protection-field"><label>MODEL CỤ THỂ</label><select value={availableModels.some(item => item.id === deviceId) ? deviceId : availableModels[0]?.id ?? ""} onChange={event => chooseDevice(event.target.value)}>{availableModels.map(item => <option key={item.id} value={item.id}>{item.model}</option>)}</select></div>
       <div className="protection-field full"><label>MODEL / FIRMWARE KHÁC (TÙY CHỌN)</label><input value={customModel} onChange={event => setCustomModel(event.target.value)} placeholder="Nhập model hoặc firmware nếu không có trong danh sách" /></div>
-      <div className="protection-field"><label>ĐỊA CHỈ IP / HOST</label><input value={host} onChange={event => setHost(event.target.value)} placeholder="192.168.1.100" /></div>
-      <div className="protection-field"><label>PORT (NẾU CÓ)</label><input value={port} onChange={event => setPort(event.target.value)} inputMode="numeric" placeholder="10023" /></div>
+      <div className="protection-field"><label>ĐỊA CHỈ IP / HOST</label><input value={host} onChange={event => { setHost(event.target.value); setPreparedWrite(null); setWriteConfirm(false); }} placeholder="192.168.1.100" /></div>
+      <div className="protection-field"><label>PORT (NẾU CÓ)</label><input value={port} onChange={event => { setPort(event.target.value); setPreparedWrite(null); setWriteConfirm(false); }} inputMode="numeric" placeholder="10023" /></div>
       {isOsc && <>
-        <div className="protection-field"><label>NHÓM DỮ LIỆU</label><select value={scope} onChange={event => { setScope(event.target.value as MixerScope); setLiveMonitoring(false); }}><option value="channels">Input channels 01–32</option><option value="buses">Mix buses 01–16</option><option value="main">Main Stereo / Mono</option><option value="matrices">Matrix 01–06</option><option value="auxin">Aux inputs 01–08</option><option value="fxrtn">FX returns 01–08</option><option value="dca">DCA groups 01–08</option></select></div>
-        <div className="protection-field"><label>STRIP / CHANNEL DETAIL</label><select value={selectedStrip} onChange={event => { setSelectedStrip(event.target.value); setLiveMonitoring(false); }}>{Array.from({ length: stripOptions }, (_, index) => { const value = String(index + 1).padStart(2, "0"); return <option key={value} value={value}>{scope === "main" ? (index === 0 ? "Main Stereo" : "Main Mono") : value}</option>; })}</select></div>
+        <div className="protection-field"><label>NHÓM DỮ LIỆU</label><select value={scope} onChange={event => { setScope(event.target.value as MixerScope); setLiveMonitoring(false); setPreparedWrite(null); setWriteConfirm(false); }}><option value="channels">Input channels 01–32</option><option value="buses">Mix buses 01–16</option><option value="main">Main Stereo / Mono</option><option value="matrices">Matrix 01–06</option><option value="auxin">Aux inputs 01–08</option><option value="fxrtn">FX returns 01–08</option><option value="dca">DCA groups 01–08</option></select></div>
+        <div className="protection-field"><label>STRIP / CHANNEL DETAIL</label><select value={selectedStrip} onChange={event => { setSelectedStrip(event.target.value); setLiveMonitoring(false); setPreparedWrite(null); setWriteConfirm(false); }}>{Array.from({ length: stripOptions }, (_, index) => { const value = String(index + 1).padStart(2, "0"); return <option key={value} value={value}>{scope === "main" ? (index === 0 ? "Main Stereo" : "Main Mono") : value}</option>; })}</select></div>
       </>}
     </div>
     <div className={isOsc || selected.protocol === "ui-web" ? "device-protocol-status" : "device-protocol-status pending"}>
@@ -626,7 +626,7 @@ export default function DeviceControlPanel() {
       <div className="protection-subheading"><SlidersHorizontal /><b>CHỨC NĂNG / CAPABILITY PROFILE</b><span>MODEL-SPECIFIC</span></div>
       <div className="device-capability-list">{selected.capabilities.map(capability => <span key={capability}>{capability}</span>)}</div>
       {isOsc && <section className="osc-live-query">
-        <div className="protection-subheading"><Wifi /><b>X32 / M32 NETWORK MONITOR</b><span>READ ONLY</span></div>
+        <div className="protection-subheading"><Wifi /><b>X32 / M32 NETWORK MONITOR</b><span>READ + GUARDED</span></div>
         <div className="protection-actions">
           <button type="button" disabled={!nativeOscAvailable || queryBusy} onClick={() => void readConsoleInfo()}>Đọc model / firmware</button>
           <button type="button" disabled={!nativeOscAvailable || queryBusy} onClick={() => void readScope()}>Đọc toàn bộ {scopeLabels[scope]}</button>
@@ -641,6 +641,71 @@ export default function DeviceControlPanel() {
         {queryBusy && <p className="muted">Đang truy vấn… {queryProgress}</p>}
         {!queryBusy && queryProgress && <p className="muted">{queryProgress}</p>}
         {queryError && <p className="warning">{queryError}</p>}
+        {scope === "channels" && <section className="osc-guarded-write">
+          <div className="protection-subheading"><ShieldAlert /><b>GUARDED PARAMETER CONTROL</b><span>READ → CONFIRM → VERIFY</span></div>
+          <p className="muted">Chỉ ghi từng tham số input channel 01–32. Ứng dụng đọc trạng thái trước, native plugin đọc lại lần hai ngay trước khi gửi, rồi đọc lại sau khi gửi. EQ gain chỉ cho phép cắt; fader và preamp trim bị giới hạn ở mức không tăng gain.</p>
+          <div className="device-control-grid">
+            <div className="protection-field">
+              <label>THAM SỐ ĐIỀU KHIỂN</label>
+              <select value={writeParameter} onChange={event => {
+                const next = event.target.value;
+                setWriteParameter(next);
+                setPreparedWrite(null);
+                setWriteConfirm(false);
+                const nextMeta = getGuardedControlMeta(next);
+                setWriteValue(nextMeta.toggle ? "1" : next === "mix/fader" ? "-10" : next === "preamp/trim" ? "-3" : next === "eq/f" ? "1000" : next === "eq/g" ? "-3" : next === "eq/q" ? "1" : next === "delay/time" ? "1" : "1");
+              }}>
+                <option value="mix/fader">Fader level (dB)</option>
+                <option value="mix/on">Channel ON / OFF</option>
+                <option value="preamp/trim">Preamp trim (dB · digital input)</option>
+                <option value="preamp/invert">Polarity invert</option>
+                <option value="eq/on">EQ enable</option>
+                <option value="eq/f">EQ frequency (Hz)</option>
+                <option value="eq/g">EQ gain (cut only · dB)</option>
+                <option value="eq/q">EQ Q</option>
+                <option value="delay/on">Delay enable</option>
+                <option value="delay/time">Delay time (ms)</option>
+              </select>
+            </div>
+            {writeParameter.startsWith("eq/") && writeParameter !== "eq/on" && <div className="protection-field">
+              <label>EQ BAND</label>
+              <select value={writeBand} onChange={event => { setWriteBand(event.target.value); setPreparedWrite(null); setWriteConfirm(false); }}>
+                <option value="1">Band 1</option><option value="2">Band 2</option><option value="3">Band 3</option><option value="4">Band 4</option>
+              </select>
+            </div>}
+            <div className="protection-field">
+              <label>GIÁ TRỊ MỚI · {writeMeta.unit}</label>
+              <input type="number" min={writeMeta.min} max={writeMeta.max} step={writeMeta.step || "any"} value={writeValue} onChange={event => { setWriteValue(event.target.value); setPreparedWrite(null); setWriteConfirm(false); }} />
+              <small className="muted">Giới hạn cho phép: {writeMeta.min} → {writeMeta.max} {writeMeta.unit}</small>
+            </div>
+          </div>
+          <div className="protection-actions">
+            <button type="button" disabled={!nativeOscAvailable || writeBusy || queryBusy || liveMonitoring} onClick={() => void prepareGuardedWrite()}>1. Đọc hiện trạng & chuẩn bị</button>
+          </div>
+          {preparedWrite && <div className="osc-write-preview">
+            <b>{preparedWrite.label} · CH{selectedStrip}</b>
+            <div><span>Đang có</span><strong>{preparedWrite.currentLabel}</strong></div>
+            <div><span>Yêu cầu mới</span><strong>{preparedWrite.desiredValue} {writeMeta.unit}</strong></div>
+            <code>{preparedWrite.address}</code>
+            <label className="device-mute-toggle">
+              <input type="checkbox" checked={writeConfirm} onChange={event => setWriteConfirm(event.target.checked)} />
+              <span>Tôi đã kiểm tra đúng mixer, đúng channel và xác nhận thay đổi tham số trực tiếp trên hệ thống âm thanh.</span>
+            </label>
+            <button type="button" disabled={!writeConfirm || writeBusy || queryBusy || liveMonitoring} onClick={() => void confirmGuardedWrite()}>2. Xác nhận ghi & đọc lại kiểm tra</button>
+          </div>}
+          {lastGuardedWrite && <div className="osc-write-preview">
+            <b>Thao tác đã xác minh gần nhất</b>
+            <div><span>Tham số</span><strong>{lastGuardedWrite.address}</strong></div>
+            <div><span>Giá trị trước</span><strong>{formatControlRaw(lastGuardedWrite.parameter, lastGuardedWrite.beforeRawValue)}</strong></div>
+            <div><span>Giá trị sau</span><strong>{formatControlRaw(lastGuardedWrite.parameter, lastGuardedWrite.afterRawValue)}</strong></div>
+            <button type="button" className="secondary" disabled={writeBusy || queryBusy || liveMonitoring} onClick={() => void restoreGuardedWrite()}>Khôi phục giá trị trước · xác nhận riêng</button>
+          </div>}
+          {writeBusy && <p className="muted">Đang đọc/ghi và xác minh tham số…</p>}
+          {writeMessage && <p className={writeMessage.includes("thành công") || writeMessage.includes("Đã ghi và đọc lại") || writeMessage.includes("Đã khôi phục") ? "success-note" : "warning"}>{writeMessage}</p>}
+          {!nativeOscAvailable && <p className="warning">Chức năng ghi có bảo vệ chỉ khả dụng trên APK Android có native OSC bridge.</p>}
+          {liveMonitoring && <p className="warning">Hãy dừng Live Monitor trước khi chuẩn bị hoặc ghi tham số để tránh truy vấn đồng thời.</p>}
+          <p className="warning">Cảnh báo: thao tác có thể thay đổi âm thanh đang phát. Bắt đầu ở mức âm lượng thấp, kiểm tra loa/amp và không thay đổi khi đang phục vụ chương trình. Preamp trim chỉ có tác dụng với nguồn digital theo tài liệu giao thức.</p>
+        </section>}
         {tableScopeRows.length > 0 && <div className="table-wrap mixer-state-table">
           <table>
             <thead><tr><th>STRIP</th><th>TÊN</th><th>FADER*</th><th>ON</th><th>PAN</th><th>PREAMP</th><th>EQ</th><th>DYN</th></tr></thead>
@@ -655,7 +720,7 @@ export default function DeviceControlPanel() {
               <td>{row.values.dyn === undefined ? "—" : Number(row.values.dyn) === 1 ? "ON" : "OFF"}</td>
             </tr>)}</tbody>
           </table>
-          <small className="muted">* Fader là giá trị OSC chuẩn hóa 0.000–1.000, chưa đổi sang dB.</small>
+          <small className="muted">* Fader hiển thị giá trị OSC chuẩn hóa 0.000–1.000; xem chi tiết để đối chiếu thang dB.</small>
         </div>}
         {queryResults.length > 0 && <details className="rta-frequency-bookmarks">
           <summary>Dữ liệu OSC nhận được · {queryResults.length} tham số</summary>
@@ -673,10 +738,10 @@ export default function DeviceControlPanel() {
             <button type="button" className="icon-button" aria-label="Xuất snapshot" onClick={() => exportSnapshot(snapshot)}><Download /></button>
           </div>)}
         </details>}
-        <p className="muted">Đọc trạng thái và Live Monitor hiện chỉ gửi OSC truy vấn không có giá trị. Snapshot lưu dữ liệu đã đọc để so sánh/đối chiếu; chưa tự ghi trả lại mixer.</p>
+        <p className="muted">Đọc trạng thái và Live Monitor chỉ gửi truy vấn. Thay đổi tham số chỉ thực hiện qua mục Guarded Parameter Control sau xác nhận riêng, đọc lại trước/sau và không tự động chạy theo phép đo.</p>
       </section>}
       {isOsc && <section className="osc-preview">
-        <div className="protection-subheading"><SlidersHorizontal /><b>OSC READ PATH PREVIEW</b><span>NO WRITE</span></div>
+        <div className="protection-subheading"><SlidersHorizontal /><b>OSC READ PATH REFERENCE</b><span>NO AUTO-WRITE</span></div>
         {osc.map(item => <div className="osc-line" key={item.action}><div><b>{item.action}</b><code>{item.address}</code><small>{item.value}</small></div><button type="button" className="icon-button" aria-label="Copy OSC address" onClick={() => void navigator.clipboard.writeText(item.address).catch(() => undefined)}><Copy /></button></div>)}
         <a className="device-doc-link" href="https://www.z80ne.com/behringer/docs/X32-OSC%20v.4.0.pdf" target="_blank" rel="noreferrer">X32/M32 OSC protocol reference <ExternalLink /></a>
       </section>}
@@ -685,6 +750,6 @@ export default function DeviceControlPanel() {
       <a className="device-doc-link" href={selected.docs} target="_blank" rel="noreferrer">Tài liệu / hỗ trợ chính hãng hoặc nguồn thông số model <ExternalLink /></a>
     </section>
     <div className="protection-actions"><button type="button" onClick={exportConfig}><Download /> Xuất hồ sơ model JSON</button></div>
-    <p className="warning protection-warning"><ShieldAlert /> X32/M32 hiện chỉ hỗ trợ đọc trạng thái. Ứng dụng chưa gửi lệnh thay đổi gain, mute, fader, EQ hoặc routing. Mọi chức năng ghi sẽ yêu cầu đọc giá trị hiện tại, so sánh giá trị trước/sau và xác nhận riêng.</p>
+    <p className="warning protection-warning"><ShieldAlert /> X32/M32 hỗ trợ đọc trạng thái và một tập lệnh ghi có bảo vệ cho input channels. Các lệnh ghi bị giới hạn theo dải an toàn, yêu cầu xác nhận riêng và xác minh sau khi gửi; bus/main/routing/scene vẫn chưa cho phép ghi.</p>
   </article>;
 }
