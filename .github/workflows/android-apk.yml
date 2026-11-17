@@ -11,6 +11,8 @@ on:
       - "package.json"
       - "capacitor.config.ts"
       - "docs/**"
+      - "native/**"
+      - "scripts/**"
       - ".github/workflows/**"
   push:
     branches: [main]
@@ -20,6 +22,8 @@ on:
       - "index.html"
       - "package.json"
       - "capacitor.config.ts"
+      - "native/**"
+      - "scripts/**"
       - ".github/workflows/android-apk.yml"
 
 permissions:
