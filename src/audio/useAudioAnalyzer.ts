@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { micCorrectionAt, type MicCalibrationPoint } from "./micCalibration";
+import { getRtaSpeedConfig, type RtaSpeed } from "./rtaSettings";
 import { createLeqIntegrationState, getLeqLevels, integrateLeqSample } from "./leqIntegration";
 import {
   explainMicrophoneError,
@@ -71,7 +72,7 @@ function stopTracks(stream: MediaStream | null): void {
   stream?.getTracks().forEach((track) => track.stop());
 }
 
-export function useAudioAnalyzer(calibrationPoints: MicCalibrationPoint[] = []) {
+export function useAudioAnalyzer(calibrationPoints: MicCalibrationPoint[] = [], rtaSpeed: RtaSpeed = "medium") {
   const contextRef = useRef<AudioContext | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const sourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
@@ -315,13 +316,15 @@ export function useAudioAnalyzer(calibrationPoints: MicCalibrationPoint[] = []) 
   useEffect(() => {
     let frameId = 0;
     let frame = 0;
+    const speedConfig = getRtaSpeedConfig(rtaSpeed);
 
     if (running) {
       const tick = () => {
         const analyser = analyserRef.current;
         if (analyser) {
-          // 30 Hz is sufficient for a live spectrum and reduces Android WebView CPU use.
-          if (frame % 2 === 0) {
+          analyser.smoothingTimeConstant = speedConfig.smoothingTimeConstant;
+          // The fastest mode stays near 30 Hz; slower modes reduce Android WebView CPU load.
+          if (frame % speedConfig.frameDivisor === 0) {
             const data = new Float32Array(analyser.frequencyBinCount);
             analyser.getFloatFrequencyData(data);
 
@@ -419,7 +422,7 @@ export function useAudioAnalyzer(calibrationPoints: MicCalibrationPoint[] = []) 
             setSpectrum(bins);
             setLevel(Math.max(-100, Math.min(0, peakDbfs)));
             setRmsDbfs(Math.max(-100, Math.min(0, rmsLevelDbfs)));
-            if (frame % 6 === 0) {
+            if (frame % (speedConfig.frameDivisor * speedConfig.historyIntervalSamples) === 0) {
               setHistory((current) => [...current.slice(-39), bins]);
             }
           }
@@ -431,7 +434,7 @@ export function useAudioAnalyzer(calibrationPoints: MicCalibrationPoint[] = []) 
     }
 
     return () => cancelAnimationFrame(frameId);
-  }, [running, calibrationPoints]);
+  }, [running, calibrationPoints, rtaSpeed]);
 
   useEffect(() => {
     void refreshDevices();

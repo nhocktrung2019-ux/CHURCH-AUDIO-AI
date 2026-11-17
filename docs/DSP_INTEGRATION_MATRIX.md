@@ -97,3 +97,29 @@ INTEK's software index lists separate packages for CD48 v2, CD48RTS v2, legacy C
 https://intekvietnam.com/tong-hop-phan-mem-vang-so-dbacoustic-intek/
 
 Do not select a package based on the generic "CD48" name alone. Match the exact hardware label, front-panel firmware display, and vendor confirmation. The pictured device's LCD shows Ver 2215; this display alone does not prove which Windows package or wire protocol applies.
+
+
+## Expanded model catalogue — v0.24 development
+
+The in-app catalogue separates **Mixer** and **DSP / loudspeaker processor** and exposes a specific model selector. This is a commissioning worksheet, not a compatibility promise.
+
+| Family | Listed models | Evidence / limitation |
+|---|---|---|
+| Behringer X32 / Midas M32 | X32, X32 Compact, X32 Producer, X32 Rack, X32 Core; M32, M32R Live, M32C | Community OSC reference; no app adapter |
+| Yamaha TF | TF5, TF3, TF1, TF-RACK | Manufacturer app ecosystem; no app adapter |
+| Yamaha DM3 | DM3, DM3S | Yamaha states OSC over Ethernet and MIDI over USB; neither is implemented here |
+| Yamaha CL / QL | CL5, CL3, CL1, QL5, QL1 | Manufacturer model/specification listing; no app adapter |
+| Soundcraft Ui | Ui12, Ui16, Ui24R | Manufacturer browser-control workflow; no app adapter |
+| Soundcraft Si / Vi | Si Compact, Si Expression 1/2/3, Si Performer 1/2/3, Si Impact, Vi1, Vi1000/2000/3000/400/600/5000/7000 | Model family listing; ViSi/HiQnet is not interchangeable with Ui |
+| dbx DriveRack | PA2, VENU360/B/D, 260, 4800, 4820, PA, PA+, PX, 220i, Studio, Premium (China) | Model-specific network/USB/serial/control paths; no generic adapter |
+| db Acoustics | CD48, CD48RTS, CD48 Premium | USB/LAN paths and protocol differ by revision; no app adapter |
+
+Manufacturer references for model identity and transport notes:
+- Yamaha TF Series: https://vn.yamaha.com/vi/audio/portable-pa/products/mixers/tf/
+- Yamaha DM3 Series: https://vn.yamaha.com/vi/business/audio/products/mixers/dm3/
+- Yamaha CL / QL specifications: https://usa.yamaha.com/business/audio/products/mixers/cl-series/specs.html
+- Soundcraft model list and downloads: https://www.soundcraft.com/en-US/support_downloads/download_types/english-cutsheet
+- dbx DriveRack family and transport summary: https://dbxpro.com/en-US/product_families/driverack
+- dbx current/discontinued product downloads: https://dbxpro.com/en-US/support_downloads/products/dbx-driverack-pa
+
+A model in the selector means the app can identify it and export a worksheet containing the selected model name. It does not enable network discovery, USB serial communication, OSC/MIDI commands, HiQnet, browser automation, or hardware writes.

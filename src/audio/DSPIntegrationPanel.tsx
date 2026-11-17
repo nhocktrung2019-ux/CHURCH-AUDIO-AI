@@ -19,6 +19,9 @@ function downloadJson(fileName: string, value: unknown): void {
 }
 export default function DSPIntegrationPanel() {
   const [profileId, setProfileId] = useState(dspProfiles[0].id);
+  const [deviceCategory, setDeviceCategory] = useState<"all" | "mixer" | "processor">("all");
+  const [selectedModel, setSelectedModel] = useState(dspProfiles[0].models[0]);
+  const visibleProfiles = useMemo(() => deviceCategory === "all" ? dspProfiles : dspProfiles.filter((item) => item.category === deviceCategory), [deviceCategory]);
   const [systemName, setSystemName] = useState("");
   const [channelMap, setChannelMap] = useState("Mic 1 → Main L/R");
   const [hpfHz, setHpfHz] = useState(100);
@@ -34,11 +37,12 @@ export default function DSPIntegrationPanel() {
     hardwareRevision: cd48Revision, link: cd48Link, deviceIp: cd48DeviceIp,
     controllerIp: cd48ControllerIp, subnetPrefix: cd48SubnetPrefix,
   }), [cd48Revision, cd48Link, cd48DeviceIp, cd48ControllerIp, cd48SubnetPrefix]);
-  const profile = dspProfiles.find((item) => item.id === profileId) ?? dspProfiles[0];
+  const profile = visibleProfiles.find((item) => item.id === profileId) ?? visibleProfiles[0] ?? dspProfiles[0];
+  const activeModel = profile.models.includes(selectedModel) ? selectedModel : profile.models[0];
   const readiness = useMemo(() => assessMeasurementReadiness(evidence), [evidence]);
   const exportWorksheet = () => downloadJson("church-audio-dsp-worksheet.json", {
     schema: "church-audio-dsp-worksheet/v1", exportedAt: new Date().toISOString(),
-    systemName: systemName.trim() || "Chưa đặt tên hệ thống", device: profile,
+    systemName: systemName.trim() || "Chưa đặt tên hệ thống", device: { ...profile, selectedModel: activeModel },
     proposedSettings: {
       channelMap, highPassFilterHz: hpfHz, relativeDelayMs: delayMs, technicianNotes: notes,
       ...(profile.id === "db-acoustics-cd48" ? {
@@ -70,7 +74,9 @@ export default function DSPIntegrationPanel() {
       <div className="heading"><Network /><h2>DSP & Mixer Integration · Thư viện thiết bị</h2><span>MANUAL WORKSHEET</span></div>
       <p className="muted">Quản lý cấu hình dự kiến cho mixer/DSP. Tất cả adapter hiện ở chế độ thủ công; ứng dụng chưa kết nối mạng hoặc ghi tham số vào phần cứng.</p>
       <div className="form-grid">
-        <div><label htmlFor="dsp-profile">THIẾT BỊ</label><select id="dsp-profile" value={profileId} onChange={(event) => setProfileId(event.target.value)}>{dspProfiles.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></div>
+        <div><label htmlFor="dsp-category">NHÓM THIẾT BỊ</label><select id="dsp-category" value={deviceCategory} onChange={(event) => { const nextCategory = event.target.value as "all" | "mixer" | "processor"; const nextProfiles = nextCategory === "all" ? dspProfiles : dspProfiles.filter((item) => item.category === nextCategory); setDeviceCategory(nextCategory); if (!nextProfiles.some((item) => item.id === profileId) && nextProfiles[0]) { setProfileId(nextProfiles[0].id); setSelectedModel(nextProfiles[0].models[0] ?? ""); } }}><option value="all">Tất cả Mixer + DSP</option><option value="mixer">Mixer</option><option value="processor">DSP / quản lý loa</option></select></div>
+        <div><label htmlFor="dsp-profile">HÃNG / DÒNG THIẾT BỊ</label><select id="dsp-profile" value={profile.id} onChange={(event) => { const next = visibleProfiles.find((item) => item.id === event.target.value) ?? visibleProfiles[0]; if (next) { setProfileId(next.id); setSelectedModel(next.models[0] ?? ""); } }}>{visibleProfiles.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></div>
+        <div><label htmlFor="dsp-model">MODEL CỤ THỂ</label><select id="dsp-model" value={activeModel} onChange={(event) => setSelectedModel(event.target.value)}>{profile.models.map((model) => <option key={model} value={model}>{model}</option>)}</select></div>
         <div><label htmlFor="dsp-system-name">TÊN HỆ THỐNG / NHÀ THỜ</label><input id="dsp-system-name" value={systemName} onChange={(event) => setSystemName(event.target.value)} placeholder="Ví dụ: Main Hall" /></div>
         <div><label htmlFor="dsp-channel-map">CHANNEL / BUS MAPPING</label><input id="dsp-channel-map" value={channelMap} onChange={(event) => setChannelMap(event.target.value)} /></div>
         <div><label htmlFor="dsp-hpf">HPF ĐỀ XUẤT (Hz)</label><input id="dsp-hpf" type="number" min="20" max="1000" step="1" value={hpfHz} onChange={(event) => setHpfHz(Math.max(20, Math.min(1000, Number(event.target.value) || 20)))} /></div>
@@ -79,7 +85,7 @@ export default function DSPIntegrationPanel() {
       </div>
       <div className="dsp-device-summary">
         <div><small>NHÓM THIẾT BỊ</small><b>{profile.family}</b></div>
-        <div><small>MODEL ĐƯỢC LIỆT KÊ</small><b>{profile.models.join(" · ")}</b></div>
+        <div><small>MODEL ĐANG CHỌN</small><b>{activeModel}</b></div>
         <div><small>ĐƯỜNG KẾT NỐI ĐƯỢC TÀI LIỆU HÓA</small><b>{profile.transport}</b></div>
         <div><small>TRẠNG THÁI ĐIỀU KHIỂN</small><b>Chỉ phiếu thủ công · Chưa ghi phần cứng</b></div>
       </div>
