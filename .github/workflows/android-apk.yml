@@ -26,6 +26,11 @@ on:
 permissions:
   contents: read
 
+# Avoid stacking duplicate push + pull_request runs for the same feature branch.
+concurrency:
+  group: android-apk-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build-apk:
     runs-on: ubuntu-latest
