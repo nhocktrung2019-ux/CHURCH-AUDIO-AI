@@ -4,7 +4,7 @@
 |---|---|---|---|
 | 1 | Audio Engine, input/output, USB/OTG, generator | Browser/WebView beta implemented | Android hardware and long-run routing tests |
 | 2 | RTA, FFT, RT60, transfer, phase, Leq, calibration | Beta analysis workspaces implemented | Reference-analyser comparison and synchronized loopback |
-| 3 | Feedback detection, multi-mic, voice assistant | Advisory beta implementation integrated | Per-device concurrency tests and channel attribution |
+| 3 | Feedback detection, multi-mic, voice assistant | v0.16.0-beta.1 adds per-frame persistence, valid-frame gating and visible confidence | Per-device concurrency tests, channel attribution and listening verification |
 | 4 | Church 3D, CBT, polar data, coverage | Planning/approximation tools implemented | Surveyed geometry and verified manufacturer polar data |
 | 5 | X32/M32, Soundcraft, dbx, CD48 DSP | Manual configuration/export worksheet | Per-model protocol adapter, physical tests, read-back and rollback |
 | 6 | Version update, diagnostics, support, signed APK | Support workspace and tag workflow integrated | Permanent signing secrets and signed APK device test |
