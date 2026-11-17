@@ -502,3 +502,10 @@ footer{padding-bottom:calc(26px + env(safe-area-inset-bottom))}
 .rta-chart{overflow:hidden;background-color:#08121a;background-image:linear-gradient(rgba(101,210,179,.055) 1px,transparent 1px),linear-gradient(90deg,rgba(101,210,179,.055) 1px,transparent 1px);background-size:100% 25%,10% 100%}
 .rta-chart i{flex:1;min-width:1px;border-radius:3px 3px 0 0;transition:height 90ms linear,background-color 90ms linear;will-change:height}
 @media(max-width:600px){.rta-display-settings{grid-template-columns:1fr}.rta-display-settings select{font-size:13px}.rta-colour-legend{font-size:7px;gap:6px}}
+
+/* Multi-source Vietnamese feedback warning controls. */
+.multi-mic-alert-settings{display:grid;gap:8px;margin:12px 0;padding:13px;border:1px solid #394e56;border-radius:9px;background:rgba(8,17,24,.55)}
+.multi-mic-alert-settings label{display:flex;align-items:center;gap:9px;margin:0!important;color:#d8ebe5;font-size:12px;font-weight:700;letter-spacing:0}
+.multi-mic-alert-settings input{flex:0 0 auto;width:18px;min-height:18px;accent-color:#65d2b6}
+.multi-mic-alert-settings p{margin:0;color:#a8bbc1;font-size:11px;line-height:1.6}
+.multi-mic-alert-settings .device-notice{padding:10px 11px;border:1px solid #765b36;border-radius:7px;background:rgba(92,62,24,.18);color:#f0d2a0}
