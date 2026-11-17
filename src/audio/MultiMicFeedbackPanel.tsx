@@ -201,7 +201,7 @@ export default function MultiMicFeedbackPanel() {
       }
       if (!opened.length) throw new Error("Không mở được nguồn nào. Android/WebView hoặc driver có thể giới hạn luồng thu đồng thời.");
       sessionsRef.current = opened;
-      setChannels(opened.map(s => ({ id: s.id, label: s.label, history: [], diagnostics: s.diagnostics, trackState: s.track.muted ? "muted" : "live" })));
+      setChannels(opened.map(s => ({ id: s.id, label: s.label, history: [], diagnostics: s.diagnostics, trackState: s.track.muted ? ("muted" as const) : ("live" as const) })));
       setCombinedSpectrum([]);
       setRunning(true);
       setNotice(
