@@ -192,6 +192,58 @@ function renderOscValue(value: OscValue | undefined): string {
   return value;
 }
 
+type GuardedControlMeta = { label: string; unit: string; min: number; max: number; step: number; toggle?: boolean };
+function getGuardedControlMeta(parameter: string): GuardedControlMeta {
+  if (parameter === "mix/fader") return { label: "Fader level", unit: "dB", min: -90, max: 0, step: 0.1 };
+  if (parameter === "mix/on") return { label: "Channel ON / OFF", unit: "0 = mute · 1 = ON", min: 0, max: 1, step: 1, toggle: true };
+  if (parameter === "preamp/trim") return { label: "Preamp trim (digital source only)", unit: "dB", min: -18, max: 0, step: 0.25 };
+  if (parameter === "preamp/invert" || parameter === "eq/on" || parameter === "delay/on") {
+    return { label: parameter === "eq/on" ? "EQ enable" : parameter === "delay/on" ? "Delay enable" : "Preamp polarity", unit: "0 = OFF · 1 = ON", min: 0, max: 1, step: 1, toggle: true };
+  }
+  if (parameter === "eq/f") return { label: "EQ frequency", unit: "Hz", min: 20, max: 20000, step: 1 };
+  if (parameter === "eq/g") return { label: "EQ gain (cut only)", unit: "dB", min: -15, max: 0, step: 0.25 };
+  if (parameter === "eq/q") return { label: "EQ Q", unit: "", min: 0.3, max: 10, step: 0.01 };
+  if (parameter === "delay/time") return { label: "Channel delay", unit: "ms", min: 0.3, max: 200, step: 0.1 };
+  return { label: parameter, unit: "", min: 0, max: 1, step: 0.01 };
+}
+
+function controlRawToActual(parameter: string, raw: number): number {
+  if (parameter === "mix/fader") {
+    if (raw >= 0.5) return raw * 40 - 30;
+    if (raw >= 0.25) return raw * 80 - 50;
+    if (raw >= 0.0625) return raw * 160 - 70;
+    return raw * 480 - 90;
+  }
+  if (parameter === "preamp/trim") return Math.round((-18 + raw * 36) * 4) / 4;
+  if (parameter === "eq/f") return 20 * Math.pow(1000, raw);
+  if (parameter === "eq/g") return Math.round((-15 + raw * 30) * 4) / 4;
+  if (parameter === "eq/q") return 10 * Math.pow(0.03, raw);
+  if (parameter === "delay/time") return Math.round((0.3 + raw * 499.7) * 10) / 10;
+  return Math.round(raw);
+}
+
+function formatControlRaw(parameter: string, raw: number): string {
+  const actual = controlRawToActual(parameter, raw);
+  if (parameter === "mix/on" || parameter === "eq/on" || parameter === "delay/on" || parameter === "preamp/invert") {
+    return actual >= 0.5 ? "ON" : "OFF";
+  }
+  if (parameter === "mix/fader") return actual.toFixed(1) + " dB";
+  const meta = getGuardedControlMeta(parameter);
+  const digits = meta.step >= 1 ? 0 : meta.step >= 0.1 ? 1 : meta.step >= 0.01 ? 2 : 3;
+  return actual.toFixed(digits) + (meta.unit ? " " + meta.unit : "");
+}
+
+type LastGuardedWrite = {
+  host: string;
+  port: number;
+  address: string;
+  parameter: string;
+  label: string;
+  beforeRawValue: number;
+  afterRawValue: number;
+  restoreValue: number;
+};
+
 export default function DeviceControlPanel() {
   const [manufacturer, setManufacturer] = useState<Manufacturer>("Behringer");
   const [deviceId, setDeviceId] = useState("x32");
@@ -205,6 +257,14 @@ export default function DeviceControlPanel() {
   const [queryError, setQueryError] = useState("");
   const [queryResults, setQueryResults] = useState<OscQueryResult[]>([]);
   const [liveMonitoring, setLiveMonitoring] = useState(false);
+  const [writeParameter, setWriteParameter] = useState("mix/fader");
+  const [writeBand, setWriteBand] = useState("1");
+  const [writeValue, setWriteValue] = useState("-10");
+  const [preparedWrite, setPreparedWrite] = useState<null | { address: string; parameter: string; label: string; expectedRawValue: number; currentLabel: string; desiredValue: number }>(null);
+  const [writeBusy, setWriteBusy] = useState(false);
+  const [writeConfirm, setWriteConfirm] = useState(false);
+  const [writeMessage, setWriteMessage] = useState("");
+  const [lastGuardedWrite, setLastGuardedWrite] = useState<LastGuardedWrite | null>(null);
   const queryBusyRef = useRef(false);
   const [snapshots, setSnapshots] = usePersistentState<MixerSnapshot[]>("church-audio-x32-mixer-snapshots", []);
   const nativeOscAvailable = isOscUdpAvailable();
@@ -296,6 +356,124 @@ export default function DeviceControlPanel() {
 
   const readConsoleInfo = async () => {
     await runBatch(["/info", "/xinfo", "/status"], "Console identity/status", false);
+  };
+
+  const writeMeta = getGuardedControlMeta(writeParameter);
+  const writeLeaf = writeParameter.startsWith("eq/") ? writeParameter.split("/")[1] : "";
+  const writeAddress = "/ch/" + selectedStrip + "/" + (
+    writeParameter.startsWith("eq/") ? "eq/" + writeBand + "/" + writeLeaf : writeParameter
+  );
+
+  const prepareGuardedWrite = async () => {
+    if (!nativeOscAvailable || !isOsc || scope !== "channels" || liveMonitoring || queryBusyRef.current) return;
+    const desired = Number(writeValue);
+    if (!Number.isFinite(desired) || desired < writeMeta.min || desired > writeMeta.max
+      || (writeMeta.step > 0 && Math.abs((desired - writeMeta.min) / writeMeta.step - Math.round((desired - writeMeta.min) / writeMeta.step)) > 0.02)) {
+      setWriteMessage("Giá trị không hợp lệ. Giới hạn: " + writeMeta.min + " đến " + writeMeta.max + " " + writeMeta.unit + ".");
+      return;
+    }
+    setWriteBusy(true);
+    setWriteMessage("");
+    setPreparedWrite(null);
+    setWriteConfirm(false);
+    queryBusyRef.current = true;
+    try {
+      const batch = await OscUdp.query({ host: host.trim(), port: portNumber, address: writeAddress, timeoutMs: 1800 });
+      const result = batch.results.find(item => item.responseAddress === writeAddress || item.requestedAddress === writeAddress);
+      const raw = result?.arguments[0];
+      if (typeof raw !== "number" && typeof raw !== "boolean") {
+        setWriteMessage("Mixer không trả về giá trị số cho tham số này. Không thể chuẩn bị lệnh ghi.");
+        return;
+      }
+      const rawNumber = typeof raw === "boolean" ? Number(raw) : raw;
+      const currentLabel = formatControlRaw(writeParameter, rawNumber);
+      const label = getGuardedControlMeta(writeParameter).label;
+      setPreparedWrite({ address: writeAddress, parameter: writeParameter, label, expectedRawValue: rawNumber, currentLabel, desiredValue: desired });
+      setWriteMessage("Đã đọc giá trị hiện tại. Kiểm tra kỹ strip, IP và giá trị mới trước khi xác nhận.");
+    } catch (error) {
+      setWriteMessage("Không chuẩn bị được lệnh: " + (error instanceof Error ? error.message : String(error)));
+    } finally {
+      queryBusyRef.current = false;
+      setWriteBusy(false);
+    }
+  };
+
+  const confirmGuardedWrite = async () => {
+    if (!preparedWrite || !writeConfirm || !nativeOscAvailable || queryBusyRef.current) return;
+    setWriteBusy(true);
+    setWriteMessage("");
+    queryBusyRef.current = true;
+    try {
+      const result = await OscUdp.writeGuarded({
+        host: host.trim(),
+        port: portNumber,
+        address: preparedWrite.address,
+        expectedRawValue: preparedWrite.expectedRawValue,
+        value: preparedWrite.desiredValue,
+        timeoutMs: 1800,
+      });
+      if (result.verified && typeof result.afterRawValue === "number" && typeof result.beforeRawValue === "number") {
+        const restoreValue = controlRawToActual(preparedWrite.parameter, result.beforeRawValue);
+        const afterLabel = formatControlRaw(preparedWrite.parameter, result.afterRawValue);
+        setLastGuardedWrite({
+          host: host.trim(),
+          port: portNumber,
+          address: preparedWrite.address,
+          parameter: preparedWrite.parameter,
+          label: preparedWrite.label,
+          beforeRawValue: result.beforeRawValue,
+          afterRawValue: result.afterRawValue,
+          restoreValue,
+        });
+        setWriteMessage("Đã ghi và đọc lại xác minh thành công: " + afterLabel + ". Giá trị trước đó có thể khôi phục riêng.");
+      } else {
+        setLastGuardedWrite(null);
+        setWriteMessage("Đã gửi gói OSC nhưng chưa xác minh được trạng thái cuối. Kiểm tra mixer trực tiếp; không gửi lặp lại ngay. " + (result.warning ?? ""));
+      }
+      setPreparedWrite(null);
+      setWriteConfirm(false);
+    } catch (error) {
+      setWriteMessage("Đã hủy hoặc thất bại: " + (error instanceof Error ? error.message : String(error)));
+      setPreparedWrite(null);
+      setWriteConfirm(false);
+    } finally {
+      queryBusyRef.current = false;
+      setWriteBusy(false);
+    }
+  };
+
+  const restoreGuardedWrite = async () => {
+    if (!lastGuardedWrite || queryBusyRef.current) return;
+    const item = lastGuardedWrite;
+    const approved = window.confirm(
+      "Khôi phục " + item.label + " tại " + item.address + " về " +
+      formatControlRaw(item.parameter, item.beforeRawValue) + "? Chỉ khôi phục nếu mixer vẫn đang ở giá trị đã xác minh gần nhất."
+    );
+    if (!approved) return;
+    setWriteBusy(true);
+    setWriteMessage("");
+    queryBusyRef.current = true;
+    try {
+      const result = await OscUdp.writeGuarded({
+        host: item.host,
+        port: item.port,
+        address: item.address,
+        expectedRawValue: item.afterRawValue,
+        value: item.restoreValue,
+        timeoutMs: 1800,
+      });
+      if (result.verified) {
+        setLastGuardedWrite(null);
+        setWriteMessage("Đã khôi phục và xác minh giá trị trước đó.");
+      } else {
+        setWriteMessage("Lệnh khôi phục đã gửi nhưng chưa xác minh được. Kiểm tra mixer trực tiếp.");
+      }
+    } catch (error) {
+      setWriteMessage("Không thể khôi phục: " + (error instanceof Error ? error.message : String(error)));
+    } finally {
+      queryBusyRef.current = false;
+      setWriteBusy(false);
+    }
   };
 
   useEffect(() => {
