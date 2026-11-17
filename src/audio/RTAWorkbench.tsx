@@ -1,7 +1,7 @@
 import { useMemo, type CSSProperties } from "react";
 import { Activity, Crosshair, Save, Trash2 } from "lucide-react";
 import { usePersistentState } from "./usePersistentState";
-import { logBandFrequency } from "./acoustics";
+import { frequencyForBand } from "./rtaFrequency";
 
 type SavedFrequency = {
   id: string;
@@ -16,7 +16,7 @@ export default function RTAWorkbench({ spectrum, history }: { spectrum: number[]
   const [saved, setSaved] = usePersistentState<SavedFrequency[]>("church-audio-rta-saved-frequencies", []);
   const [note, setNote] = usePersistentState("church-audio-rta-frequency-note", "");
   const safeIndex = Math.max(0, Math.min(Math.max(0, spectrum.length - 1), selectedIndex));
-  const frequencyHz = useMemo(() => logBandFrequency(safeIndex, Math.max(1, spectrum.length)), [safeIndex, spectrum.length]);
+  const frequencyHz = useMemo(() => frequencyForBand(safeIndex, Math.max(1, spectrum.length)), [safeIndex, spectrum.length]);
   const levelDb = Number.isFinite(spectrum[safeIndex]) ? spectrum[safeIndex] : -100;
   const peakHold = useMemo(() => spectrum.map((_, index) => Math.max(-100, ...history.slice(-24).map(frame => Number.isFinite(frame[index]) ? frame[index] : -100))), [spectrum, history]);
   const savePoint = () => {
@@ -38,7 +38,7 @@ export default function RTAWorkbench({ spectrum, history }: { spectrum: number[]
       {spectrum.map((value, index) => {
         const height = Math.max(2, Math.min(100, (value + 100) * 0.98));
         const held = Math.max(height, (peakHold[index] + 100) * 0.98);
-        return <button key={index} type="button" className={index === safeIndex ? "rta-bar selected" : "rta-bar"} onClick={() => setSelectedIndex(index)} aria-label={`Chọn ${formatFrequency(logBandFrequency(index, spectrum.length))}, ${value.toFixed(1)} dBFS`} title={`${formatFrequency(logBandFrequency(index, spectrum.length))} · ${value.toFixed(1)} dBFS`}><span className="rta-bar-fill" style={{ "--bar-height": `${height}%` } as CSSProperties}/><span className="rta-peak-marker" style={{ "--peak-position": `${held}%` } as CSSProperties}/></button>
+        return <button key={index} type="button" className={index === safeIndex ? "rta-bar selected" : "rta-bar"} onClick={() => setSelectedIndex(index)} aria-label={`Chọn ${formatFrequency(frequencyForBand(index, spectrum.length))}, ${value.toFixed(1)} dBFS`} title={`${formatFrequency(frequencyForBand(index, spectrum.length))} · ${value.toFixed(1)} dBFS`}><span className="rta-bar-fill" style={{ "--bar-height": `${height}%` } as CSSProperties}/><span className="rta-peak-marker" style={{ "--peak-position": `${held}%` } as CSSProperties}/></button>
       })}
     </div>
     <div className="axis"><span>20 Hz</span><span>100 Hz</span><span>1 kHz</span><span>5 kHz</span><span>20 kHz</span></div>
