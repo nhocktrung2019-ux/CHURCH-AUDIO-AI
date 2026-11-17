@@ -10,7 +10,7 @@ This matrix separates manufacturer-documented connection methods from protocol a
 | dbx DriveRack PA2 | PA2 | Dedicated dbx PA2 Control App and owner documentation | Vendor app reference; no public third-party protocol verified |
 | dbx DriveRack VENU360 | VENU360 | Ethernet connection and dedicated VENU360 Control App | Manufacturer-documented transport; proprietary command channel not implemented |
 | dbx DriveRack 4800 / 4820 | 4800, 4820 | Ethernet HiQnet networking control | Manufacturer-documented transport; HiQnet adapter not implemented |
-| db Acoustics CD48 | CD48; confirm standard/Premium/regional hardware revision | Manufacturer product page lists front USB control and rear RS232 control | Physical ports documented; serial/USB packet protocol not verified |
+| db Acoustics CD48 | Pictured CD48 revision (LCD Ver 2215) | Supplied rear image shows RJ45 labelled 100M Ethernet; front LCD shows 192.168.20.20; front USB COM2 and rear RTG terminal are visible | User-image evidence for the physical port; network protocol not verified |
 
 ## Source references
 
@@ -38,7 +38,7 @@ A model appearing in this matrix means only that a model-specific reference prof
 
 ## db Acoustics CD48 — Ethernet / Wi-Fi LAN distinction
 
-The user-supplied front/rear reference images show a db Acoustics CD48:
+The app evidence grade is intentionally user-supplied-image, not manufacturer network-protocol documentation. The user-supplied front/rear reference images show a db Acoustics CD48:
 - Rear RJ45 jack is explicitly labelled "100M Ethernet".
 - Front LCD visibly displays "IP: 192.168.20.20" and "Ver:2215".
 - Front control port is labelled "COM2"; rear panel also shows a three-position terminal marked RTG.
