@@ -92,11 +92,14 @@ export const dspProfiles: DspProfile[] = [
     family: "Loudspeaker management processor",
     models: ["CD48 (verify standard / Premium / regional revision)"],
     controlStatus: "manual-only",
-    transport: "Front USB control port · rear RS232 control port (manufacturer product page)",
+    transport: "USB + RS232 (manufacturer product page); RJ45/Ethernet only on revisions with a physically confirmed LAN port",
+
     evidenceGrade: "manufacturer-documentation",
     documentationUrl: "https://dbacoustic.vn/crossover-dbacoustic-cd48",
-    integrationNote: "The manufacturer product page identifies USB and RS232 control connections and a vendor calibration application. No public packet/command specification has been verified in this project.",
-    validationNeeded: "Confirm the exact CD48 hardware revision, USB driver, serial pinout/baud/parity, vendor software version and protocol documentation before building an adapter. Do not assume CD48 Premium or other processors share the same protocol.",
+    integrationNote: "The manufacturer CD48 product page lists front USB and rear RS232; it does not list Ethernet. A third-party CD48 Premium listing reports RJ45/LAN, so hardware revisions must be distinguished and the rear-panel RJ45 confirmed before configuring LAN. Wi-Fi is provided by an external router/access point, not assumed to be built into the DSP. No public network or serial command protocol has been verified.",
+
+    validationNeeded: "Read the exact rear-panel model/revision. For standard CD48 use the documented USB/RS232 route. For a Premium/revision with RJ45, confirm IP settings and obtain the vendor network protocol/service port before any connection or control code. Do not reuse PH48D defaults or assume a port, TCP/UDP protocol, Wi-Fi radio, or command set. Verify serial pinout/baud/parity and vendor software version for serial integration.",
+
   },
 ];
 
