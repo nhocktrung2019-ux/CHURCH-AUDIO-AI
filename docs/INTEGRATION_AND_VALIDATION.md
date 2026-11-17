@@ -17,6 +17,20 @@ This document separates implemented beta capabilities from hardware-dependent wo
 
 ## Stage 2 — Acoustic measurement engine
 
+
+### v0.19.0-beta.1 — PCM channel metadata and frame integrity
+
+**Implemented beta workspaces**
+- Distinguish the physical input channel count from the actual PCM payload channel count; the current Transfer Function payload is explicitly mono.
+- Include frame count and exact byte length in each PCM block and reject mismatched frame/channel/byte metadata.
+- Detect input channel-count changes, input disappearance and render-clock jumps in the AudioWorklet processor.
+- Preserve capture engine, input channel count, PCM mix policy and track-reported settings with each saved measurement.
+
+**Acceptance still required**
+- Confirm how Android WebView and each USB interface report track/channel settings on physical hardware.
+- The mono-average Transfer Function remains unsuitable for inter-speaker phase or delay alignment.
+- A true synchronous dual-channel mode still requires simultaneous raw channels from one shared-clock interface, explicit channel mapping and per-channel calibration.
+
 ### v0.18.0-beta.1 — AudioWorklet PCM engine
 
 **Implemented beta workspaces**
