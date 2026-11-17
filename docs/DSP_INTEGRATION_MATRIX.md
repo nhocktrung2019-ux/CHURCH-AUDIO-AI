@@ -38,12 +38,13 @@ A model appearing in this matrix means only that a model-specific reference prof
 
 ## db Acoustics CD48 — Ethernet / Wi-Fi LAN distinction
 
-The model name alone is not enough to enable LAN:
+The user-supplied front/rear reference images show a db Acoustics CD48:
+- Rear RJ45 jack is explicitly labelled "100M Ethernet".
+- Front LCD visibly displays "IP: 192.168.20.20" and "Ver:2215".
+- Front control port is labelled "COM2"; rear panel also shows a three-position terminal marked RTG.
+- The image therefore confirms that the pictured CD48 hardware profile has an Ethernet port. This is stronger evidence for this pictured configuration than the generic wording on the product page, which does not enumerate every physical port: https://dbacoustic.vn/crossover-dbacoustic-cd48
+- A third-party CD48 Premium listing independently describes RJ45/LAN, USB COM2 and RS232: https://cdn.audioplus.com.vn/san-pham/thiet-bi-xu-ly-tin-hieu-crossover-dbacoustic-cd48-premium/
 
-- The DBacoustic CD48 product page lists front USB control and rear RS232 control; it does not list an Ethernet port or Wi-Fi radio: https://dbacoustic.vn/crossover-dbacoustic-cd48
-- A third-party CD48 Premium product listing reports USB, RJ45/LAN and RS232: https://cdn.audioplus.com.vn/san-pham/thiet-bi-xu-ly-tin-hieu-crossover-dbacoustic-cd48-premium/
-- A PH48D page reports 100M Ethernet and a default IP, but PH48D is a different model; none of its IP defaults, service ports or protocol behavior may be copied to CD48: https://dbacoustic.vn/crossover-dbacoustic-ph48d
+The app pre-fills 192.168.20.20 as the IP shown in the image, but the operator must compare it with the actual device LCD because it may have been changed. The /24 subnet is only an initial worksheet default and must be checked against the router/device configuration. For Wi-Fi LAN, the DSP is wired by Ethernet to a router/switch and the Android device joins that router's Wi-Fi; the images do not show a Wi-Fi radio in the DSP.
 
-The app therefore requires the operator to confirm the physical RJ45 jack on the exact CD48 revision before marking an Ethernet/Wi-Fi-LAN path as eligible. For Wi-Fi LAN, the processor is wired by Ethernet to a router/switch and the Android device joins that router's Wi-Fi; this does not imply built-in Wi-Fi on the DSP. A same-subnet check is only an addressing pre-check, not proof of reachability, device discovery, authentication or remote control.
-
-No CD48 network service port, TCP/UDP protocol, command schema, authentication handshake or acknowledgement behavior has been verified. The app must not scan the subnet or send guessed commands. A direct adapter requires the vendor's exact model/revision protocol specification or a vendor-supported interface, followed by read-only testing and safety-reviewed write tests.
+A displayed IP and an RJ45 link do not establish the application protocol, service port, authentication, or command acknowledgement. No CD48-specific network service port, TCP/UDP protocol, command schema or session flow has been verified here. The app must not scan the subnet or send guessed commands. A direct adapter requires the exact vendor software/protocol documentation or a vendor-supported interface, followed by read-only testing and safety-reviewed write tests. PH48D and CD4008RTS settings must not be borrowed for CD48.
