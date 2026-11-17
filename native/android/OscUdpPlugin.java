@@ -383,13 +383,13 @@ public class OscUdpPlugin extends Plugin {
     private static WriteSpec getWriteSpec(String address) {
         if (address == null) return null;
         if (address.matches("^/ch/(0[1-9]|[12][0-9]|3[0-2])/mix/fader$")) {
-            return new WriteSpec("fader", false, -90.0, 0.0, 0.0, 0.003);
+            return new WriteSpec("fader", false, -90.0, 10.0, 0.0, 0.003);
         }
         if (address.matches("^/ch/(0[1-9]|[12][0-9]|3[0-2])/mix/on$")) {
             return new WriteSpec("toggle", true, 0.0, 1.0, 1.0, 0.01);
         }
         if (address.matches("^/ch/(0[1-9]|[12][0-9]|3[0-2])/preamp/trim$")) {
-            return new WriteSpec("trim", false, -18.0, 0.0, 0.25, 0.003);
+            return new WriteSpec("trim", false, -18.0, 18.0, 0.25, 0.003);
         }
         if (address.matches("^/ch/(0[1-9]|[12][0-9]|3[0-2])/(preamp/invert|eq/on|delay/on)$")) {
             return new WriteSpec("toggle", true, 0.0, 1.0, 1.0, 0.01);
@@ -398,13 +398,13 @@ public class OscUdpPlugin extends Plugin {
             return new WriteSpec("eq-frequency", false, 20.0, 20000.0, 0.0, 0.003);
         }
         if (address.matches("^/ch/(0[1-9]|[12][0-9]|3[0-2])/eq/[1-4]/g$")) {
-            return new WriteSpec("eq-gain", false, -15.0, 0.0, 0.25, 0.003);
+            return new WriteSpec("eq-gain", false, -15.0, 15.0, 0.25, 0.003);
         }
         if (address.matches("^/ch/(0[1-9]|[12][0-9]|3[0-2])/eq/[1-4]/q$")) {
             return new WriteSpec("eq-q", false, 0.3, 10.0, 0.0, 0.003);
         }
         if (address.matches("^/ch/(0[1-9]|[12][0-9]|3[0-2])/delay/time$")) {
-            return new WriteSpec("delay-time", false, 0.3, 200.0, 0.1, 0.003);
+            return new WriteSpec("delay-time", false, 0.3, 500.0, 0.1, 0.003);
         }
         return null;
     }
