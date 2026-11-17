@@ -155,7 +155,13 @@ public class OscUdpPlugin extends Plugin {
                         inbound.getOffset(),
                         inbound.getOffset() + inbound.getLength()
                     );
-                    OscMessage parsed = parseOscMessage(response);
+                    OscMessage parsed;
+                    try {
+                        parsed = parseOscMessage(response);
+                    } catch (Exception malformedPacket) {
+                        // Ignore unrelated or malformed UDP traffic and keep collecting valid replies.
+                        continue;
+                    }
                     if (!uniqueContains(addresses, parsed.address)) continue;
 
                     JSObject result = new JSObject();
