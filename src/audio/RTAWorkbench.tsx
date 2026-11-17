@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, type CSSProperties } from "react";
 import { Activity, Crosshair, Save, Trash2 } from "lucide-react";
 import { usePersistentState } from "./usePersistentState";
 import { logBandFrequency } from "./acoustics";
@@ -38,7 +38,7 @@ export default function RTAWorkbench({ spectrum, history }: { spectrum: number[]
       {spectrum.map((value, index) => {
         const height = Math.max(2, Math.min(100, (value + 100) * 0.98));
         const held = Math.max(height, (peakHold[index] + 100) * 0.98);
-        return <button key={index} type="button" className={index === safeIndex ? "rta-bar selected" : "rta-bar"} style={{ height: `${height}%`, "--peak-height": `${Math.max(2, Math.min(100, held))}%` } as React.CSSProperties} onClick={() => setSelectedIndex(index)} aria-label={`Chọn ${formatFrequency(logBandFrequency(index, spectrum.length))}, ${value.toFixed(1)} dBFS`} title={`${formatFrequency(logBandFrequency(index, spectrum.length))} · ${value.toFixed(1)} dBFS`} />
+        return <button key={index} type="button" className={index === safeIndex ? "rta-bar selected" : "rta-bar"} style={{ height: `${height}%`, "--peak-height": `${Math.max(2, Math.min(100, held))}%` } as CSSProperties} onClick={() => setSelectedIndex(index)} aria-label={`Chọn ${formatFrequency(logBandFrequency(index, spectrum.length))}, ${value.toFixed(1)} dBFS`} title={`${formatFrequency(logBandFrequency(index, spectrum.length))} · ${value.toFixed(1)} dBFS`} />
       })}
     </div>
     <div className="axis"><span>20 Hz</span><span>100 Hz</span><span>1 kHz</span><span>5 kHz</span><span>20 kHz</span></div>
