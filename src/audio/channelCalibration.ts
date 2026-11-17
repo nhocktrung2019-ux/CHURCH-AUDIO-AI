@@ -267,6 +267,8 @@ export function deleteChannelCalibrationProfile(
  * Correct a synchronous Reference -> Measurement H1 result using independent
  * loopback profiles for both input channels. The common output path cancels;
  * the channel-to-channel calibration delta is removed from the measured ratio.
+ * Only points inside both measured calibration bands are returned; all other
+ * points are omitted rather than passed through uncorrected.
  */
 export function applyDifferentialChannelCalibration(
   measured: CalibratedTransferPoint[],
@@ -291,10 +293,10 @@ export function applyDifferentialChannelCalibration(
   );
   const output: CalibratedTransferPoint[] = [];
   for (const point of measured) {
-    if (!point || !Number.isFinite(point.frequencyHz) || point.frequencyHz < firstFrequency
-      || point.frequencyHz > lastFrequency || !Number.isFinite(point.magnitudeDb)
+    if (!point || !Number.isFinite(point.frequencyHz) || !Number.isFinite(point.magnitudeDb)
       || !Number.isFinite(point.phaseDeg) || !Number.isFinite(point.coherence)
       || point.coherence < 0 || point.coherence > 1) return null;
+    if (point.frequencyHz < firstFrequency || point.frequencyHz > lastFrequency) continue;
     const referenceCorrection = interpolateChannelCalibration(referenceProfile.points, point.frequencyHz);
     const measurementCorrection = interpolateChannelCalibration(measurementProfile.points, point.frequencyHz);
     if (!referenceCorrection || !measurementCorrection) return null;
@@ -304,7 +306,7 @@ export function applyDifferentialChannelCalibration(
       phaseDeg: point.phaseDeg - (measurementCorrection.phaseDeg - referenceCorrection.phaseDeg),
     });
   }
-  return output;
+  return output.length ? output : null;
 }
 
 export function correctDifferentialLoopbackDelayMs(
