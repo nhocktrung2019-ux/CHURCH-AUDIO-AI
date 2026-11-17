@@ -17,6 +17,10 @@ export type TransferCaptureMetadata = {
   channelMix: "interleaved-preserved-then-arithmetic-mean" | "interleaved-preserved-synchronous-pair" | "arithmetic-mean" | "direct-mono";
   trackChannelCount: number | null;
   trackSampleRate: number | null;
+  analysisMode?: "mono-acoustic" | "synchronous-dual-channel";
+  referenceChannel?: number;
+  measurementChannel?: number;
+  clockBasis?: "same-mediastream-audioworklet-frame-clock";
 };
 
 export type TransferResult = {
