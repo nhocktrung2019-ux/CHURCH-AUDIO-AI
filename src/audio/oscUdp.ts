@@ -38,6 +38,28 @@ export interface OscUdpPlugin {
     addresses: string[];
     timeoutMs?: number;
   }): Promise<OscBatchQueryResult>;
+  writeGuarded(options: {
+    host: string;
+    port?: number;
+    address: string;
+    expectedRawValue: number;
+    value: number;
+    timeoutMs?: number;
+  }): Promise<{
+    host: string;
+    port: number;
+    address: string;
+    sent: boolean;
+    verified: boolean;
+    beforeRawValue?: number;
+    requestedValue?: number;
+    wireValue?: number;
+    afterRawValue?: number | null;
+    status: "verified" | "sent-unverified";
+    warning?: string;
+    elapsedMs: number;
+    completedAt?: number;
+  }>;
 }
 
 export const OscUdp = registerPlugin<OscUdpPlugin>("OscUdp");
