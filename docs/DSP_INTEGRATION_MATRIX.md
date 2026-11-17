@@ -48,3 +48,18 @@ The app evidence grade is intentionally user-supplied-image, not manufacturer ne
 The app pre-fills 192.168.20.20 as the IP shown in the image, but the operator must compare it with the actual device LCD because it may have been changed. The /24 subnet is only an initial worksheet default and must be checked against the router/device configuration. For Wi-Fi LAN, the DSP is wired by Ethernet to a router/switch and the Android device joins that router's Wi-Fi; the images do not show a Wi-Fi radio in the DSP.
 
 A displayed IP and an RJ45 link do not establish the application protocol, service port, authentication, or command acknowledgement. No CD48-specific network service port, TCP/UDP protocol, command schema or session flow has been verified here. The app must not scan the subnet or send guessed commands. A direct adapter requires the exact vendor software/protocol documentation or a vendor-supported interface, followed by read-only testing and safety-reviewed write tests. PH48D and CD4008RTS settings must not be borrowed for CD48.
+
+
+## CD48 Premium — offline 4 IN / 8 OUT scene editor
+
+The app now includes a local draft editor for the pictured CD48 family:
+- Four input channels and eight output channels.
+- An explicit 4 × 8 routing matrix. All routes default OFF so a newly created draft cannot silently create an audio path.
+- Per-channel gain, delay, polarity, mute and eleven PEQ slots.
+- Scene draft slot 1–128 and JSON export. Drafts persist locally in the Android/WebView app storage.
+- Structural validation checks the 4×8 topology, IPv4 octets, scene slot, 11 PEQ slots, finite PEQ values, positive Q and delay 0–2000 ms.
+- The JSON schema permanently declares `hardwareWriteEnabled: false`; this editor is not a live controller and does not transmit settings.
+
+Seller documentation for CD48 Premium describes 4 inputs, 8 outputs, 11-band EQ per input/output, delay up to 2000 ms, crossover filter families, matrix, gate/compressor/limiter, USB/LAN/RS232 and 128 scenes: https://cdn.audioplus.com.vn/san-pham/thiet-bi-xu-ly-tin-hieu-crossover-dbacoustic-cd48-premium/ . The official DBacoustic CD48 page links a guide labelled CD48RTS: https://dbacoustic.vn/crossover-dbacoustic-cd48 . The guide file could not be inspected in this development pass, and no CD48-specific LAN command framing, service port, authentication, read-response format or write acknowledgement has been verified.
+
+The editor deliberately excludes live gate/compressor/limiter/crossover writes until the exact device revision, firmware, command schema and parameter ranges are confirmed. Do not assume that the CD48RTS guide is protocol-compatible with the pictured Ver 2215 device until the vendor confirms it. No network scan, guessed TCP/UDP port, packet send, or DSP write is performed.
