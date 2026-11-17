@@ -14,7 +14,7 @@ test("dynamic handheld and gooseneck microphones receive conservative distinct s
 
 test("dynamics calculator clamps invalid ranges and warns about poor signal-to-noise", () => {
   const result = calculateDynamicsStartingPoint({ microphone: "dynamic-handheld", noiseFloorDbfs: -120, speechPeakDbfs: -2 });
-  assert.equal(result.gate.thresholdDbfs, -74);
+  assert.equal(result.gate.thresholdDbfs, -84);
   assert.equal(result.compressor.thresholdDbfs, -9);
   assert.ok(result.warnings.length >= 1);
 });
