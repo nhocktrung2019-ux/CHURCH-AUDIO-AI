@@ -7,6 +7,15 @@ import { assessAutoEqReadiness, suggestParametricEq } from "./autoEq";
 import { comparePhaseInBand } from "./phaseAlignment";
 import { explainMicrophoneError, requestMicrophoneStream } from "./microphone";
 import type { MicCalibrationPoint } from "./micCalibration";
+import {
+  applyDifferentialChannelCalibration,
+  correctDifferentialLoopbackDelayMs,
+  deleteChannelCalibrationProfile,
+  loadChannelCalibrationProfile,
+  saveChannelCalibrationProfile,
+  validateChannelCalibrationProfile,
+  type ChannelCalibrationProfile,
+} from "./channelCalibration";
 
 export default function TransferFunctionPanel({ selectedInput, selectedOutput, running, calibrationPoints = [] }: { selectedInput: string; selectedOutput: string; running: boolean; calibrationPoints?: MicCalibrationPoint[] }) {
   const [result, setResult] = usePersistentState<TransferResult | null>("church-audio-transfer-latest",null);
@@ -20,6 +29,11 @@ export default function TransferFunctionPanel({ selectedInput, selectedOutput, r
   const [analysisMode, setAnalysisMode] = usePersistentState<"mono-acoustic" | "synchronous-dual-channel">("church-audio-transfer-mode", "mono-acoustic");
   const [referenceChannel, setReferenceChannel] = usePersistentState("church-audio-transfer-reference-channel", 0);
   const [measurementChannel, setMeasurementChannel] = usePersistentState("church-audio-transfer-measurement-channel", 1);
+  const [capturePurpose, setCapturePurpose] = usePersistentState<"transfer" | "channel-calibration">(
+    "church-audio-capture-purpose", "transfer",
+  );
+  const [calibrationChannel, setCalibrationChannel] = usePersistentState("church-audio-calibration-channel", 0);
+  const [lastCalibrationProfile, setLastCalibrationProfile] = useState<ChannelCalibrationProfile | null>(null);
   const eqReadiness = useMemo(() => {
     if (!result) return null;
     const base = assessAutoEqReadiness(result.points);
@@ -53,9 +67,12 @@ export default function TransferFunctionPanel({ selectedInput, selectedOutput, r
       if (running) throw new Error("Hãy dừng RTA trực tiếp trước khi đo Transfer Function.");
       const requested = await requestMicrophoneStream(selectedInput);
       stream = requested.stream;
+      if (capturePurpose === "channel-calibration" && requested.usedFallbackInput) {
+        throw new Error("Không thể hiệu chuẩn khi ứng dụng tự chuyển sang input mặc định. Hãy chọn lại đúng USB interface.");
+      }
       if (requested.usedFallbackInput) setNotice("Micro được chọn không khả dụng; đã chuyển sang micro mặc định.");
       audio = new AudioContext();
-      if (analysisMode === "synchronous-dual-channel") {
+      if (analysisMode === "synchronous-dual-channel" || capturePurpose === "channel-calibration") {
         if (!selectedOutput) throw new Error("Chọn OUTPUT DEVICE của đúng USB interface đang dùng làm INPUT.");
         const sinkable = audio as AudioContext & { setSinkId?: (sinkId: string) => Promise<void> };
         if (typeof sinkable.setSinkId !== "function") throw new Error("WebView không hỗ trợ AudioContext.setSinkId; không thể xác nhận đường output đến interface đã chọn. Hãy cập nhật WebView.");
@@ -149,8 +166,8 @@ export default function TransferFunctionPanel({ selectedInput, selectedOutput, r
         setNotice("WebView không hỗ trợ AudioWorklet; đang dùng ScriptProcessor dự phòng đã lỗi thời. Nên cập nhật Android System WebView.");
       }
 
-      if (analysisMode === "synchronous-dual-channel" && !workletNode) {
-        throw new Error("Đo đồng bộ hai kênh yêu cầu AudioWorklet; ScriptProcessor dự phòng chỉ hỗ trợ mono.");
+      if ((analysisMode === "synchronous-dual-channel" || capturePurpose === "channel-calibration") && !workletNode) {
+        throw new Error("Đo đồng bộ/hiệu chuẩn loopback yêu cầu AudioWorklet; ScriptProcessor dự phòng không đủ độ tin cậy.");
       }
       if (!workletNode) {
         if (typeof audio.createScriptProcessor !== "function") {
@@ -223,6 +240,71 @@ export default function TransferFunctionPanel({ selectedInput, selectedOutput, r
       const frameCount = totalSamples / rawPcmChannelCount;
       const trackSettings = stream.getAudioTracks()[0]?.getSettings() ?? {};
 
+      if (capturePurpose === "channel-calibration") {
+        if (captureEngine !== "AudioWorklet" || rawPcmChannelCount < 1) {
+          throw new Error("Hiệu chuẩn loopback yêu cầu AudioWorklet và ít nhất một kênh input được bảo toàn.");
+        }
+        if (!selectedInput || !selectedOutput) {
+          throw new Error("Phải chọn rõ USB INPUT và OUTPUT DEVICE; không dùng thiết bị mặc định cho hồ sơ hiệu chuẩn.");
+        }
+        if (!Number.isInteger(calibrationChannel) || calibrationChannel < 0 || calibrationChannel >= rawPcmChannelCount) {
+          throw new Error("Kênh hiệu chuẩn không tồn tại trong luồng PCM hiện tại. Kiểm tra số kênh input của interface.");
+        }
+        const deviceKey = typeof trackSettings.deviceId === "string" && trackSettings.deviceId
+          ? trackSettings.deviceId
+          : selectedInput;
+        const channelData = deinterleaveInterleavedPcm(interleavedCaptured, frameCount, rawPcmChannelCount);
+        const calibrationSamples = channelData?.[calibrationChannel];
+        if (!calibrationSamples) throw new Error("Không thể tách kênh input cần hiệu chuẩn từ PCM.");
+        const captureQuality = measurePcmCaptureQuality(calibrationSamples);
+        if (!captureQuality || captureQuality.invalidSamplePercent > 0.01
+          || captureQuality.clippedSamplePercent > 0.1
+          || captureQuality.rmsDbfs < -55 || captureQuality.peakDbfs > -0.5) {
+          throw new Error("Mức loopback không đạt: kiểm tra dây line, pad/attenuator và gain. Tránh clipping; cần RMS > -55 dBFS và peak dưới -0.5 dBFS.");
+        }
+        const playbackOffsetSeconds = playbackStartTime - firstBlockPlaybackTime;
+        if (!Number.isFinite(playbackOffsetSeconds) || playbackOffsetSeconds < 0 || playbackOffsetSeconds > 1) {
+          throw new Error("Không xác định được thời điểm phát so với PCM input. Hiệu chuẩn bị hủy.");
+        }
+        const measured = analyzeTransfer(
+          reference, calibrationSamples, audio.sampleRate, [], playbackOffsetSeconds,
+        );
+        if (!measured || measured.averageCoherence < 0.8 || measured.reliableBandPercent < 75) {
+          throw new Error("Coherence loopback không đủ ổn định. Kiểm tra kết nối/gain, giảm nhiễu và đo lại.");
+        }
+        const profile: ChannelCalibrationProfile = {
+          schemaVersion: 1,
+          deviceKey,
+          inputChannel: calibrationChannel,
+          outputKey: selectedOutput,
+          sampleRate: audio.sampleRate,
+          loopbackDelayMs: measured.estimatedDelayMs,
+          points: measured.points
+            .filter(point => point.frequencyHz >= 50 && point.frequencyHz <= 10000)
+            .map(point => ({
+              frequencyHz: point.frequencyHz,
+              magnitudeDb: point.magnitudeDb,
+              phaseDeg: point.phaseDeg,
+            })),
+        };
+        const validation = validateChannelCalibrationProfile(profile);
+        if (!validation.valid) throw new Error("Hồ sơ loopback không đạt kiểm tra: " + validation.reason);
+        let saved = false;
+        try {
+          saved = saveChannelCalibrationProfile(window.localStorage, profile);
+        } catch {
+          saved = false;
+        }
+        if (!saved) throw new Error("Không lưu được hồ sơ hiệu chuẩn vào bộ nhớ thiết bị. Kiểm tra dung lượng/quyền lưu trữ.");
+        setLastCalibrationProfile(profile);
+        setNotice(
+          "Đã lưu loopback profile cho input CH " + (calibrationChannel + 1)
+          + " · " + Math.round(audio.sampleRate).toLocaleString("vi-VN") + " Hz. "
+          + "Hãy chạy lại ít nhất một lần để kiểm tra độ lặp trước khi sử dụng căn phase/delay. Hồ sơ này chỉ hiệu chuẩn đường điện interface.",
+        );
+        return;
+      }
+
       if (analysisMode === "synchronous-dual-channel") {
         if (captureEngine !== "AudioWorklet" || rawPcmChannelCount < 2) {
           throw new Error("Input hiện chỉ cung cấp một kênh hoặc không dùng AudioWorklet. Cần USB interface trả về ít nhất hai kênh trong cùng một stream.");
@@ -263,8 +345,52 @@ export default function TransferFunctionPanel({ selectedInput, selectedOutput, r
           clockBasis: "same-mediastream-audioworklet-frame-clock" as const,
           referenceCaptureQuality,
         };
-        setResult({ ...measured, captureQuality, captureMetadata });
-        setNotice("Đã phân tích hai kênh đồng thời từ cùng AudioWorklet stream. Delay là chênh lệch Reference→Measurement ước lượng; magnitude/phase vẫn cần hiệu chuẩn riêng đường vào/ra và xác minh độ lệch ADC/DAC của interface. Auto EQ đang khóa an toàn.");
+        const deviceKey = typeof trackSettings.deviceId === "string" && trackSettings.deviceId
+          ? trackSettings.deviceId
+          : selectedInput;
+        let calibratedPoints = null as typeof measured.points | null;
+        let calibratedDelay: number | null = null;
+        try {
+          if (deviceKey && selectedOutput) {
+            const storage = window.localStorage;
+            const referenceProfile = loadChannelCalibrationProfile(storage, {
+              deviceKey, inputChannel: referenceChannel, outputKey: selectedOutput, sampleRate: audio.sampleRate,
+            });
+            const measurementProfile = loadChannelCalibrationProfile(storage, {
+              deviceKey, inputChannel: measurementChannel, outputKey: selectedOutput, sampleRate: audio.sampleRate,
+            });
+            if (referenceProfile && measurementProfile) {
+              calibratedPoints = applyDifferentialChannelCalibration(
+                measured.points, referenceProfile, measurementProfile,
+              );
+              calibratedDelay = correctDifferentialLoopbackDelayMs(
+                measured.estimatedDelayMs, referenceProfile, measurementProfile,
+              );
+            }
+          }
+        } catch {
+          // Missing browser storage never blocks raw measurement.
+        }
+        if (calibratedPoints && calibratedDelay !== null) {
+          setResult({
+            ...measured,
+            points: calibratedPoints,
+            estimatedDelayMs: calibratedDelay,
+            captureQuality,
+            captureMetadata,
+          });
+          setNotice(
+            "Đã áp dụng hiệu chuẩn vi sai cho Reference CH " + (referenceChannel + 1)
+            + " và Measurement CH " + (measurementChannel + 1)
+            + ". Biểu đồ chỉ hiển thị dải tần được cả hai hồ sơ cùng bao phủ; Auto EQ vẫn khóa cho đến khi kiểm chứng phần cứng.",
+          );
+        } else {
+          setResult({ ...measured, captureQuality, captureMetadata });
+          setNotice(
+            "Đã đo đồng bộ hai kênh cùng AudioWorklet clock nhưng chưa tìm thấy đủ hai hồ sơ loopback tương thích. "
+            + "Kết quả hiện là dữ liệu thô, chưa bù lệch đáp tuyến/pha/latency giữa kênh; Auto EQ vẫn khóa an toàn.",
+          );
+        }
         return;
       }
 
@@ -345,6 +471,28 @@ export default function TransferFunctionPanel({ selectedInput, selectedOutput, r
     setEqCopied(true);
   };
 
+  const exportCalibrationProfile = () => {
+    if (!lastCalibrationProfile) return;
+    const blob = new Blob([JSON.stringify(lastCalibrationProfile, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = "church-audio-channel-calibration-ch" + (lastCalibrationProfile.inputChannel + 1) + ".json";
+    anchor.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const removeCalibrationProfile = () => {
+    if (!lastCalibrationProfile) return;
+    const removed = deleteChannelCalibrationProfile(window.localStorage, lastCalibrationProfile);
+    if (removed) {
+      setLastCalibrationProfile(null);
+      setNotice("Đã xóa hồ sơ hiệu chuẩn khỏi bộ nhớ ứng dụng.");
+    } else {
+      setError("Không xóa được hồ sơ hiệu chuẩn khỏi bộ nhớ ứng dụng.");
+    }
+  };
+
   const phasePoints = result?.points.filter(p => p.frequencyHz >= 30 && p.frequencyHz <= 18000) ?? [];
   const phaseMin = phasePoints.length ? Math.min(...phasePoints.map(p => p.phaseDeg)) : -180;
   const phaseMax = phasePoints.length ? Math.max(...phasePoints.map(p => p.phaseDeg)) : 180;
@@ -362,17 +510,30 @@ export default function TransferFunctionPanel({ selectedInput, selectedOutput, r
 
   return <section className="panel transfer-pro-panel" id="transfer">
     <div className="heading"><Activity /><h2>Transfer Function · Magnitude · Phase · Coherence</h2><span>WELCH H1</span></div>
-    <p className="muted">{analysisMode === "synchronous-dual-channel"
-      ? "Đo H1 đồng thời từ hai kênh của cùng một USB interface và cùng AudioWorklet clock. Phase không bị căn chỉnh độc lập; độ chính xác cuối cùng vẫn phụ thuộc hiệu chuẩn đường tín hiệu và độ lệch ADC/DAC."
-      : "Tạo tín hiệu broadband tham chiếu, ghi micro, căn chỉnh thời gian và ước tính H1 transfer function bằng averaging. Chế độ mono này không dùng để xác định delay loa tuyệt đối."}</p>
+    <p className="muted">{capturePurpose === "channel-calibration"
+      ? "Đo loopback điện từ output đã chọn sang một input cụ thể. Hồ sơ được lưu theo USB interface, input channel, output và sample rate."
+      : analysisMode === "synchronous-dual-channel"
+        ? "Đo H1 đồng thời từ hai kênh của cùng một USB interface và cùng AudioWorklet clock. Phase không bị căn chỉnh độc lập; độ chính xác cuối cùng vẫn phụ thuộc hiệu chuẩn đường tín hiệu và độ lệch ADC/DAC."
+        : "Tạo tín hiệu broadband tham chiếu, ghi micro, căn chỉnh thời gian và ước tính H1 transfer function bằng averaging. Chế độ mono này không dùng để xác định delay loa tuyệt đối."}</p>
     <div className="phase-ab-controls">
+      <label>CAPTURE TASK
+        <select value={capturePurpose} onChange={event => setCapturePurpose(event.target.value as typeof capturePurpose)} disabled={busy}>
+          <option value="transfer">Transfer / acoustic measurement</option>
+          <option value="channel-calibration">USB channel loopback calibration</option>
+        </select>
+      </label>
       <label>MEASUREMENT MODE
-        <select value={analysisMode} onChange={event => setAnalysisMode(event.target.value as typeof analysisMode)} disabled={busy}>
+        <select value={analysisMode} onChange={event => setAnalysisMode(event.target.value as typeof analysisMode)} disabled={busy || capturePurpose === "channel-calibration"}>
           <option value="mono-acoustic">Single microphone · mono</option>
           <option value="synchronous-dual-channel">Synchronous loopback · 2 channels</option>
         </select>
       </label>
-      {analysisMode === "synchronous-dual-channel" && <>
+      {capturePurpose === "channel-calibration" && <label>INPUT CHANNEL TO CALIBRATE (ZERO-BASED)
+        <input type="number" min="0" max="31" step="1" value={calibrationChannel}
+          onChange={event => setCalibrationChannel(Math.max(0, Math.min(31, Math.floor(Number(event.target.value) || 0))))}
+          disabled={busy} />
+      </label>}
+      {analysisMode === "synchronous-dual-channel" && capturePurpose !== "channel-calibration" && <>
         <label>REFERENCE INPUT
           <select value={referenceChannel} onChange={event => setReferenceChannel(Number(event.target.value))} disabled={busy}>
             {Array.from({length: 32}, (_, index) => <option key={index} value={index}>CH {index + 1}</option>)}
@@ -385,9 +546,18 @@ export default function TransferFunctionPanel({ selectedInput, selectedOutput, r
         </label>
       </>}
     </div>
-    {analysisMode === "synchronous-dual-channel" && <p className="warning">Đấu nối: OUTPUT L của đúng USB interface → LINE INPUT CH Reference (nên dùng pad/attenuator); micro đo → CH Measurement. Chọn OUTPUT DEVICE của chính interface đó. Không đưa ngõ công suất ampli vào input. Không ghép USB và Bluetooth làm hai kênh reference/measurement.</p>}
+    {capturePurpose === "channel-calibration" && <p className="warning">Hiệu chuẩn từng kênh: chọn INPUT và OUTPUT của cùng USB interface, nối LINE OUTPUT → LINE INPUT đang hiệu chuẩn qua pad/attenuator phù hợp; lặp lại cho từng CH. Tắt đường loa/ampli đến hệ thống PA trong lúc loopback. Tuyệt đối không nối ngõ công suất ampli/loa vào input. Cần AudioWorklet, thiết bị phải trả về đúng kênh PCM và không được tự fallback sang micro khác.</p>}
+    {analysisMode === "synchronous-dual-channel" && capturePurpose !== "channel-calibration" && <p className="warning">Đấu nối: OUTPUT L của đúng USB interface → LINE INPUT CH Reference (nên dùng pad/attenuator); micro đo → CH Measurement. Chọn OUTPUT DEVICE của chính interface đó. Không đưa ngõ công suất ampli vào input. Không ghép USB và Bluetooth làm hai kênh reference/measurement.</p>}
+    {lastCalibrationProfile && <div className="device-notice">
+      <b>Loopback profile đã lưu · CH {lastCalibrationProfile.inputChannel + 1}</b>
+      <span>{lastCalibrationProfile.deviceKey} · output {lastCalibrationProfile.outputKey} · {lastCalibrationProfile.sampleRate.toLocaleString("vi-VN")} Hz · {lastCalibrationProfile.points.length} calibration points</span>
+      <div className="phase-ab-controls">
+        <button className="secondary" onClick={exportCalibrationProfile}><Download /> Export calibration JSON</button>
+        <button className="secondary" onClick={removeCalibrationProfile}>Delete profile</button>
+      </div>
+    </div>}
     {running && <p className="device-notice">Dừng RTA trực tiếp trước khi đo để tránh hai phiên ghi âm tranh microphone.</p>}
-    <button disabled={busy || running} onClick={() => void measure()}>{busy ? <Square /> : <Play />}{busy ? "Đang phát và ghi 5 giây…" : "Chạy phép đo Transfer Function"}</button>
+    <button disabled={busy || running} onClick={() => void measure()}>{busy ? <Square /> : <Play />}{busy ? "Đang phát và ghi 5 giây…" : capturePurpose === "channel-calibration" ? "Đo & lưu loopback profile" : "Chạy phép đo Transfer Function"}</button>
     {notice && <p className="device-notice">{notice}</p>}
     {error && <p className="error"><AlertTriangle /> {error}</p>}
     {result && <>
