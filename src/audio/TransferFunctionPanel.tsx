@@ -244,6 +244,9 @@ export default function TransferFunctionPanel({ selectedInput, selectedOutput, r
         if (captureEngine !== "AudioWorklet" || rawPcmChannelCount < 1) {
           throw new Error("Hiệu chuẩn loopback yêu cầu AudioWorklet và ít nhất một kênh input được bảo toàn.");
         }
+        if (audio.sampleRate > 96000) {
+          throw new Error("Hiệu chuẩn kênh hiện yêu cầu sample rate 96 kHz trở xuống để FFT 4096 bao phủ đúng vùng từ 50 Hz. Hãy đặt interface ở 48 kHz hoặc 96 kHz rồi đo lại.");
+        }
         if (!selectedInput || !selectedOutput) {
           throw new Error("Phải chọn rõ USB INPUT và OUTPUT DEVICE; không dùng thiết bị mặc định cho hồ sơ hiệu chuẩn.");
         }
@@ -280,7 +283,7 @@ export default function TransferFunctionPanel({ selectedInput, selectedOutput, r
           sampleRate: audio.sampleRate,
           loopbackDelayMs: measured.estimatedDelayMs,
           points: measured.points
-            .filter(point => point.frequencyHz >= 50 && point.frequencyHz <= 10000)
+            .filter(point => point.frequencyHz >= (2 * audio.sampleRate / 4096) && point.frequencyHz <= 10000)
             .map(point => ({
               frequencyHz: point.frequencyHz,
               magnitudeDb: point.magnitudeDb,
@@ -484,12 +487,16 @@ export default function TransferFunctionPanel({ selectedInput, selectedOutput, r
 
   const removeCalibrationProfile = () => {
     if (!lastCalibrationProfile) return;
-    const removed = deleteChannelCalibrationProfile(window.localStorage, lastCalibrationProfile);
-    if (removed) {
-      setLastCalibrationProfile(null);
-      setNotice("Đã xóa hồ sơ hiệu chuẩn khỏi bộ nhớ ứng dụng.");
-    } else {
-      setError("Không xóa được hồ sơ hiệu chuẩn khỏi bộ nhớ ứng dụng.");
+    try {
+      const removed = deleteChannelCalibrationProfile(window.localStorage, lastCalibrationProfile);
+      if (removed) {
+        setLastCalibrationProfile(null);
+        setNotice("Đã xóa hồ sơ hiệu chuẩn khỏi bộ nhớ ứng dụng.");
+      } else {
+        setError("Không xóa được hồ sơ hiệu chuẩn khỏi bộ nhớ ứng dụng.");
+      }
+    } catch {
+      setError("Bộ nhớ trình duyệt không khả dụng; không thể xóa hồ sơ hiệu chuẩn.");
     }
   };
 
