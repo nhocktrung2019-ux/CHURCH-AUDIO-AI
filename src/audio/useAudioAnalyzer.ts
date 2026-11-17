@@ -321,7 +321,8 @@ export function useAudioAnalyzer(calibrationPoints: MicCalibrationPoint[] = [], 
       const tick = () => {
         const analyser = analyserRef.current;
         if (analyser) {
-          // 30 Hz is sufficient for a live spectrum and reduces Android WebView CPU use.
+          // Follow the selected display speed immediately without restarting capture.
+          analyser.smoothingTimeConstant = rtaSmoothingConstant(rtaSpeed);
           if (frame % rtaFrameInterval(rtaSpeed) === 0) {
             const data = new Float32Array(analyser.frequencyBinCount);
             analyser.getFloatFrequencyData(data);
