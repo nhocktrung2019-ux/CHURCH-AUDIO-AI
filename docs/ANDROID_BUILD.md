@@ -45,14 +45,27 @@ Snapshots save the values actually received on the device and can be exported as
 ### Guarded input-channel writes (new, hardware validation required)
 
 The Android plugin exposes a separate `writeGuarded` operation with an exact write allowlist for input channels 01–32 only:
-- Channel fader: -90 to 0 dB. The plugin converts the dB value to the X32/M32's normalized OSC level representation.
+- Channel fader: the UI allows -90 to 0 dB. The native codec understands the full X32/M32 range (-90 to +10 dB) so it can restore a previously valid positive value after a safe reduction.
 - Channel ON/OFF and preamp polarity: integer 0/1.
-- Preamp trim: -18 to 0 dB only; the protocol notes this parameter applies to digital sources only.
-- EQ enable; four EQ bands' frequency (20–20,000 Hz), gain (-15 to 0 dB only; cut-only), and Q (0.3–10).
-- Channel delay enable and delay time (0.3–200 ms).
+- Preamp trim: the UI allows -18 to 0 dB; the native codec retains the protocol range (-18 to +18 dB) for restoring a previous state. The protocol notes this parameter applies to digital sources only.
+- EQ enable; four EQ bands' frequency (20–20,000 Hz), gain (-15 to 0 dB in the UI; cut-only), and Q (0.3–10). The native codec retains the full documented EQ-gain range for restoring a previous state.
+- Channel delay enable and delay time (0.3–200 ms in the UI); the native codec accepts the protocol range up to 500 ms for guarded restoration.
 
 Every write requires a successful read in the UI, a separate explicit user confirmation, and a second native read immediately before sending. The native bridge aborts when the just-read value no longer matches the value prepared by the UI. After sending, it issues another read and reports `verified` only when the console's reply matches the requested wire value. A sent-but-unverified packet is reported as uncertain; the app warns not to send it again until the mixer is checked.
 
 The UI retains the previous verified value and offers a separately confirmed guarded restore for that one parameter. This is not a whole-scene restore. The write allowlist does not include bus/main/matrix changes, routing, phantom power, headamp gain, presets, scenes, or arbitrary OSC addresses. Fader/preamp/EQ gain increases are deliberately restricted in this phase.
 
 No physical X32/M32 console has yet been available for hardware validation. CI confirms Java/TypeScript compilation and APK packaging only; it does not certify live OSC interoperability, firmware-specific parameter behavior, audible outcome, or the safety of a venue system. Keep amplifiers muted or at a low safe level while first validating with a real console, and do not use this control path during a live service until tested.
+
+
+### First hardware-validation checklist
+
+Before any live use, test the feature with the PA muted or at a very low safe level:
+1. Confirm the console identity with `/info` and `/xinfo`; verify that the selected model and firmware are actually X32/M32.
+2. Read one input channel and compare fader dB, ON/OFF, preamp trim and EQ values against the physical console.
+3. Prepare a small fader reduction, change that fader directly on the console before confirming, and confirm the app aborts because the pre-read value is stale.
+4. On a spare/test channel, apply one modest cut-only EQ change; verify the app reads back the value and the console display agrees.
+5. Use the separately confirmed restore action and verify the previous value is recovered.
+6. Disconnect the network during a test write only with the PA muted; verify that a sent-but-unverified result is clearly reported and never auto-retried.
+
+Do not validate on an active service mix or with an audience present. Hardware acceptance remains incomplete until both X32 and M32 models/firmwares are tested independently.
