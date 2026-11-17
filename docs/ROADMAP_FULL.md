@@ -3,7 +3,7 @@
 | Stage | Scope | Current state | Production gate |
 |---|---|---|---|
 | 1 | Audio Engine, input/output, USB/OTG, generator | Browser/WebView beta implemented | Android hardware and long-run routing tests |
-| 2 | RTA, FFT, RT60, transfer, phase, Leq, calibration | v0.21 preserves multichannel PCM blocks; current H1 analysis still explicitly downmixes to mono | USB channel mapping, true Reference/Measurement processing, clock proof, per-channel calibration and reference-analyser comparison |
+| 2 | RTA, FFT, RT60, transfer, phase, Leq, calibration | v0.22 adds synchronous Reference/Measurement H1 analysis on a shared AudioWorklet frame clock; physical USB routing and per-channel calibration remain unverified | USB channel mapping, true Reference/Measurement processing, clock proof, per-channel calibration and reference-analyser comparison |
 | 3 | Feedback detection, multi-mic, voice assistant | v0.16 beta adds persistence, valid-frame gating and confidence display | Per-device concurrency tests, channel attribution and listening verification |
 | 4 | Church 3D, CBT, polar data, coverage | Planning/approximation tools implemented | Surveyed geometry and verified manufacturer polar data |
 | 5 | X32/M32, Soundcraft, dbx, CD48 DSP | Manual configuration/export worksheet | Per-model protocol adapter, physical tests, read-back and rollback |
@@ -35,3 +35,13 @@ Status labels distinguish code availability from hardware verification. Beta cod
 - AudioWorklet transports frame-major interleaved PCM and preserves each channel until the analyzer's explicit mono downmix boundary.
 - This does not prove the interface's physical routing or hardware clock synchronization.
 - Reference/Measurement channel selection and simultaneous dual-channel H1 analysis remain incomplete.
+
+
+## v0.22.0-beta.1 implementation status
+
+- Synchronous mode requires two distinct channels from one MediaStream/AudioWorklet frame clock and rejects mono or ScriptProcessor fallback.
+- Reference is expected to be an electrical loopback from the selected output to one interface input; Measurement is the microphone on another input.
+- H1 magnitude, phase and coherence are computed from simultaneous channels; independent time alignment is not applied.
+- Relative delay is estimated with a bounded coarse search plus full-rate refinement.
+- Auto EQ is locked for this mode until per-channel ADC/DAC and loopback calibration exist.
+- Physical USB routing, ADC/DAC skew, long-duration Android capture and reference-analyser comparison remain unverified acceptance gates.
