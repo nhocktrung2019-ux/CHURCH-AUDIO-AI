@@ -17,6 +17,19 @@ This document separates implemented beta capabilities from hardware-dependent wo
 
 ## Stage 2 — Acoustic measurement engine
 
+### v0.18.0-beta.1 — AudioWorklet PCM engine
+
+**Implemented beta workspaces**
+- Prefer a dedicated AudioWorklet processor for raw Float32 PCM capture and transfer blocks with absolute AudioContext frame positions.
+- Detect non-contiguous, duplicated and out-of-order PCM frames; abort affected measurements before analysis.
+- Retain a clearly labeled ScriptProcessor compatibility fallback for older WebView versions.
+
+**Acceptance still required**
+- Verify AudioWorklet module loading and sustained capture on target Android System WebView versions and USB audio interfaces.
+- Confirm actual input channel count, channel ordering and sample-rate behavior on physical multichannel interfaces. Current analysis remains mono-averaged and does not certify synchronized dual-channel phase/delay.
+- A true dual-channel mode must capture both channels simultaneously from one hardware interface with a shared clock, explicit channel mapping and independent calibration; never combine independent USB devices as if synchronized.
+
+
 **Implemented beta workspaces**
 - Log-frequency RTA, selectable frequency cursor, spectrogram/waterfall and level/Leq tools.
 - Sweep-based impulse response and RT60 estimates.
