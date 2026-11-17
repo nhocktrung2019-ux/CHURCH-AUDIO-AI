@@ -455,3 +455,21 @@ footer{padding-bottom:calc(26px + env(safe-area-inset-bottom))}
  .voice-row{align-items:stretch;flex-direction:column}
  .voice-guide-button{width:100%!important}
 }
+
+
+/* RTA frequency cursor and persistent bookmarks */
+.rta-interactive-chart{gap:3px;align-items:flex-end}
+.panel button.rta-bin{display:block;flex:1 1 0;width:auto;min-width:1px;min-height:0;height:2px;margin:0;padding:0;border:0;border-radius:2px 2px 0 0;background:linear-gradient(0deg,#247b73,#69d9bd);cursor:crosshair;box-shadow:none}
+.panel button.rta-bin:hover{filter:brightness(1.25)}
+.panel button.rta-bin.selected{background:linear-gradient(0deg,#d09a49,#f3dc91);box-shadow:0 0 10px rgba(240,194,105,.32)}
+.panel button.rta-bin:focus-visible{outline:2px solid #f3dc91;outline-offset:2px}
+.rta-frequency-cursor{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:12px;padding:12px;border:1px solid #526348;border-radius:8px;background:rgba(57,62,36,.24)}
+.rta-frequency-cursor>div{display:grid;gap:4px}
+.rta-frequency-cursor small{font-size:9px;color:#aebd91}
+.rta-frequency-cursor strong{font-size:20px;color:#f1dfac}
+.rta-frequency-cursor span{font:10px ui-monospace,SFMono-Regular,Consolas,monospace;color:#b9c7bc}
+.panel .rta-frequency-cursor button{width:auto;margin:0;padding:9px 13px;min-height:38px;white-space:nowrap}
+.rta-frequency-bookmarks{margin-top:10px;padding:10px 12px;border:1px solid #304752;border-radius:8px;background:#0e1a22}
+.rta-frequency-bookmarks summary{cursor:pointer;color:#8cdbc1;font-size:11px;font-weight:700}
+.rta-frequency-bookmarks .table-wrap{margin-top:8px}
+@media(max-width:420px){.rta-frequency-cursor{align-items:stretch;flex-direction:column}.panel .rta-frequency-cursor button{width:100%}}
