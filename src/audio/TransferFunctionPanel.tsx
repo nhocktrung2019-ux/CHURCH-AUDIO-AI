@@ -111,7 +111,8 @@ export default function TransferFunctionPanel({ selectedInput, running, calibrat
               metadataError = "AudioWorklet did not preserve every input channel in the PCM payload.";
               missedBlocks++;
               return;
-            }\n            stableInputChannelCount = validation.inputChannelCount;
+            }
+            stableInputChannelCount = validation.inputChannelCount;
             if (previousFrameEnd !== null && message.frameStart !== previousFrameEnd) {
               missedBlocks += countPcmFrameDiscontinuity(previousFrameEnd, message.frameStart!, blockSize);
             }
