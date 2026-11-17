@@ -1,6 +1,14 @@
 import { micCorrectionAt, type MicCalibrationPoint } from "./micCalibration";
 
 export type TransferPoint = { frequencyHz: number; magnitudeDb: number; phaseDeg: number; coherence: number };
+export type PcmCaptureQuality = {
+  peakDbfs: number;
+  rmsDbfs: number;
+  clippedSamplePercent: number;
+  invalidSamplePercent: number;
+  sampleCount: number;
+};
+
 export type TransferResult = {
   points: TransferPoint[];
   estimatedDelayMs: number;
@@ -9,6 +17,7 @@ export type TransferResult = {
   reliableBandPercent: number;
   sampleRate: number;
   framesAveraged: number;
+  captureQuality?: PcmCaptureQuality;
 };
 
 export function makeReferenceNoise(sampleRate: number, durationSeconds = 6): Float32Array {
@@ -92,9 +101,47 @@ function unwrapPhase(points: TransferPoint[]): void {
   }
 }
 
+/** Measures raw PCM level and clipping before using a capture for Auto EQ. */
+export function measurePcmCaptureQuality(samples: Float32Array): PcmCaptureQuality | null {
+  if (!samples.length) return null;
+  let peak = 0;
+  let energy = 0;
+  let finiteCount = 0;
+  let clippedCount = 0;
+  for (const sample of samples) {
+    if (!Number.isFinite(sample)) continue;
+    finiteCount++;
+    const absolute = Math.abs(sample);
+    peak = Math.max(peak, absolute);
+    energy += sample * sample;
+    if (absolute >= 0.999) clippedCount++;
+  }
+  if (!finiteCount) return null;
+  const rms = Math.sqrt(energy / finiteCount);
+  const toDbfs = (value: number) => value > 0 ? 20 * Math.log10(value) : -120;
+  return {
+    peakDbfs: toDbfs(peak),
+    rmsDbfs: toDbfs(rms),
+    clippedSamplePercent: 100 * clippedCount / finiteCount,
+    invalidSamplePercent: 100 * (samples.length - finiteCount) / samples.length,
+    sampleCount: samples.length,
+  };
+}
+
 /** Welch H1 transfer estimate. Coherence is meaningful only with multiple independent averages. */
-export function analyzeTransfer(reference: Float32Array, recorded: Float32Array, sampleRate: number, calibrationPoints: MicCalibrationPoint[] = []): TransferResult | null {
-  if (sampleRate < 8000 || reference.length < 8192 || recorded.length < reference.length * 0.7) return null;
+export function analyzeTransfer(
+  reference: Float32Array,
+  recorded: Float32Array,
+  sampleRate: number,
+  calibrationPoints: MicCalibrationPoint[] = [],
+  referencePlaybackOffsetSeconds = 0,
+): TransferResult | null {
+  if (sampleRate < 8000
+    || reference.length < 8192
+    || recorded.length < reference.length * 0.7
+    || !Number.isFinite(referencePlaybackOffsetSeconds)
+    || referencePlaybackOffsetSeconds < 0
+    || referencePlaybackOffsetSeconds > 2) return null;
   const { lag, score } = bestLag(reference, recorded, sampleRate);
   if (score < 0.025) return null;
   const integerLag = Math.round(lag);
@@ -152,7 +199,9 @@ export function analyzeTransfer(reference: Float32Array, recorded: Float32Array,
   const reliableBandPercent = useful.length ? 100 * useful.filter(p => p.coherence >= 0.8).length / useful.length : 0;
   return {
     points,
-    estimatedDelayMs: lag / sampleRate * 1000,
+    // Remove the known silence/pre-roll before playback; this is still the
+    // total relative output-to-microphone path latency, not speaker-only delay.
+    estimatedDelayMs: (lag / sampleRate - referencePlaybackOffsetSeconds) * 1000,
     confidence: score,
     averageCoherence,
     reliableBandPercent,
