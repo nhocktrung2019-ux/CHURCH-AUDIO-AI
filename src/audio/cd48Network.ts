@@ -2,7 +2,18 @@ export type CD48NetworkLink = "ethernet" | "wifi-lan";
 export type CD48HardwareRevision =
   | "unverified"
   | "standard-usb-rs232"
-  | "rj45-confirmed";
+  | "rj45-confirmed"
+  | "cd48-100m-rj45-observed";
+
+/** Visible reference details from the user-supplied CD48 product images. */
+export const CD48_IMAGE_REFERENCE = {
+  modelLabel: "db Acoustics CD48",
+  rearNetworkPort: "RJ45 100M Ethernet",
+  ethernetSpeedMbps: 100,
+  frontDisplayIp: "192.168.20.20",
+  frontDisplayVersion: "2215",
+  frontUsbLabel: "COM2",
+} as const;
 
 export type CD48NetworkConfig = {
   hardwareRevision: CD48HardwareRevision;
@@ -61,7 +72,9 @@ export function areIPv4AddressesInSameSubnet(
  * establish them.
  */
 export function assessCD48NetworkConfig(config: CD48NetworkConfig): CD48NetworkAssessment {
-  if (config.hardwareRevision !== "rj45-confirmed") {
+  const rj45Confirmed = config.hardwareRevision === "rj45-confirmed"
+    || config.hardwareRevision === "cd48-100m-rj45-observed";
+  if (!rj45Confirmed) {
     return {
       status: "needs-rj45-confirmation",
       sameSubnet: false,
