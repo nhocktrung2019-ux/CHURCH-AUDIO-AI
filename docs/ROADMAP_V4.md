@@ -51,3 +51,31 @@ The regression tests in this branch are authored but still require a successful 
 - Verify concurrent input support and per-device routing on specific Android/WebView + USB interface combinations.
 - Characterize gain, latency and drift per microphone; calibrate each input independently.
 - For phase/transfer/delay, use a single multichannel hardware interface with verified common clock and preserved PCM channels. Independent Bluetooth/USB capture streams are not accepted as synchronous.
+
+
+## Increment 3 — verified multichannel capture foundation (next)
+
+### Scope
+- Add a hardware capability profile for one USB-OTG multichannel interface at a time.
+- Preserve channel-to-input mapping from the device's PCM stream; do not reopen each channel as a separate browser microphone.
+- Capture actual PCM sample rate, channel count, bit depth/format, frame counters and overrun/underrun counters when the native capture layer exposes them.
+- Add per-channel gain, polarity, sensitivity and acoustic calibrator metadata with explicit calibrated / uncalibrated status.
+- Add a shared-clock evidence gate. Phase, transfer function and inter-channel delay tools remain disabled until the same hardware stream and channel frame alignment are verified.
+- Record start/stop timestamps, dropped-frame count and drift diagnostics. Do not infer common clock from equal nominal sample-rate labels.
+- Add a repeatable acceptance procedure using electrical loopback first, then acoustic impulse/known-distance tests.
+- Keep independent Bluetooth microphones available for non-coherent monitoring only; never combine them for phase-coherent measurements.
+
+### Acceptance criteria
+1. One multichannel USB interface is enumerated and selected as one capture device.
+2. All requested channels arrive in one PCM frame stream with stable channel mapping.
+3. No unreported frame drops during a 10-minute capture soak test.
+4. Measured sample rate and clock drift are reported from captured frames, not nominal labels alone.
+5. Electrical loopback verifies inter-channel alignment and polarity.
+6. Acoustic delay validation is compared with a known-distance reference and documented uncertainty.
+7. Android devices / WebView versions and USB interfaces tested are listed explicitly.
+8. Full unit tests, Vite build, Android Gradle build and APK artifact are green before the feature is enabled by default.
+
+### Out of scope until protocol evidence exists
+- Claiming sample-accurate sync for independent Bluetooth and USB streams.
+- Enabling phase/transfer/absolute delay across unverified devices.
+- Sending writes to DSP hardware without model/firmware-specific protocol verification, read-back and rollback.
