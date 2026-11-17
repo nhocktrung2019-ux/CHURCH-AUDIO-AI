@@ -6,7 +6,7 @@
 | 2 | RTA, FFT, RT60, transfer, phase, Leq, calibration | v0.23 adds guided per-input USB loopback capture, exact-route profile storage, repeatability gating and differential Reference/Measurement correction; CI and physical USB routing remain unverified | successful CI, verified channel/output mapping, hardware clock/skew proof, acoustic validation and reference-analyser comparison |
 | 3 | Feedback detection, multi-mic, voice assistant | v0.16 beta feedback/multi-mic plus v0.23 local Vietnamese voice-command routing (navigation, measurement start/stop, RTA frequency); hardware and recognition-provider support remain unverified | Multi-device attribution, real-time feedback action verification, Android Web Speech availability/privacy testing and voice UX acceptance |
 | 4 | Church 3D, CBT, polar data, coverage | Planning/approximation tools implemented | Surveyed geometry and verified manufacturer polar data |
-| 5 | X32/M32, Soundcraft, dbx, CD48 DSP | Manual configuration/export worksheet | Per-model protocol adapter, physical tests, read-back and rollback |
+| 5 | X32/M32, Soundcraft, dbx, CD48 DSP | v0.23 separates seven model/family profiles with documented transport/evidence and manual worksheets; no live control adapter | Exact model/firmware protocol, read-only discovery, safe write/read-back/rollback and physical tests |
 | 6 | Version update, diagnostics, support, signed APK | Support workspace and tag workflow integrated | Permanent signing secrets and signed APK device test |
 
 ## v0.20 dual-channel foundation
@@ -67,3 +67,6 @@ Status labels distinguish code availability from hardware verification. Beta cod
 - The app does not call an LLM or remote AI service for command interpretation. The underlying browser/WebView Speech Recognition provider may process audio according to its own implementation and policy; the application does not control that service.
 - Speech recognition is disabled while the measurement microphone is active to reduce audio-device contention. Text commands remain available.
 - This is command control, not conversational AI, DSP control, speech synthesis or a guarantee of offline speech recognition. Those remain separate roadmap items.
+
+
+See docs/DSP_INTEGRATION_MATRIX.md for the model families, documented transport references and the safety gates required before any direct control adapter is enabled.
