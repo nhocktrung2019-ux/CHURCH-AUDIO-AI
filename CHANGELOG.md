@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.24.0-beta.1 — Microphone dynamics advisor
+
+- Add an offline starting-point calculator for soft-expander Gate, Compressor and Limiter settings for dynamic handheld and gooseneck microphones.
+- Calculate thresholds from the operator-measured noise floor and speech peak, with conservative attack/hold/release, ratio, knee and limiter ceiling values.
+- Warn when signal-to-noise margin is poor, speech peaks approach digital full scale, or background noise is high.
+- Export the worksheet as JSON. No settings are sent to DSP or mixer hardware; dBFS references must be mapped to the exact device meter scale and confirmed by listening.
+- Keep the v0.23 multicolour RTA, selectable speed/sensitivity, visual Vietnamese feedback alerts and model catalogue.
+
+**Validation status:** automated tests and CI build are pending. No physical mixer/DSP or microphone test is claimed.
+
 ## 0.23.0-beta.1 — Multicolour RTA, Vietnamese feedback warnings and expanded DSP catalogue
 
 - Add selectable RTA display sensitivity: High (-100 dBFS floor), Medium (-85 dBFS) and Low (-70 dBFS). These are display floors only; the captured PCM and underlying analysis values are unchanged.
