@@ -140,11 +140,13 @@ public class OscUdpPlugin extends Plugin {
                     try {
                         socket.receive(inbound);
                     } catch (SocketTimeoutException idle) {
-                        break;
+                        // OSC consoles commonly reply to the client's ephemeral source port.
+                        // Keep waiting until the overall deadline instead of assuming a fixed reply port.
+                        continue;
                     }
 
-                    // Accept replies only from the selected console and its OSC port.
-                    if (!target.equals(inbound.getAddress()) || inbound.getPort() != port) {
+                    // Accept replies only from the selected console IP. The reply source port may be ephemeral.
+                    if (!target.equals(inbound.getAddress())) {
                         continue;
                     }
 
