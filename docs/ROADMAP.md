@@ -16,10 +16,10 @@ This roadmap describes the integrated beta branch. “Implemented” means code 
 - [ ] Reference-analyser comparison with a calibrated microphone and known audio interface.
 - [ ] Sample-synchronous dual-channel loopback/reference capture and latency characterization for absolute transfer, phase and delay claims.
 
-## Stage 3 — Feedback and voice assistance
+## Stage 3 — Feedback and multi-source measurement
 - [x] Persistent narrow-peak candidates, saved suspect feedback points and conservative advisory notch values.
 - [x] Attempted independent capture of up to four separately enumerated inputs, with per-source RTA histories.
-- [x] Vietnamese voice commands, spoken summaries and typed-command fallback where supported by WebView.
+- [x] Vietnamese visual feedback warnings and optional speech synthesis for persistent narrow peaks; general voice-command recognition is not included.
 - [ ] Validate concurrent capture on target Android devices and identify channels inside multichannel USB interfaces.
 - [ ] Confirm candidate feedback by listening and physical channel isolation before any EQ action.
 
@@ -29,8 +29,8 @@ This roadmap describes the integrated beta branch. “Implemented” means code 
 - [ ] Validate room dimensions against a site survey and coverage against measured audience positions.
 - [ ] Populate verified manufacturer polar/phase data for each exact model, configuration and frequency.
 
-## Stage 5 — DSP and mixer integration
-- [x] Manual configuration worksheet for Behringer X32/M32, Soundcraft, dbx DriveRack and db Acoustics CD48.
+## Stage 5 — DSP and mixer model catalogue / integration
+- [x] Selectable manual configuration profiles for Behringer X32/WING/X AIR, Midas M32/HD96, Yamaha mixers/installation DSP, Soundcraft Ui/Si/Vi, dbx DriveRack and db Acoustics CD48.
 - [x] Export proposed channel map, HPF, relative delay and technician notes for review.
 - [ ] Exact model/firmware adapters with documented protocols, state read-back, validation, confirmation and rollback.
 - [ ] Physical hardware bench tests before enabling any control/write capability.
