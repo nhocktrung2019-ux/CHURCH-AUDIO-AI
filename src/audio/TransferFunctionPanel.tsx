@@ -288,10 +288,10 @@ export default function TransferFunctionPanel({ selectedInput, selectedOutput, r
           deviceKey,
           inputChannel: calibrationChannel,
           outputKey: selectedOutput,
-          sampleRate: audio.sampleRate,
+          sampleRate: audio!.sampleRate,
           loopbackDelayMs: measured.estimatedDelayMs,
           points: measured.points
-            .filter(point => point.frequencyHz >= (2 * audio.sampleRate / 4096) && point.frequencyHz <= 10000)
+            .filter(point => point.frequencyHz >= (2 * audio!.sampleRate / 4096) && point.frequencyHz <= 10000)
             .map(point => ({
               frequencyHz: point.frequencyHz,
               magnitudeDb: point.magnitudeDb,
