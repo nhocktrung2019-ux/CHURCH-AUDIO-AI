@@ -91,8 +91,11 @@ export default function MultiMicFeedbackPanel() {
       try { s.stream.getTracks().forEach(t => t.stop()); } catch { /* device may already be closed */ }
     });
     sessionsRef.current = [];
-    void audioRef.current?.close();
+    const previousAudio = audioRef.current;
     audioRef.current = null;
+    if (previousAudio && previousAudio.state !== "closed") {
+      void previousAudio.close().catch(() => undefined);
+    }
     setRunning(false);
   };
 
@@ -139,12 +142,22 @@ export default function MultiMicFeedbackPanel() {
     setBusy(true);
     setError("");
     setNotice("");
-    const audio = new AudioContext();
-    audioRef.current = audio;
+    let audio: AudioContext | null = null;
     const opened: Session[] = [];
     const failed: string[] = [];
     try {
-      await audio.resume();
+      const audioWindow = window as Window & { webkitAudioContext?: typeof AudioContext };
+      const AudioContextClass = window.AudioContext || audioWindow.webkitAudioContext;
+      if (!AudioContextClass) {
+        throw new Error("Thiết bị không hỗ trợ Web Audio API. Hãy cập nhật Android System WebView/Chrome.");
+      }
+      audio = new AudioContextClass();
+      const activeAudio = audio;
+      audioRef.current = activeAudio;
+      await activeAudio.resume();
+      if (activeAudio.state !== "running") {
+        throw new Error("Audio engine chưa chạy. Kiểm tra chế độ tiết kiệm pin hoặc chạm Bắt đầu đo lần nữa.");
+      }
       for (const id of selected) {
         const device = devices.find(d => d.deviceId === id);
         if (!device) continue;
@@ -179,10 +192,10 @@ export default function MultiMicFeedbackPanel() {
           if (diagnostics.routeState === "mismatch") {
             throw new Error("Android/WebView trả về input khác với thiết bị đã chọn; nguồn này bị loại để tránh đo nhầm.");
           }
-          const analyser = audio.createAnalyser();
+          const analyser = activeAudio.createAnalyser();
           analyser.fftSize = 8192;
           analyser.smoothingTimeConstant = 0.35;
-          audio.createMediaStreamSource(stream).connect(analyser);
+          activeAudio.createMediaStreamSource(stream).connect(analyser);
           opened.push({
             id,
             label: device.label,
@@ -215,7 +228,7 @@ export default function MultiMicFeedbackPanel() {
           lastTick = time;
           const next: ChannelState[] = sessionsRef.current.map(s => {
             s.analyser.getFloatFrequencyData(s.data);
-            const bands = toLogBands(s.data, audio.sampleRate);
+            const bands = toLogBands(s.data, activeAudio.sampleRate);
             const history = [...(historiesRef.current.get(s.id) ?? []), bands].slice(-24);
             historiesRef.current.set(s.id, history);
             const trackState = s.track.readyState === "ended" ? "ended" : s.track.muted ? "muted" : "live";
@@ -239,8 +252,8 @@ export default function MultiMicFeedbackPanel() {
       speak("Bắt đầu đo thành công. Có " + opened.length + " nguồn âm thanh đang hoạt động.");
     } catch (e) {
       opened.forEach(s => s.stream.getTracks().forEach(t => t.stop()));
-      await audio.close().catch(() => undefined);
-      audioRef.current = null;
+      if (audio && audio.state !== "closed") await audio.close().catch(() => undefined);
+      if (audioRef.current === audio) audioRef.current = null;
       setError(e instanceof Error ? e.message : "Không thể khởi động giám sát.");
       speak("Không thể bắt đầu phép đo. Hãy kiểm tra quyền micro và thiết bị đầu vào.");
     } finally {
