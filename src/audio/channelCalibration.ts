@@ -261,3 +261,63 @@ export function deleteChannelCalibrationProfile(
     return false;
   }
 }
+
+
+/**
+ * Correct a synchronous Reference -> Measurement H1 result using independent
+ * loopback profiles for both input channels. The common output path cancels;
+ * the channel-to-channel calibration delta is removed from the measured ratio.
+ */
+export function applyDifferentialChannelCalibration(
+  measured: CalibratedTransferPoint[],
+  referenceProfile: ChannelCalibrationProfile,
+  measurementProfile: ChannelCalibrationProfile,
+): CalibratedTransferPoint[] | null {
+  if (!validateChannelCalibrationProfile(referenceProfile).valid
+    || !validateChannelCalibrationProfile(measurementProfile).valid
+    || !Array.isArray(measured)) return null;
+  if (referenceProfile.deviceKey !== measurementProfile.deviceKey
+    || referenceProfile.outputKey !== measurementProfile.outputKey
+    || referenceProfile.sampleRate !== measurementProfile.sampleRate
+    || referenceProfile.inputChannel === measurementProfile.inputChannel) return null;
+
+  const firstFrequency = Math.max(
+    referenceProfile.points[0].frequencyHz,
+    measurementProfile.points[0].frequencyHz,
+  );
+  const lastFrequency = Math.min(
+    referenceProfile.points[referenceProfile.points.length - 1].frequencyHz,
+    measurementProfile.points[measurementProfile.points.length - 1].frequencyHz,
+  );
+  const output: CalibratedTransferPoint[] = [];
+  for (const point of measured) {
+    if (!point || !Number.isFinite(point.frequencyHz) || point.frequencyHz < firstFrequency
+      || point.frequencyHz > lastFrequency || !Number.isFinite(point.magnitudeDb)
+      || !Number.isFinite(point.phaseDeg) || !Number.isFinite(point.coherence)
+      || point.coherence < 0 || point.coherence > 1) return null;
+    const referenceCorrection = interpolateChannelCalibration(referenceProfile.points, point.frequencyHz);
+    const measurementCorrection = interpolateChannelCalibration(measurementProfile.points, point.frequencyHz);
+    if (!referenceCorrection || !measurementCorrection) return null;
+    output.push({
+      ...point,
+      magnitudeDb: point.magnitudeDb - (measurementCorrection.magnitudeDb - referenceCorrection.magnitudeDb),
+      phaseDeg: point.phaseDeg - (measurementCorrection.phaseDeg - referenceCorrection.phaseDeg),
+    });
+  }
+  return output;
+}
+
+export function correctDifferentialLoopbackDelayMs(
+  measuredDelayMs: number,
+  referenceProfile: ChannelCalibrationProfile,
+  measurementProfile: ChannelCalibrationProfile,
+): number | null {
+  if (!Number.isFinite(measuredDelayMs)
+    || !validateChannelCalibrationProfile(referenceProfile).valid
+    || !validateChannelCalibrationProfile(measurementProfile).valid
+    || referenceProfile.deviceKey !== measurementProfile.deviceKey
+    || referenceProfile.outputKey !== measurementProfile.outputKey
+    || referenceProfile.sampleRate !== measurementProfile.sampleRate
+    || referenceProfile.inputChannel === measurementProfile.inputChannel) return null;
+  return measuredDelayMs - (measurementProfile.loopbackDelayMs - referenceProfile.loopbackDelayMs);
+}
