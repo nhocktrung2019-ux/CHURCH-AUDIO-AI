@@ -584,6 +584,8 @@ export default function DeviceControlPanel() {
       setPort(String(first.port ?? ""));
       setHost(first.protocol === "ui-web" ? "10.10.1.1" : "192.168.1.100");
       setLiveMonitoring(false);
+      setPreparedWrite(null);
+      setWriteConfirm(false);
       setQueryResults([]);
     }
   };
@@ -595,6 +597,8 @@ export default function DeviceControlPanel() {
     if (next.protocol === "ui-web") setHost("10.10.1.1");
     else if (next.port) setHost("192.168.1.100");
     setLiveMonitoring(false);
+    setPreparedWrite(null);
+    setWriteConfirm(false);
     setQueryResults([]);
   };
 
