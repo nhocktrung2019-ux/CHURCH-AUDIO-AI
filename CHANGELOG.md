@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.19.0-beta.1 — PCM metadata and channel integrity
+
+- Distinguish the number of physical input channels from the one-channel mono PCM payload used by the current Transfer Function analysis.
+- Include exact frame count, PCM channel count, input channel count and byte length in each AudioWorklet block; reject inconsistent metadata before analysis.
+- Detect input channel-count changes, input disappearance and AudioWorklet render-clock jumps during capture.
+- Persist capture engine, channel-mix policy and track-reported channel/sample-rate settings with each measurement.
+- Keep multi-channel phase/delay alignment disabled: this version does not implement synchronous dual-channel capture.
+
 ## 0.18.0-beta.1 — AudioWorklet PCM engine
 
 - Add a dedicated AudioWorklet processor that transfers raw Float32 PCM blocks with AudioContext frame positions; no MediaRecorder codec path is used.
