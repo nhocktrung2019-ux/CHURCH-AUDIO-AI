@@ -23,7 +23,7 @@ export function validatePcmBlockMetadata(
   metadata: PcmBlockMetadata,
   expectedSampleRate: number,
   expectedInputChannelCount: number | null,
-  expectedPcmChannelCount = 1,
+  expectedPcmChannelCount: number | null = 1,
 ): { valid: true; inputChannelCount: number; pcmChannelCount: number; frameCount: number } | { valid: false; reason: string } {
   if (!Number.isSafeInteger(metadata.frameStart) || metadata.frameStart < 0) {
     return { valid: false, reason: "Invalid PCM frame position." };
@@ -37,7 +37,7 @@ export function validatePcmBlockMetadata(
   if (!Number.isInteger(metadata.pcmChannelCount) || metadata.pcmChannelCount < 1 || metadata.pcmChannelCount > 32) {
     return { valid: false, reason: "Invalid PCM payload channel count." };
   }
-  if (metadata.pcmChannelCount !== expectedPcmChannelCount) {
+  if (expectedPcmChannelCount !== null && metadata.pcmChannelCount !== expectedPcmChannelCount) {
     return { valid: false, reason: "Unexpected PCM payload channel layout." };
   }
   if (!Number.isInteger(metadata.inputChannelCount) || metadata.inputChannelCount < 1 || metadata.inputChannelCount > 32) {
@@ -60,4 +60,45 @@ export function validatePcmBlockMetadata(
     pcmChannelCount: metadata.pcmChannelCount,
     frameCount: metadata.frameCount,
   };
+}
+
+
+/** Convert frame-major interleaved PCM to independent channel arrays. */
+export function deinterleaveInterleavedPcm(
+  samples: Float32Array,
+  frameCount: number,
+  channelCount: number,
+): Float32Array[] | null {
+  if (!Number.isSafeInteger(frameCount) || frameCount <= 0
+    || !Number.isInteger(channelCount) || channelCount < 1 || channelCount > 32
+    || samples.length !== frameCount * channelCount) return null;
+  const channels = Array.from({ length: channelCount }, () => new Float32Array(frameCount));
+  for (let frame = 0; frame < frameCount; frame++) {
+    for (let channel = 0; channel < channelCount; channel++) {
+      channels[channel][frame] = samples[frame * channelCount + channel];
+    }
+  }
+  return channels;
+}
+
+/** Explicitly downmix preserved interleaved PCM for the current mono H1 analyzer. */
+export function mixInterleavedPcmToMono(
+  samples: Float32Array,
+  frameCount: number,
+  channelCount: number,
+): Float32Array | null {
+  if (!Number.isSafeInteger(frameCount) || frameCount <= 0
+    || !Number.isInteger(channelCount) || channelCount < 1 || channelCount > 32
+    || samples.length !== frameCount * channelCount) return null;
+  const mono = new Float32Array(frameCount);
+  for (let frame = 0; frame < frameCount; frame++) {
+    let sum = 0;
+    for (let channel = 0; channel < channelCount; channel++) {
+      const sample = samples[frame * channelCount + channel];
+      if (!Number.isFinite(sample)) return null;
+      sum += sample;
+    }
+    mono[frame] = sum / channelCount;
+  }
+  return mono;
 }
