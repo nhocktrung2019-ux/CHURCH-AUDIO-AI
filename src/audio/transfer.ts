@@ -12,8 +12,8 @@ export type PcmCaptureQuality = {
 export type TransferCaptureMetadata = {
   captureEngine: "AudioWorklet" | "ScriptProcessor fallback";
   inputChannelCount: number | null;
-  pcmChannelCount: 1;
-  channelMix: "arithmetic-mean" | "direct-mono";
+  pcmChannelCount: number;
+  channelMix: "interleaved-preserved-then-arithmetic-mean" | "arithmetic-mean" | "direct-mono";
   trackChannelCount: number | null;
   trackSampleRate: number | null;
 };
