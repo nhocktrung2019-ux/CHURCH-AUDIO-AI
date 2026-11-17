@@ -4,7 +4,7 @@ export type PcmBlockMetadata = {
   sampleRate: number;
   /** Number of channels actually stored in the transferred PCM buffer. */
   pcmChannelCount: number;
-  /** Number of input channels mixed by the capture processor. */
+  /** Number of channels delivered by the input stream before analysis downmix. */
   inputChannelCount: number;
   byteLength: number;
 };
