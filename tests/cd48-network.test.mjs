@@ -5,10 +5,11 @@ import {
   assessCD48NetworkConfig,
   isValidLanSubnetPrefix,
   parseIPv4,
+  CD48_IMAGE_REFERENCE,
 } from "../src/audio/cd48Network.ts";
 
 const base = {
-  hardwareRevision: "rj45-confirmed",
+  hardwareRevision: "cd48-100m-rj45-observed",
   link: "ethernet",
   deviceIp: "192.168.20.20",
   controllerIp: "192.168.20.51",
@@ -68,4 +69,14 @@ test("rejects invalid addresses and subnet configuration", () => {
   assert.equal(assessCD48NetworkConfig({ ...base, deviceIp: "192.168.20.999" }).status, "invalid-address");
   assert.equal(assessCD48NetworkConfig({ ...base, subnetPrefix: 31 }).status, "invalid-subnet");
   assert.equal(assessCD48NetworkConfig({ ...base, controllerIp: "192.168.21.51" }).status, "different-subnet");
+});
+
+test("uses the submitted CD48 visual reference for Ethernet profile details", () => {
+  assert.equal(CD48_IMAGE_REFERENCE.rearNetworkPort, "RJ45 100M Ethernet");
+  assert.equal(CD48_IMAGE_REFERENCE.ethernetSpeedMbps, 100);
+  assert.equal(CD48_IMAGE_REFERENCE.frontDisplayIp, "192.168.20.20");
+  assert.equal(CD48_IMAGE_REFERENCE.frontDisplayVersion, "2215");
+  assert.equal(CD48_IMAGE_REFERENCE.frontUsbLabel, "COM2");
+  const result = assessCD48NetworkConfig(base);
+  assert.equal(result.mayUseLanPath, true);
 });
