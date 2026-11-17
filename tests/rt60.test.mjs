@@ -15,7 +15,7 @@ test("rejects invalid sweep parameters before allocating PCM", () => {
   assert.throws(() => createLogSweep(48000, 31));
   assert.throws(() => createLogSweep(48000, 2, 18000, 1000));
   assert.throws(() => createLogSweep(48000, 2, 30, 18000, 1.2));
-  assert.throws(() => createLogSweep(8000, 2, 30, 18000));
+  assert.throws(() => createLogSweep(8000, 2, 4000, 18000));
 });
 
 test("rejects unsupported sample rates and malformed impulse-response PCM", () => {
