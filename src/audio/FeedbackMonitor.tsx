@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Download, Mic, MicOff, ShieldAlert, ShieldCheck, Volume2, VolumeX, BookmarkPlus, Trash2, FileJson2 } from "lucide-react";
+import { Mic, MicOff, ShieldAlert, ShieldCheck, Volume2, VolumeX, BookmarkPlus, Trash2, FileJson2 } from "lucide-react";
 import { detectNarrowPeaks, type FeedbackCandidate } from "./feedback";
 import { usePersistentState } from "./usePersistentState";
 
