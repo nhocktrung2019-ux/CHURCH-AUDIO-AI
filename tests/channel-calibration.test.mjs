@@ -2,9 +2,13 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   applyChannelCalibration,
+  channelCalibrationStorageKey,
   correctLoopbackDelayMs,
+  deleteChannelCalibrationProfile,
   interpolateChannelCalibration,
   isChannelCalibrationCompatible,
+  loadChannelCalibrationProfile,
+  saveChannelCalibrationProfile,
   validateChannelCalibrationProfile,
 } from "../src/audio/channelCalibration.ts";
 
@@ -22,11 +26,32 @@ const profile = {
   ],
 };
 
+const target = {
+  deviceKey: "usb-interface-A",
+  inputChannel: 1,
+  outputKey: "usb-interface-A-out-1",
+  sampleRate: 48000,
+};
+
+function createMemoryStorage() {
+  const values = new Map();
+  return {
+    values,
+    getItem(key) { return values.get(key) ?? null; },
+    setItem(key, value) { values.set(key, value); },
+    removeItem(key) { values.delete(key); },
+  };
+}
+
 test("accepts a bounded, ordered calibration profile", () => {
   assert.deepEqual(validateChannelCalibrationProfile(profile), { valid: true });
 });
 
-test("rejects duplicate frequencies and insufficient bandwidth", () => {
+test("rejects malformed profiles, duplicate frequencies and insufficient bandwidth", () => {
+  assert.equal(validateChannelCalibrationProfile(null).valid, false);
+  assert.equal(validateChannelCalibrationProfile({ ...profile, points: [
+    profile.points[0], null, profile.points[2],
+  ] }).valid, false);
   assert.equal(validateChannelCalibrationProfile({ ...profile, points: [
     profile.points[0], profile.points[0], profile.points[2],
   ] }).valid, false);
@@ -34,15 +59,11 @@ test("rejects duplicate frequencies and insufficient bandwidth", () => {
 });
 
 test("calibration compatibility requires exact interface, channel, output and sample rate", () => {
-  assert.equal(isChannelCalibrationCompatible(profile, {
-    deviceKey: "usb-interface-A", inputChannel: 1, outputKey: "usb-interface-A-out-1", sampleRate: 48000,
-  }), true);
-  assert.equal(isChannelCalibrationCompatible(profile, {
-    deviceKey: "usb-interface-A", inputChannel: 0, outputKey: "usb-interface-A-out-1", sampleRate: 48000,
-  }), false);
-  assert.equal(isChannelCalibrationCompatible(profile, {
-    deviceKey: "usb-interface-A", inputChannel: 1, outputKey: "usb-interface-A-out-1", sampleRate: 44100,
-  }), false);
+  assert.equal(isChannelCalibrationCompatible(profile, target), true);
+  assert.equal(isChannelCalibrationCompatible(profile, { ...target, inputChannel: 0 }), false);
+  assert.equal(isChannelCalibrationCompatible(profile, { ...target, sampleRate: 44100 }), false);
+  assert.equal(isChannelCalibrationCompatible(profile, { ...target, outputKey: "other-output" }), false);
+  assert.equal(isChannelCalibrationCompatible(profile, { ...target, deviceKey: "other-interface" }), false);
 });
 
 test("log-frequency interpolation is bounded and does not extrapolate", () => {
@@ -50,6 +71,17 @@ test("log-frequency interpolation is bounded and does not extrapolate", () => {
   assert.ok(midpoint);
   assert.ok(Math.abs(midpoint.magnitudeDb - 3) < 1e-9);
   assert.equal(interpolateChannelCalibration(profile.points, 20), null);
+});
+
+test("phase interpolation follows the nearest 360-degree branch", () => {
+  const wrapped = [
+    { frequencyHz: 50, magnitudeDb: 0, phaseDeg: 170 },
+    { frequencyHz: 1000, magnitudeDb: 0, phaseDeg: -170 },
+    { frequencyHz: 10000, magnitudeDb: 0, phaseDeg: -160 },
+  ];
+  const midpoint = interpolateChannelCalibration(wrapped, Math.sqrt(50 * 1000));
+  assert.ok(midpoint);
+  assert.ok(Math.abs(midpoint.phaseDeg - 180) < 1e-9);
 });
 
 test("removes calibrated loopback magnitude, phase and delay", () => {
@@ -61,4 +93,37 @@ test("removes calibrated loopback magnitude, phase and delay", () => {
   assert.equal(corrected[0].phaseDeg, 70);
   assert.equal(corrected[0].coherence, 0.98);
   assert.equal(correctLoopbackDelayMs(4.25, profile), 3);
+});
+
+test("does not pass uncalibrated or invalid transfer points through", () => {
+  assert.equal(applyChannelCalibration([
+    { frequencyHz: 1000, magnitudeDb: 1, phaseDeg: 0, coherence: 0.9 },
+    { frequencyHz: 12000, magnitudeDb: 1, phaseDeg: 0, coherence: 0.9 },
+  ], profile), null);
+  assert.equal(applyChannelCalibration([
+    { frequencyHz: 1000, magnitudeDb: 1, phaseDeg: 0, coherence: 1.1 },
+  ], profile), null);
+});
+
+test("stores profiles under exact interface/channel/output/sample-rate identity", () => {
+  const storage = createMemoryStorage();
+  const key = channelCalibrationStorageKey(target);
+  assert.ok(key);
+  assert.equal(saveChannelCalibrationProfile(storage, profile), true);
+  assert.deepEqual(loadChannelCalibrationProfile(storage, target), profile);
+  assert.equal(loadChannelCalibrationProfile(storage, { ...target, inputChannel: 0 }), null);
+  assert.equal(loadChannelCalibrationProfile(storage, { ...target, sampleRate: 44100 }), null);
+  assert.equal(deleteChannelCalibrationProfile(storage, target), true);
+  assert.equal(loadChannelCalibrationProfile(storage, target), null);
+});
+
+test("ignores malformed or tampered persisted profiles", () => {
+  const storage = createMemoryStorage();
+  const key = channelCalibrationStorageKey(target);
+  assert.ok(key);
+  storage.setItem(key, "{not-json");
+  assert.equal(loadChannelCalibrationProfile(storage, target), null);
+  storage.setItem(key, JSON.stringify({ ...profile, outputKey: "another-output" }));
+  assert.equal(loadChannelCalibrationProfile(storage, target), null);
+  assert.equal(saveChannelCalibrationProfile(storage, { ...profile, loopbackDelayMs: 999 }), false);
 });
