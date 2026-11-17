@@ -51,7 +51,7 @@ test("averages acoustic energy rather than averaging decibel values", () => {
 
   const expected = 10 * Math.log10((Math.pow(10, -20 / 10) + Math.pow(10, -40 / 10)) / 2);
   near(getLeqLevels(state).z, expected);
-  assert.ok(Math.abs(getLeqLevels(state).z - -30) > 9);
+  assert.ok(Math.abs(getLeqLevels(state).z - -30) > 6);
 });
 
 test("discards long scheduler gaps but resumes integration after the gap", () => {
