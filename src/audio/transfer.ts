@@ -9,6 +9,15 @@ export type PcmCaptureQuality = {
   sampleCount: number;
 };
 
+export type TransferCaptureMetadata = {
+  captureEngine: "AudioWorklet" | "ScriptProcessor fallback";
+  inputChannelCount: number | null;
+  pcmChannelCount: 1;
+  channelMix: "arithmetic-mean" | "direct-mono";
+  trackChannelCount: number | null;
+  trackSampleRate: number | null;
+};
+
 export type TransferResult = {
   points: TransferPoint[];
   estimatedDelayMs: number;
@@ -18,6 +27,7 @@ export type TransferResult = {
   sampleRate: number;
   framesAveraged: number;
   captureQuality?: PcmCaptureQuality;
+  captureMetadata?: TransferCaptureMetadata;
 };
 
 export function makeReferenceNoise(sampleRate: number, durationSeconds = 6): Float32Array {
