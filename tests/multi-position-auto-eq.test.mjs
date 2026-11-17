@@ -14,7 +14,8 @@ function sample(label,offset=0,weight=1,meta={}){
   captureQuality:{peakDbfs:-8,rmsDbfs:-25,clippedSamplePercent:0,invalidSamplePercent:0,sampleCount:240000},
   captureMetadata:{captureEngine:"AudioWorklet",inputChannelCount:1,pcmChannelCount:1,channelMix:"direct-mono",trackChannelCount:1,trackSampleRate:48000,analysisMode:"mono-acoustic"},
   ...meta,
- }};
+ },repeatability:{passed:true,captureCount:3,includedBinCount:300,unstableBinCount:0,insufficientCoverageBinCount:0,medianSpreadDb:0.6,maximumSpreadDb:1,maximumAllowedSpreadDb:3}};
+}
 }
 test("requires at least three different listening positions",()=>{
  const check=assessMultiPositionAutoEq([sample("A"),sample("B")]);
@@ -58,4 +59,11 @@ test("reports bins that do not meet the minimum position coverage",()=>{
  assert.ok(missing.length>0);
  assert.ok(missing.every(d=>d.coverageCount<3&&d.spreadDb===null));
  assert.equal(result.summary.insufficientCoverageBinCount,missing.length);
+});
+
+test("rejects legacy positions without repeatability evidence",()=>{
+ const legacy={...sample("B")};delete legacy.repeatability;
+ const result=assessMultiPositionAutoEq([sample("A"),legacy,sample("C")]);
+ assert.equal(result.ready,false);
+ assert.ok(result.issues.some(issue=>issue.includes("cần đo lặp tối thiểu 3 lần")));
 });
