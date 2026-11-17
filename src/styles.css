@@ -467,3 +467,28 @@ footer{padding-bottom:calc(26px + env(safe-area-inset-bottom))}
 .readiness-item.limited{border-color:#66533d}
 .readiness-item.limited span{color:#e5b77e}
 @media(max-width:600px){.measurement-evidence-list,.readiness-grid,.dsp-device-summary{grid-template-columns:1fr}}
+
+
+/* Voice command workspace */
+.voice-assistant-panel{margin:0 0 16px;padding:13px 17px}
+.voice-assistant-toggle{display:flex!important;align-items:center;gap:10px;width:100%;margin:0!important;padding:4px 0!important;background:transparent!important;border:0!important;color:#e9edf2!important;text-align:left;box-shadow:none!important}
+.voice-assistant-toggle svg{width:19px;height:19px;color:var(--accent);flex:none}
+.voice-assistant-toggle b{font-size:13px;letter-spacing:.4px;flex:1}
+.voice-assistant-toggle span{font:10px ui-monospace,SFMono-Regular,Consolas,monospace;color:var(--accent);letter-spacing:.8px}
+.voice-assistant-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.voice-assistant-actions button{margin-top:4px!important}
+.voice-command-form{margin-top:12px}
+.voice-command-form label{display:flex;align-items:center;gap:7px}
+.voice-command-form label svg{width:14px;height:14px}
+.voice-command-form>div{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px}
+.voice-command-form input{min-width:0;width:100%;padding:11px;background:#0d151d;color:#e5edf1;border:1px solid #394752;border-radius:6px}
+.voice-command-form button{width:auto!important;min-width:88px;margin:0!important}
+.voice-transcript{margin:12px 0 0;color:#b5c7c8;font-size:12px}
+.voice-assistant-panel .device-notice{margin-bottom:0}
+@media(max-width:420px){
+ .voice-assistant-panel{padding:12px}
+ .voice-assistant-toggle b{font-size:11px}
+ .voice-assistant-actions{grid-template-columns:1fr}
+ .voice-command-form>div{grid-template-columns:minmax(0,1fr) 76px}
+ .voice-command-form button{min-width:76px;padding:10px 8px!important}
+}
