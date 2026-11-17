@@ -8,7 +8,7 @@ const MIN_CAPTURES=3, MAX_CAPTURES=5, MIN_COVERAGE=0.8, MAX_GAP_OCTAVES=0.25, MA
 function median(values:number[]):number { if(!values.length)return 0; const sorted=[...values].sort((a,b)=>a-b),mid=Math.floor(sorted.length/2); return sorted.length%2?sorted[mid]??0:((sorted[mid-1]??0)+(sorted[mid]??0))/2; }
 function validCapture(result:TransferResult):boolean {
  const q=result.captureQuality;
- return Boolean(result.analysisMode==="mono-acoustic"&&result.captureMetadata?.analysisMode==="mono-acoustic"&&result.captureMetadata?.captureEngine==="AudioWorklet"
+ return Boolean(result.captureMetadata?.analysisMode==="mono-acoustic"&&result.captureMetadata?.captureEngine==="AudioWorklet"
   &&q&&Number.isFinite(q.rmsDbfs)&&q.rmsDbfs>=-55&&Number.isFinite(q.peakDbfs)&&q.peakDbfs<=-0.5
   &&Number.isFinite(q.clippedSamplePercent)&&q.clippedSamplePercent<=0.1&&Number.isFinite(q.invalidSamplePercent)&&q.invalidSamplePercent<=0.01
   &&Number.isFinite(q.sampleCount)&&q.sampleCount>0&&Number.isFinite(result.sampleRate)&&result.sampleRate>0&&assessAutoEqReadiness(result.points).ready);

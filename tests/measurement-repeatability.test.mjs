@@ -8,3 +8,10 @@ test("aggregates stable repeats using median magnitude",()=>{const r=analyzeMeas
 test("excludes unstable bins while retaining stable bands",()=>{const r=analyzeMeasurementRepeatability([capture(),capture(0.5),capture(0,{unstable:true})]);assert.ok(r.summary.unstableBinCount>0);assert.ok(r.diagnostics.some(d=>d.status==="unstable"&&d.frequencyHz===1000));assert.ok(r.result?.points.every(p=>p.frequencyHz!==1000));});
 test("rejects mismatched sample rates",()=>{const r=analyzeMeasurementRepeatability([capture(),capture(0.3),capture(0.6,{sampleRate:44100})]);assert.equal(r.ready,false);assert.match(r.reason,/Sample rate/);});
 test("reports frequency bins with insufficient repeat coverage",()=>{const r=analyzeMeasurementRepeatability([capture(),capture(0.3),capture(0.6,{omit:true})]);assert.ok(r.summary.insufficientCoverageBinCount>0);assert.ok(r.diagnostics.some(d=>d.status==="insufficient-coverage"&&d.frequencyHz>=900&&d.frequencyHz<=1200));});
+
+test("accepts the app capture metadata when the optional top-level mode is omitted",()=>{
+ const measured=capture();
+ delete measured.analysisMode;
+ const result=analyzeMeasurementRepeatability([measured,capture(0.3),capture(0.6)]);
+ assert.equal(result.ready,true);
+});
