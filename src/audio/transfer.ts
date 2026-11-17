@@ -14,7 +14,7 @@ export type TransferCaptureMetadata = {
   captureEngine: "AudioWorklet" | "ScriptProcessor fallback";
   inputChannelCount: number | null;
   pcmChannelCount: number;
-  channelMix: "interleaved-preserved-then-arithmetic-mean" | "arithmetic-mean" | "direct-mono";
+  channelMix: "interleaved-preserved-then-arithmetic-mean" | "interleaved-preserved-synchronous-pair" | "arithmetic-mean" | "direct-mono";
   trackChannelCount: number | null;
   trackSampleRate: number | null;
 };
@@ -278,8 +278,37 @@ export function analyzeSynchronousTransfer(
     || reference.some(sample => !Number.isFinite(sample))
     || measurement.some(sample => !Number.isFinite(sample))) return null;
 
-  const delay = estimateSynchronousRelativeDelay(reference, measurement, sampleRate, 100);
-  if (!delay || delay.correlation < 0.1) return null;
+  // Reduce the coarse search size for mobile, then refine at native sample rate.
+  const delayFactor = sampleRate >= 32000 ? 4 : 2;
+  const coarseReference = decimateForLag(reference, delayFactor);
+  const coarseMeasurement = decimateForLag(measurement, delayFactor);
+  const coarseDelay = estimateSynchronousRelativeDelay(
+    coarseReference, coarseMeasurement, sampleRate / delayFactor, 100,
+  );
+  if (!coarseDelay || coarseDelay.correlation < 0.1) return null;
+  const coarseCenter = Math.round(coarseDelay.delaySamples * delayFactor);
+  const maxLag = Math.min(Math.floor(sampleRate * 0.1), Math.floor(reference.length / 2));
+  const fineLength = Math.min(reference.length, Math.floor(sampleRate * 1.5));
+  let bestLag = Math.max(-maxLag, Math.min(maxLag, coarseCenter));
+  let bestCorrelation = 0;
+  for (let lag = Math.max(-maxLag, coarseCenter - delayFactor);
+    lag <= Math.min(maxLag, coarseCenter + delayFactor); lag++) {
+    const score = Math.abs(normalizedCorrelation(reference, measurement, lag, 1, fineLength));
+    if (score > bestCorrelation) {
+      bestCorrelation = score;
+      bestLag = lag;
+    }
+  }
+  if (bestCorrelation < 0.1) return null;
+  const before = Math.abs(normalizedCorrelation(reference, measurement, bestLag - 1, 1, fineLength));
+  const center = Math.abs(normalizedCorrelation(reference, measurement, bestLag, 1, fineLength));
+  const after = Math.abs(normalizedCorrelation(reference, measurement, bestLag + 1, 1, fineLength));
+  const curvature = before - 2 * center + after;
+  const fraction = Math.abs(curvature) > 1e-12
+    ? Math.max(-0.5, Math.min(0.5, 0.5 * (before - after) / curvature))
+    : 0;
+  const delaySamples = bestLag + fraction;
+  const delayMs = delaySamples / sampleRate * 1000;
 
   const bins = frameSize / 2 + 1;
   const sxx = new Float64Array(bins);
@@ -339,8 +368,8 @@ export function analyzeSynchronousTransfer(
   const reliableBandPercent = 100 * useful.filter(point => point.coherence >= 0.8).length / useful.length;
   return {
     points,
-    estimatedDelayMs: delay.delayMs,
-    confidence: delay.correlation,
+    estimatedDelayMs: delayMs,
+    confidence: bestCorrelation,
     averageCoherence,
     reliableBandPercent,
     sampleRate,
