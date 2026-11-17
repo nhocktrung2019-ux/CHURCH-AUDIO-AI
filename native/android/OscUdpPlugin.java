@@ -209,12 +209,13 @@ public class OscUdpPlugin extends Plugin {
         final int timeoutMs = timeoutValue == null ? 1800 : timeoutValue;
         final WriteSpec spec = getWriteSpec(address);
 
-        if (host == null || host.trim().isEmpty() || spec == null) {
+        if (host == null || host.trim().isEmpty() || spec == null || !isAllowedQuery(address)) {
             call.reject("Địa chỉ hoặc tham số ghi không nằm trong danh sách được bảo vệ.");
             return;
         }
         if (expectedRawValue == null || requestedValue == null
-            || !Double.isFinite(expectedRawValue) || !Double.isFinite(requestedValue)) {
+            || Double.isNaN(expectedRawValue) || Double.isInfinite(expectedRawValue)
+            || Double.isNaN(requestedValue) || Double.isInfinite(requestedValue)) {
             call.reject("Giá trị đọc trước hoặc giá trị mới không hợp lệ.");
             return;
         }
@@ -380,11 +381,17 @@ public class OscUdpPlugin extends Plugin {
     }
 
     private static WriteSpec getWriteSpec(String address) {
-        if (address == null || !address.matches("^/ch/(0[1-9]|[12][0-9]|3[0-2])/.+$")) return null;
-        if (address.endsWith("/mix/fader")) return new WriteSpec("fader", false, -90.0, 0.0, 0.1, 0.003);
-        if (address.endsWith("/mix/on")) return new WriteSpec("toggle", true, 0.0, 1.0, 1.0, 0.01);
-        if (address.endsWith("/preamp/trim")) return new WriteSpec("trim", false, -18.0, 0.0, 0.25, 0.003);
-        if (address.endsWith("/preamp/invert") || address.endsWith("/eq/on") || address.endsWith("/delay/on")) {
+        if (address == null) return null;
+        if (address.matches("^/ch/(0[1-9]|[12][0-9]|3[0-2])/mix/fader$")) {
+            return new WriteSpec("fader", false, -90.0, 0.0, 0.0, 0.003);
+        }
+        if (address.matches("^/ch/(0[1-9]|[12][0-9]|3[0-2])/mix/on$")) {
+            return new WriteSpec("toggle", true, 0.0, 1.0, 1.0, 0.01);
+        }
+        if (address.matches("^/ch/(0[1-9]|[12][0-9]|3[0-2])/preamp/trim$")) {
+            return new WriteSpec("trim", false, -18.0, 0.0, 0.25, 0.003);
+        }
+        if (address.matches("^/ch/(0[1-9]|[12][0-9]|3[0-2])/(preamp/invert|eq/on|delay/on)$")) {
             return new WriteSpec("toggle", true, 0.0, 1.0, 1.0, 0.01);
         }
         if (address.matches("^/ch/(0[1-9]|[12][0-9]|3[0-2])/eq/[1-4]/f$")) {
@@ -396,7 +403,9 @@ public class OscUdpPlugin extends Plugin {
         if (address.matches("^/ch/(0[1-9]|[12][0-9]|3[0-2])/eq/[1-4]/q$")) {
             return new WriteSpec("eq-q", false, 0.3, 10.0, 0.0, 0.003);
         }
-        if (address.endsWith("/delay/time")) return new WriteSpec("delay-time", false, 0.3, 200.0, 0.1, 0.003);
+        if (address.matches("^/ch/(0[1-9]|[12][0-9]|3[0-2])/delay/time$")) {
+            return new WriteSpec("delay-time", false, 0.3, 200.0, 0.1, 0.003);
+        }
         return null;
     }
 
