@@ -712,15 +712,15 @@ export default function DeviceControlPanel() {
             <tbody>{tableScopeRows.map(row => <tr key={row.id}>
               <td><b>{row.id.replace("/", "").toUpperCase()}</b></td>
               <td>{renderOscValue(row.values.name)}</td>
-              <td>{renderOscValue(row.values.fader)}</td>
+              <td>{row.values.fader === undefined ? "—" : formatControlRaw("mix/fader", Number(row.values.fader))}</td>
               <td>{row.values.on === undefined ? "—" : Number(row.values.on) === 1 ? "ON" : "OFF"}</td>
               <td>{renderOscValue(row.values.pan)}</td>
-              <td>{renderOscValue(row.values.trim)}</td>
+              <td>{row.values.trim === undefined ? "—" : formatControlRaw("preamp/trim", Number(row.values.trim))}</td>
               <td>{row.values.eq === undefined ? "—" : Number(row.values.eq) === 1 ? "ON" : "OFF"}</td>
               <td>{row.values.dyn === undefined ? "—" : Number(row.values.dyn) === 1 ? "ON" : "OFF"}</td>
             </tr>)}</tbody>
           </table>
-          <small className="muted">* Fader hiển thị giá trị OSC chuẩn hóa 0.000–1.000; xem chi tiết để đối chiếu thang dB.</small>
+          <small className="muted">* Fader và preamp trim đã đổi từ giá trị OSC chuẩn hóa sang dB để dễ đối chiếu.</small>
         </div>}
         {queryResults.length > 0 && <details className="rta-frequency-bookmarks">
           <summary>Dữ liệu OSC nhận được · {queryResults.length} tham số</summary>
