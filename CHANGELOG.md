@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.20.0-beta.1 — Synchronous dual-channel measurement foundation
+
+- Add strict provenance validation for Reference/Measurement channel pairs: same capture session, source stream, sample rate, frame start/count and distinct channel indices.
+- Add a planar PCM channel extractor that rejects incomplete or mismatched frame ranges.
+- Add a bounded broadband cross-correlation delay estimator with documented sign convention (positive means Measurement arrives later than Reference).
+- Add regression tests for independent clocks/streams, mismatched frame ranges, channel mapping, extraction and known-delay signals.
+- This is algorithmic groundwork only. Live dual-channel USB capture, channel-selection UI, per-channel calibration and hardware clock verification are not yet enabled.
+
+
 ## 0.19.0-beta.1 — PCM metadata and channel integrity
 
 - Distinguish the number of physical input channels from the one-channel mono PCM payload used by the current Transfer Function analysis.
