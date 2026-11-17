@@ -2,10 +2,21 @@ name: Android APK
 
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
+  pull_request:
+    branches: [main, feature/full-phase-integration, feature/v0.17-auto-eq-phase, feature/v0.18-audioworklet-pcm, feature/v0.19-pcm-metadata-integrity, feature/v0.20-dual-channel-foundation, feature/v0.21-multichannel-pcm-preservation, feature/v0.22-synchronous-transfer-live, feature/v0.23-channel-calibration-foundation, feature/v4-audio-system-health]
     paths:
       - "src/**"
+      - "tests/**"
+      - "public/**"
+      - "index.html"
+      - "package.json"
+      - "capacitor.config.ts"
+      - ".github/workflows/android-apk.yml"
+  push:
+    branches: [main, feature/v0.17-auto-eq-phase, feature/v0.18-audioworklet-pcm, feature/v0.19-pcm-metadata-integrity, feature/v0.20-dual-channel-foundation, feature/v0.21-multichannel-pcm-preservation, feature/v0.22-synchronous-transfer-live, feature/v4-audio-system-health]
+    paths:
+      - "src/**"
+      - "tests/**"
       - "public/**"
       - "index.html"
       - "package.json"
@@ -14,6 +25,11 @@ on:
 
 permissions:
   contents: read
+
+# Avoid stacking duplicate push + pull_request runs for the same feature branch.
+concurrency:
+  group: android-apk-${{ github.event.pull_request.head.ref || github.ref_name }}
+  cancel-in-progress: true
 
 jobs:
   build-apk:
@@ -32,6 +48,8 @@ jobs:
           java-version: "21"
       - name: Install dependencies
         run: npm install
+      - name: Run regression tests
+        run: npm test
       - name: Build web app
         run: npm run build
       - name: Generate Android project

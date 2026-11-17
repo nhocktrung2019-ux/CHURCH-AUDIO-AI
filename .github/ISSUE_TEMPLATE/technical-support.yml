@@ -1,0 +1,71 @@
+name: Technical support
+description: Report an application, audio-routing, measurement or update problem.
+title: "[Hỗ trợ kỹ thuật] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Vui lòng không gửi mật khẩu, access token, dữ liệu cá nhân, bản ghi âm riêng tư hoặc thông tin nhạy cảm.
+  - type: input
+    id: app-version
+    attributes:
+      label: Phiên bản ứng dụng
+      description: Ví dụ 0.12.0
+      placeholder: 0.12.0
+    validations:
+      required: true
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Nền tảng
+      options:
+        - Android
+        - Windows / Linux / macOS browser
+        - Khác
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Phân hệ gặp lỗi
+      options:
+        - RTA / Spectrogram
+        - SPL / Calibration
+        - RT60 / Room
+        - Transfer Function / Phase / Delay
+        - Auto EQ / Feedback
+        - CBT / Coverage / Polar
+        - Audio input / output
+        - APK / Update
+        - Project Backup / Restore
+        - Khác
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Các bước tái hiện
+      description: Ghi từng bước để kỹ thuật có thể kiểm tra lại.
+      placeholder: "1. Mở...\n2. Chọn...\n3. Nhấn..."
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Kết quả mong đợi
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Kết quả thực tế / thông báo lỗi
+    validations:
+      required: true
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Báo cáo chẩn đoán (đã rà soát)
+      description: Dán nội dung từ Support → Tạo & sao chép báo cáo. Xóa mọi thông tin không muốn chia sẻ.
+      render: text
+    validations:
+      required: false

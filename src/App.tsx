@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type PointerEvent } from "react";
 import { usePersistentState } from "./audio/usePersistentState";
 import { micCorrectionAt, type MicCalibrationFile, type MicCalibrationPoint } from "./audio/micCalibration";
 import { Activity, AudioWaveform, Mic, Radio, Volume2, Waves, RefreshCw, Square, Layers3, CheckCircle2, AlertCircle, LayoutDashboard, SlidersHorizontal, ShieldCheck, Box, Settings2, Ruler, Speaker } from "lucide-react";
@@ -16,9 +16,19 @@ import CBTCalculator from "./audio/CBTCalculator";
 import PolarDataStudio from "./audio/PolarDataStudio";
 import SPLMeterPanel from "./audio/SPLMeterPanel";
 import MicCalibrationPanel from "./audio/MicCalibrationPanel";
+import MicrophoneSensitivityPanel, { type MicrophoneSensitivityProfile } from "./audio/MicrophoneSensitivityPanel";
+import { rtaBandFrequency, rtaBandIndexForFrequency } from "./audio/rtaFrequency";
 import ProjectBackupPanel from "./audio/ProjectBackupPanel";
+import MultiMicFeedbackPanel from "./audio/MultiMicFeedbackPanel";
+import VersionSupportPanel from "./audio/VersionSupportPanel";
+import DSPIntegrationPanel from "./audio/DSPIntegrationPanel";
+import VoiceAssistantPanel from "./audio/VoiceAssistantPanel";
+import { describeVoiceIntent, type VoiceIntent } from "./audio/voiceCommands";
+import { APP_VERSION } from "./appVersion";
+import { LifeBuoy } from "lucide-react";
+import SystemHealthPanel from "./audio/SystemHealthPanel";
 
-type TabId = "overview" | "rta" | "room" | "align" | "system" | "design" | "tools";
+type TabId = "overview" | "rta" | "room" | "align" | "system" | "design" | "tools" | "dsp" | "support";
 const EMPTY_MIC_CALIBRATION_POINTS: MicCalibrationPoint[] = [];
 const tabs: { id: TabId; label: string; short: string; icon: typeof Activity }[] = [
   { id: "overview", label: "Tổng quan", short: "HOME", icon: LayoutDashboard },
@@ -28,15 +38,65 @@ const tabs: { id: TabId; label: string; short: string; icon: typeof Activity }[]
   { id: "system", label: "Chống hú & tối ưu", short: "SYSTEM", icon: ShieldCheck },
   { id: "design", label: "Thiết kế phủ âm 3D", short: "3D", icon: Box },
   { id: "tools", label: "Generator & thiết bị", short: "TOOLS", icon: Settings2 },
+  { id: "dsp", label: "DSP & Mixer", short: "DSP", icon: Settings2 },
+  { id: "support", label: "Cập nhật & hỗ trợ", short: "SUPPORT", icon: LifeBuoy },
 ];
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<TabId>("overview");
+  const [selectedRtaBand, setSelectedRtaBand] = usePersistentState<number | null>("church-audio-rta-selected-band", null);
+  const [rtaCursorLocked, setRtaCursorLocked] = useState(false);
+  const [rtaFrequencyInput, setRtaFrequencyInput] = useState(() => selectedRtaBand === null ? "" : String(Math.round(rtaBandFrequency(selectedRtaBand))));
+  const [micSensitivityProfile, setMicSensitivityProfile] = usePersistentState<MicrophoneSensitivityProfile | null>("church-audio-mic-sensitivity-profile", null);
   const [calibrationOffsetDb, setCalibrationOffsetDb] = usePersistentState("church-audio-mic-offset-db",0);
   const [micCalibration, setMicCalibration] = usePersistentState<MicCalibrationFile | null>("church-audio-mic-calibration-file",null);
   const calibrationPoints = micCalibration?.points ?? EMPTY_MIC_CALIBRATION_POINTS;
   const a = useAudioAnalyzer(calibrationPoints);
+  const selectRtaBand = (event: PointerEvent<HTMLDivElement>) => {
+    if (rtaCursorLocked) return;
+    const bounds = event.currentTarget.getBoundingClientRect();
+    if (!bounds.width || !a.spectrum.length) return;
+    const position = Math.max(0, Math.min(0.999999, (event.clientX - bounds.left) / bounds.width));
+    const band = Math.floor(position * a.spectrum.length);
+    setSelectedRtaBand(band);
+    setRtaFrequencyInput(String(Math.round(rtaBandFrequency(band, a.spectrum.length))));
+  };
+  const selectedRtaFrequency =
+    selectedRtaBand === null ? null : rtaBandFrequency(selectedRtaBand, a.spectrum.length || 64);
+  const selectedRtaLevel =
+    selectedRtaBand === null ? null : (a.spectrum[selectedRtaBand] ?? null);
+  const setRtaFrequency = (frequencyHz: number) => {
+    if (Number.isFinite(frequencyHz) && frequencyHz >= 20 && frequencyHz <= 20000) {
+      const band = rtaBandIndexForFrequency(frequencyHz, a.spectrum.length || 64);
+      setSelectedRtaBand(band);
+      setRtaFrequencyInput(String(Math.round(frequencyHz)));
+    }
+  };
   const t = useToneGenerator();
+  const handleVoiceIntent = (intent: VoiceIntent): string => {
+    switch (intent.type) {
+      case "navigate":
+        setActiveTab(intent.tab);
+        return describeVoiceIntent(intent);
+      case "measurement-start":
+        setActiveTab("rta");
+        if (a.running) return "Microphone đang hoạt động; không tạo phiên đo thứ hai.";
+        if (a.connecting) return "Microphone đang kết nối. Chờ trạng thái hiện tại hoàn tất.";
+        void a.start();
+        return "Đã gửi yêu cầu bắt đầu đo. Theo dõi trạng thái microphone và cảnh báo quyền truy cập.";
+      case "measurement-stop":
+        if (!a.running && !a.connecting) return "Không có phiên đo microphone đang chạy.";
+        a.stop();
+        return "Đã gửi yêu cầu dừng phép đo microphone.";
+      case "rta-frequency":
+        setActiveTab("rta");
+        setRtaFrequency(intent.frequencyHz);
+        return describeVoiceIntent(intent);
+      case "help":
+      case "unknown":
+        return describeVoiceIntent(intent);
+    }
+  };
   const inputs = a.devices.filter((device) => device.kind === "audioinput");
   const outputs = a.devices.filter((device) => device.kind === "audiooutput");
   const micStatus = a.running ? "MICRO ĐANG HOẠT ĐỘNG" : a.connecting ? "ĐANG XIN QUYỀN / KẾT NỐI" : a.permissionState === "denied" ? "CHƯA CÓ QUYỀN MICRO" : "SẴN SÀNG KIỂM TRA";
@@ -64,9 +124,58 @@ export default function App() {
 
   const RtaPanel = () => <article className="panel">
     <div className="heading"><Activity /><h2>RTA · Real-time Analyzer</h2><span>{a.running ? "LIVE" : "WAITING"}</span></div>
-    <div className="chart">{a.spectrum.map((value, index) => <i key={index} style={{ height: `${Math.max(2, (value + 100) * .98)}%` }} />)}</div>
+    <div
+      className="chart rta-chart"
+      style={{ position: "relative", touchAction: "pan-y", cursor: rtaCursorLocked ? "default" : "crosshair", userSelect: "none" }}
+      onPointerDown={(event) => { if (event.pointerType !== "mouse") event.currentTarget.setPointerCapture?.(event.pointerId); selectRtaBand(event); }}
+      onPointerMove={(event) => { if (event.buttons === 1) selectRtaBand(event); }}
+      aria-label="Biểu đồ RTA 20 Hz đến 20 kHz. Chạm hoặc kéo để chọn tần số."
+      role="group"
+    >
+      {a.spectrum.map((value, index) => <i key={index} style={{ height: `${Math.max(2, (value + 100) * .98)}%` }} />)}
+      {selectedRtaBand !== null && (
+        <div
+          className="rta-cursor-line"
+          style={{ left: `${((selectedRtaBand + 0.5) / Math.max(1, a.spectrum.length)) * 100}%` }}
+        />
+      )}
+    </div>
     <div className="axis"><span>20 Hz</span><span>100 Hz</span><span>1 kHz</span><span>5 kHz</span><span>20 kHz</span></div>
-    <small className="muted">FFT 8192 · 64 LOG BANDS · dBFS POWER AVERAGE · 20 Hz–20 kHz</small><p className="calibrated-inline">INPUT RMS {a.rmsDbfs <= -99 ? "—" : (a.rmsDbfs + calibrationOffsetDb).toFixed(1) + " dB SPL"} · {calibrationOffsetDb === 0 ? "NO CALIBRATION OFFSET" : "ONE-POINT OFFSET ACTIVE"}</p>
+    <div className="rta-frequency-controls">
+      <label htmlFor="rta-frequency-input">
+        CHỌN TẦN SỐ (Hz)
+        <input
+          id="rta-frequency-input"
+          type="number"
+          min="20"
+          max="20000"
+          step="1"
+          value={rtaFrequencyInput}
+          placeholder="Chạm biểu đồ hoặc nhập Hz"
+          onChange={(event) => {
+            const raw = event.target.value;
+            setRtaFrequencyInput(raw);
+            if (raw === "") setSelectedRtaBand(null);
+            else if (raw.length <= 6) setRtaFrequency(Number(raw));
+          }}
+        />
+      </label>
+      <div className="rta-frequency-reading">
+        <small>TRUNG TÂM BAND</small>
+        <strong>{selectedRtaFrequency === null ? "—" : selectedRtaFrequency >= 1000 ? `${(selectedRtaFrequency / 1000).toFixed(2)} kHz` : `${Math.round(selectedRtaFrequency)} Hz`}</strong>
+      </div>
+      <div className="rta-frequency-reading">
+        <small>MỨC TẠI BAND</small>
+        <strong>{selectedRtaLevel === null ? "—" : `${selectedRtaLevel.toFixed(1)} dBFS`}</strong>
+      </div>
+      <button type="button" className="secondary" disabled={selectedRtaBand === null} onClick={() => setRtaCursorLocked((locked) => !locked)}>
+        {rtaCursorLocked ? "Mở khóa" : "Khóa tần số"}
+      </button>
+      <button type="button" className="secondary" onClick={() => { setSelectedRtaBand(null); setRtaFrequencyInput(""); setRtaCursorLocked(false); }}>
+        Bỏ chọn
+      </button>
+    </div>
+    <small className="muted">FFT 8192 · LOG BAND · dBFS POWER AVERAGE · 20 Hz–20 kHz · Chạm, kéo hoặc nhập tần số để định vị band</small><p className="calibrated-inline">INPUT RMS {a.rmsDbfs <= -99 ? "—" : (a.rmsDbfs + calibrationOffsetDb).toFixed(1) + " dB SPL"} · {calibrationOffsetDb === 0 ? "NO CALIBRATION OFFSET" : "ONE-POINT OFFSET ACTIVE"}</p>
   </article>;
 
   const SpectrogramPanel = () => <article className="panel">
@@ -98,18 +207,22 @@ export default function App() {
     <section className="hero compact-hero"><small>PROFESSIONAL SOUND SYSTEM WORKSPACE</small><h1>Church Audio <em>Workbench.</em></h1><p>Bộ công cụ khảo sát âm học, phân tích hệ thống loa và căn chỉnh âm thanh nhà thờ trên Android và máy tính.</p></section>
     <nav className="workspace-tabs" aria-label="Các phân hệ phần mềm">{tabs.map(({id,label,short,icon:Icon}) => <button key={id} className={activeTab === id ? "workspace-tab active" : "workspace-tab"} onClick={() => setActiveTab(id)} aria-current={activeTab === id ? "page" : undefined}><Icon /><span>{label}</span><small>{short}</small></button>)}</nav>
     <div className="workspace-title"><div><small>WORKSPACE / {tabs.find(x => x.id === activeTab)?.short}</small><h2>{tabs.find(x => x.id === activeTab)?.label}</h2></div><span className={a.running ? "live" : "idle"}>{a.running ? "● INPUT LIVE" : "● INPUT IDLE"}</span></div>
+    <VoiceAssistantPanel measuring={a.running || a.connecting} onIntent={handleVoiceIntent} />
 
     {activeTab === "overview" && <>
       <section className="metrics overview-metrics"><article><small>INPUT PEAK</small><strong>{a.level <= -99 ? "−∞" : a.level.toFixed(1)} <small>dBFS</small></strong><div className="meter"><i style={{width:`${Math.max(0,Math.min(100,((a.level+60)/60)*100))}%`}} /></div></article><article><small>INPUT RMS</small><strong>{a.rmsDbfs <= -99 ? "—" : a.rmsDbfs.toFixed(1)} <small>dBFS</small></strong></article><article><small>INPUT DEVICES</small><strong>{inputs.length} <small>MIC</small></strong></article><article><small>OUTPUT DEVICES</small><strong>{outputs.length} <small>OUT</small></strong></article></section>
       <section className="grid overview-grid"><RtaPanel /><DevicePanel /><article className="panel overview-guide"><div className="heading"><AudioWaveform /><h2>Quy trình đo đề xuất</h2></div><ol><li>Chọn đúng micro đo và đầu ra tín hiệu.</li><li>Kiểm tra mức tín hiệu đầu vào, tránh clipping.</li><li>Đo phổ, đáp ứng phòng và thời gian vang.</li><li>Căn chỉnh delay/phase rồi kiểm tra lại.</li><li>Lưu kết quả và ghi chú điều kiện đo.</li></ol><p className="warning">Số đo điện thoại chưa hiệu chuẩn chỉ dùng tham khảo tương đối.</p></article></section>
     </>}
-    {activeTab === "rta" && <section className="tab-stack"><section className="grid"><RtaPanel /><SpectrogramPanel /><DevicePanel /></section><SPLMeterPanel weighted={a.weightedLevels} leq={a.leqLevels} timeWeighted={a.timeWeightedLevels} peakDbfs={a.level} offsetDb={calibrationOffsetDb} durationSeconds={a.measurementSeconds} running={a.running} /><MeasurementCalibrationPanel inputDbfs={a.rmsDbfs + micCorrectionAt(calibrationPoints,1000)} offsetDb={calibrationOffsetDb} onOffsetChange={setCalibrationOffsetDb} /><MicCalibrationPanel value={micCalibration} onChange={setMicCalibration} /></section>}
+    {activeTab === "rta" && <section className="tab-stack"><section className="grid"><RtaPanel /><SpectrogramPanel /><DevicePanel /></section><SPLMeterPanel weighted={a.weightedLevels} leq={a.leqLevels} timeWeighted={a.timeWeightedLevels} peakDbfs={a.level} offsetDb={calibrationOffsetDb} durationSeconds={a.measurementSeconds} running={a.running} /><MeasurementCalibrationPanel inputDbfs={a.rmsDbfs + micCorrectionAt(calibrationPoints,1000)} offsetDb={calibrationOffsetDb} onOffsetChange={setCalibrationOffsetDb} /><MicCalibrationPanel value={micCalibration} onChange={setMicCalibration} />
+    <MicrophoneSensitivityPanel value={micSensitivityProfile} onChange={setMicSensitivityProfile} activeDeviceLabel={inputs.find((device) => device.deviceId === a.selectedInput)?.label || "Micro mặc định hệ thống"} /></section>}
     {activeTab === "room" && <section className="tab-stack"><RT60MeasurementPanel selectedInput={a.selectedInput} running={a.running} /><MeasurementPlanner running={a.running} spectrum={a.spectrum} /><SpectrogramPanel /></section>}
-    {activeTab === "align" && <section className="tab-stack"><TransferFunctionPanel selectedInput={a.selectedInput} running={a.running} calibrationPoints={calibrationPoints} /><MeasurementPlanner running={a.running} spectrum={a.spectrum} /></section>}
-    {activeTab === "system" && <section className="tab-stack"><FeedbackMonitor history={a.history} /><TuningAdvisor history={a.history} /></section>}
+    {activeTab === "align" && <section className="tab-stack"><TransferFunctionPanel selectedInput={a.selectedInput} selectedOutput={t.outputDevice} running={a.running} calibrationPoints={calibrationPoints} /><MeasurementPlanner running={a.running} spectrum={a.spectrum} /></section>}
+    {activeTab === "system" && <section className="tab-stack"><MultiMicFeedbackPanel /><FeedbackMonitor history={a.history} selectedFrequencyHz={selectedRtaFrequency} selectedLevelDbfs={selectedRtaLevel} /><TuningAdvisor history={a.history} /></section>}
     {activeTab === "design" && <section className="tab-stack"><CBTCalculator /><PolarDataStudio /><RoomPlanner3D /></section>}
     {activeTab === "tools" && <section className="tab-stack"><section className="grid"><GeneratorPanel /><DevicePanel /><article className="panel"><div className="heading"><Speaker /><h2>Thư viện thiết bị</h2><span>{equipment.length} ITEMS</span></div>{equipment.map(item => <div className="item" key={item.name}><b>{item.name}</b><small>{item.type} · Cần xác minh thông số hãng</small></div>)}</article></section><ProjectBackupPanel /></section>}
+    {activeTab === "dsp" && <DSPIntegrationPanel />}
+    {activeTab === "support" && <section className="tab-stack"><SystemHealthPanel /><VersionSupportPanel /></section>}
     <section className="roadmap"><small>PHƯƠNG PHÁP / WORKFLOW</small><p>01 KHẢO SÁT <b>→</b> 02 ĐO LƯỜNG <b>→</b> 03 CĂN CHỈNH <b>→</b> 04 KIỂM SOÁT HỆ THỐNG <b>→</b> 05 THIẾT KẾ PHỦ ÂM</p></section>
-    <footer>CHURCH AUDIO ANALYZER <span>PRO MEASUREMENT BETA · BUILD 0.11.0</span></footer>
+    <footer>CHURCH AUDIO ANALYZER <span>PRO MEASUREMENT BETA · BUILD {APP_VERSION}</span></footer>
   </main>;
 }

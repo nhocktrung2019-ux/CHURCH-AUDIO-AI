@@ -16,10 +16,22 @@ export type ImpulseResponseResult = {
 };
 
 export function createLogSweep(sampleRate: number, durationSeconds = 6, startHz = 30, endHz = 18000, amplitude = 0.12): Float32Array {
-  const count = Math.max(1, Math.floor(sampleRate * durationSeconds));
+  if (!Number.isFinite(sampleRate) || sampleRate < 8000 || sampleRate > 192000) {
+    throw new Error("Sample rate phải nằm trong khoảng 8–192 kHz.");
+  }
+  if (!Number.isFinite(durationSeconds) || durationSeconds < 0.5 || durationSeconds > 30) {
+    throw new Error("Thời lượng sweep phải nằm trong khoảng 0,5–30 giây.");
+  }
+  if (!Number.isFinite(startHz) || !Number.isFinite(endHz) || startHz < 20 || endHz <= startHz) {
+    throw new Error("Dải tần sweep không hợp lệ.");
+  }
+  if (!Number.isFinite(amplitude) || amplitude <= 0 || amplitude > 1) {
+    throw new Error("Biên độ sweep phải lớn hơn 0 và không vượt quá 1.");
+  }
+  const count = Math.floor(sampleRate * durationSeconds);
   const sweep = new Float32Array(count);
   const high = Math.min(endHz, sampleRate * 0.42);
-  const low = Math.max(20, startHz);
+  const low = startHz;
   if (high <= low) throw new Error("Sample rate không đủ cao cho dải tần sweep đã chọn.");
   const logRatio = Math.log(high / low);
   const timeConstant = durationSeconds / logRatio;
@@ -181,6 +193,14 @@ function schroederDecay(samples: Float32Array): Float32Array | null {
 }
 
 export function analyzeImpulseResponse(reference: Float32Array, recorded: Float32Array, sampleRate: number): { impulse: Float32Array; result: ImpulseResponseResult } | null {
+  if (!(reference instanceof Float32Array) || !(recorded instanceof Float32Array)
+    || !Number.isFinite(sampleRate) || sampleRate < 8000 || sampleRate > 192000
+    || reference.length < 1024 || recorded.length < reference.length * 0.7
+    || reference.length > 10_000_000 || recorded.length > 10_000_000) return null;
+  // Reject corrupt PCM before FFT; silently converting NaN/Infinity into a
+  // plausible-looking decay curve would make an invalid room measurement unsafe.
+  for (let i = 0; i < reference.length; i++) if (!Number.isFinite(reference[i])) return null;
+  for (let i = 0; i < recorded.length; i++) if (!Number.isFinite(recorded[i])) return null;
   const deconvolved = deconvolve(reference, recorded);
   if (!deconvolved) return null;
   const searchEnd = Math.min(deconvolved.length, Math.floor(sampleRate * 1.5));
