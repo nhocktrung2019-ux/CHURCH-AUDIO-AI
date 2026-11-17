@@ -123,6 +123,14 @@ export default function MultiMicFeedbackPanel() {
   };
 
   const start = async () => {
+    if (running || busy) {
+      speak("Phép đo đa nguồn đã hoạt động hoặc đang khởi tạo. Hãy dừng phiên hiện tại trước khi bắt đầu phiên mới.");
+      return;
+    }
+    // Stop speech recognition before opening measurement streams to avoid competing microphone capture.
+    recognitionRef.current?.stop();
+    recognitionRef.current = null;
+    setListening(false);
     if (!selected.length) {
       setError("Hãy chọn ít nhất một đầu vào micro.");
       speak("Bạn hãy chọn ít nhất một nguồn micro trước khi bắt đầu đo.");
@@ -279,6 +287,10 @@ export default function MultiMicFeedbackPanel() {
   };
 
   const toggleListening = () => {
+    if (running || busy) {
+      speak("Hãy dừng phép đo trước khi bật nhận dạng giọng nói để tránh hai phiên cùng tranh quyền microphone.");
+      return;
+    }
     if (listening) {
       recognitionRef.current?.stop();
       setListening(false);
@@ -333,7 +345,7 @@ export default function MultiMicFeedbackPanel() {
         <button onClick={() => void executeCommand(voiceText)}><MessageSquareText />Gửi lệnh</button>
       </div>
       <div className="voice-assistant-status">{voiceStatus}</div>
-      <p className="warning">Nhận dạng giọng nói phụ thuộc WebView/trình duyệt và dịch vụ speech trên thiết bị. Phần trợ lý xử lý lệnh và tóm tắt tín hiệu tại máy, không gửi tín hiệu đo sang mô hình AI. Nhận dạng giọng nói có thể dùng dịch vụ speech do Android/WebView cấu hình.</p>
+      <p className="warning">Nhận dạng giọng nói phụ thuộc WebView/trình duyệt và dịch vụ speech trên thiết bị. Phần trợ lý xử lý lệnh và tóm tắt tín hiệu tại máy, không gửi tín hiệu đo sang mô hình AI. Nhận dạng giọng nói có thể dùng dịch vụ speech do Android/WebView cấu hình; chức năng nghe lệnh bị khóa khi phiên đo đang chạy.</p>
     </section>
 
     <div className="multi-mic-toolbar">
@@ -346,7 +358,7 @@ export default function MultiMicFeedbackPanel() {
     {channels.length > 0 && <section className="multi-source-composite">
       <div className="multi-mic-channel-head"><b><Activity /> Phổ xu hướng · {channels.length} nguồn</b><span>RELATIVE POWER VIEW</span></div>
       <div className="mini-spectrum composite-spectrum">{combinedSpectrum.map((v, i) => <i key={i} style={{ height: Math.max(3, Math.min(100, (v + 100) * 1.05)) + "%" }} />)}</div>
-      <p>Đây là trung bình công suất tuyến tính theo từng dải tần, không phải cộng dB trực tiếp. Phổ tổng hợp chỉ dùng xem xu hướng chung; không đại diện phép cộng pha, không phải SPL đã hiệu chuẩn.</p>
+      <p>Đây là trung bình công suất tuyến tính theo từng dải tần, không phải cộng dB trực tiếp. Phổ xu hướng chỉ dùng tham khảo tổng quan giữa các input; chênh lệch độ nhạy, gain và latency từng micro có thể làm thay đổi kết quả. Không đại diện phép cộng pha và không phải SPL đã hiệu chuẩn.</p>
     </section>}
 
     {channels.map(channel => {
