@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { micCorrectionAt, type MicCalibrationPoint } from "./micCalibration";
+import { createLeqIntegrationState, getLeqLevels, integrateLeqSample } from "./leqIntegration";
 import {
   explainMicrophoneError,
   readMicrophonePermission,
@@ -87,7 +88,7 @@ export function useAudioAnalyzer(calibrationPoints: MicCalibrationPoint[] = []) 
   const [leqLevels, setLeqLevels] = useState({ z: -100, a: -100, c: -100 });
   const [timeWeightedLevels, setTimeWeightedLevels] = useState({ af: -100, as: -100, cf: -100, cs: -100 });
   const [measurementSeconds, setMeasurementSeconds] = useState(0);
-  const integrationRef = useRef<{ z: number; a: number; c: number; seconds: number; af: number; as: number; cf: number; cs: number; lastTime: number | null }>({ z: 0, a: 0, c: 0, seconds: 0, af: 0, as: 0, cf: 0, cs: 0, lastTime: null });
+  const integrationRef = useRef<ReturnType<typeof createLeqIntegrationState> & { af: number; as: number; cf: number; cs: number }>({ ...createLeqIntegrationState(), af: 0, as: 0, cf: 0, cs: 0 });
   const startedAtRef = useRef<number | null>(null);
   const [spectrum, setSpectrum] = useState<number[]>(Array(64).fill(-100));
   const [history, setHistory] = useState<number[][]>([]);
@@ -139,7 +140,7 @@ export function useAudioAnalyzer(calibrationPoints: MicCalibrationPoint[] = []) 
     setLeqLevels({ z: -100, a: -100, c: -100 });
     setTimeWeightedLevels({ af: -100, as: -100, cf: -100, cs: -100 });
     setMeasurementSeconds(0);
-    integrationRef.current = { z: 0, a: 0, c: 0, seconds: 0, af: 0, as: 0, cf: 0, cs: 0, lastTime: null };
+    integrationRef.current = { ...createLeqIntegrationState(), af: 0, as: 0, cf: 0, cs: 0 };
     startedAtRef.current = null;
     setTrackInfo("");
   }, []);
@@ -209,7 +210,7 @@ export function useAudioAnalyzer(calibrationPoints: MicCalibrationPoint[] = []) 
           : "",
       );
       setHistory([]);
-      integrationRef.current = { z: 0, a: 0, c: 0, seconds: 0, af: 0, as: 0, cf: 0, cs: 0, lastTime: null };
+      integrationRef.current = { ...createLeqIntegrationState(), af: 0, as: 0, cf: 0, cs: 0 };
       startedAtRef.current = Date.now();
       setLeqLevels({ z: -100, a: -100, c: -100 });
       setTimeWeightedLevels({ af: -100, as: -100, cf: -100, cs: -100 });
@@ -385,11 +386,12 @@ export function useAudioAnalyzer(calibrationPoints: MicCalibrationPoint[] = []) 
             const aLevel = rmsLevelDbfs + 10 * Math.log10(Math.max(1e-12, totalSpectrumPower > 0 ? aPower / totalSpectrumPower : 1));
             const cLevel = rmsLevelDbfs + 10 * Math.log10(Math.max(1e-12, totalSpectrumPower > 0 ? cPower / totalSpectrumPower : 1));
             const safeLevels = { z: Math.max(-100, Math.min(0, zLevel)), a: Math.max(-100, Math.min(0, aLevel)), c: Math.max(-100, Math.min(0, cLevel)) };
-            const nowSeconds = performance.now() / 1000;
             const previousTime = integrationRef.current.lastTime;
-            const elapsed = previousTime === null ? 0 : nowSeconds - previousTime;
-            integrationRef.current.lastTime = nowSeconds;
-            const instantaneousZ = Math.pow(10, safeLevels.z / 10);
+            const elapsed = integrateLeqSample(
+              integrationRef.current,
+              safeLevels,
+              performance.now() / 1000,
+            );
             const instantaneousA = Math.pow(10, safeLevels.a / 10);
             const instantaneousC = Math.pow(10, safeLevels.c / 10);
             if (previousTime === null) {
@@ -397,13 +399,7 @@ export function useAudioAnalyzer(calibrationPoints: MicCalibrationPoint[] = []) 
               integrationRef.current.as = instantaneousA;
               integrationRef.current.cf = instantaneousC;
               integrationRef.current.cs = instantaneousC;
-            } else if (elapsed > 0 && elapsed <= 0.25) {
-              // Integrate acoustic energy over measured time, not animation-frame count.
-              // Ignore long scheduler gaps rather than treating one stale FFT frame as representative.
-              integrationRef.current.z += instantaneousZ * elapsed;
-              integrationRef.current.a += instantaneousA * elapsed;
-              integrationRef.current.c += instantaneousC * elapsed;
-              integrationRef.current.seconds += elapsed;
+            } else if (elapsed !== null) {
               const fastAlpha = 1 - Math.exp(-elapsed / 0.125);
               const slowAlpha = 1 - Math.exp(-elapsed / 1.0);
               integrationRef.current.af += (instantaneousA - integrationRef.current.af) * fastAlpha;
@@ -418,11 +414,7 @@ export function useAudioAnalyzer(calibrationPoints: MicCalibrationPoint[] = []) 
               cf: 10 * Math.log10(Math.max(1e-12, integrationRef.current.cf)),
               cs: 10 * Math.log10(Math.max(1e-12, integrationRef.current.cs)),
             });
-            setLeqLevels({
-              z: integrationRef.current.seconds > 0 ? 10 * Math.log10(integrationRef.current.z / integrationRef.current.seconds) : -100,
-              a: integrationRef.current.seconds > 0 ? 10 * Math.log10(integrationRef.current.a / integrationRef.current.seconds) : -100,
-              c: integrationRef.current.seconds > 0 ? 10 * Math.log10(integrationRef.current.c / integrationRef.current.seconds) : -100,
-            });
+            setLeqLevels(getLeqLevels(integrationRef.current));
             setMeasurementSeconds(startedAtRef.current === null ? 0 : (Date.now() - startedAtRef.current) / 1000);
             setSpectrum(bins);
             setLevel(Math.max(-100, Math.min(0, peakDbfs)));
