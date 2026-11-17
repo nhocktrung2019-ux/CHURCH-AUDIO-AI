@@ -36,6 +36,7 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<TabId>("overview");
   const [selectedRtaBand, setSelectedRtaBand] = usePersistentState<number | null>("church-audio-rta-selected-band", null);
   const [rtaCursorLocked, setRtaCursorLocked] = useState(false);
+  const [rtaFrequencyInput, setRtaFrequencyInput] = useState("");
   const [micSensitivityProfile, setMicSensitivityProfile] = usePersistentState<MicrophoneSensitivityProfile | null>("church-audio-mic-sensitivity-profile", null);
   const [calibrationOffsetDb, setCalibrationOffsetDb] = usePersistentState("church-audio-mic-offset-db",0);
   const [micCalibration, setMicCalibration] = usePersistentState<MicCalibrationFile | null>("church-audio-mic-calibration-file",null);
@@ -46,7 +47,9 @@ export default function App() {
     const bounds = event.currentTarget.getBoundingClientRect();
     if (!bounds.width || !a.spectrum.length) return;
     const position = Math.max(0, Math.min(0.999999, (event.clientX - bounds.left) / bounds.width));
-    setSelectedRtaBand(Math.floor(position * a.spectrum.length));
+    const band = Math.floor(position * a.spectrum.length);
+    setSelectedRtaBand(band);
+    setRtaFrequencyInput(String(Math.round(rtaBandFrequency(band, a.spectrum.length))));
   };
   const selectedRtaFrequency =
     selectedRtaBand === null ? null : rtaBandFrequency(selectedRtaBand, a.spectrum.length || 64);
@@ -54,7 +57,9 @@ export default function App() {
     selectedRtaBand === null ? null : (a.spectrum[selectedRtaBand] ?? null);
   const setRtaFrequency = (frequencyHz: number) => {
     if (Number.isFinite(frequencyHz) && frequencyHz >= 20 && frequencyHz <= 20000) {
-      setSelectedRtaBand(rtaBandIndexForFrequency(frequencyHz, a.spectrum.length || 64));
+      const band = rtaBandIndexForFrequency(frequencyHz, a.spectrum.length || 64);
+      setSelectedRtaBand(band);
+      setRtaFrequencyInput(String(Math.round(frequencyHz)));
     }
   };
   const t = useToneGenerator();
@@ -111,12 +116,13 @@ export default function App() {
           min="20"
           max="20000"
           step="1"
-          value={selectedRtaFrequency === null ? "" : Math.round(selectedRtaFrequency)}
+          value={rtaFrequencyInput}
           placeholder="Chạm biểu đồ hoặc nhập Hz"
           onChange={(event) => {
             const raw = event.target.value;
-            if (raw !== "") setRtaFrequency(Number(raw));
-            else setSelectedRtaBand(null);
+            setRtaFrequencyInput(raw);
+            if (raw === "") setSelectedRtaBand(null);
+            else if (raw.length <= 6) setRtaFrequency(Number(raw));
           }}
         />
       </label>
@@ -131,7 +137,7 @@ export default function App() {
       <button type="button" className="secondary" disabled={selectedRtaBand === null} onClick={() => setRtaCursorLocked((locked) => !locked)}>
         {rtaCursorLocked ? "Mở khóa" : "Khóa tần số"}
       </button>
-      <button type="button" className="secondary" onClick={() => { setSelectedRtaBand(null); setRtaCursorLocked(false); }}>
+      <button type="button" className="secondary" onClick={() => { setSelectedRtaBand(null); setRtaFrequencyInput(""); setRtaCursorLocked(false); }}>
         Bỏ chọn
       </button>
     </div>
