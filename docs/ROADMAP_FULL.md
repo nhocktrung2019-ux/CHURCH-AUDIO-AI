@@ -3,7 +3,7 @@
 | Stage | Scope | Current state | Production gate |
 |---|---|---|---|
 | 1 | Audio Engine, input/output, USB/OTG, generator | Browser/WebView beta implemented | Android hardware and long-run routing tests |
-| 2 | RTA, FFT, RT60, transfer, phase, Leq, calibration | v0.17 adds raw PCM capture, capture-quality gates, coherence-gated PEQ and sync-gated phase-slope delay utility | Reference-analyser comparison, AudioWorklet/PCM stability and synchronous dual-channel loopback |
+| 2 | RTA, FFT, RT60, transfer, phase, Leq, calibration | v0.18 prefers AudioWorklet raw PCM with frame-continuity rejection; v0.17 adds capture-quality gates and advisory PEQ | Android WebView/USB stress tests, reference-analyser comparison and synchronous dual-channel loopback |
 | 3 | Feedback detection, multi-mic, voice assistant | v0.16.0-beta.1 adds per-frame persistence, valid-frame gating and visible confidence | Per-device concurrency tests, channel attribution and listening verification |
 | 4 | Church 3D, CBT, polar data, coverage | Planning/approximation tools implemented | Surveyed geometry and verified manufacturer polar data |
 | 5 | X32/M32, Soundcraft, dbx, CD48 DSP | Manual configuration/export worksheet | Per-model protocol adapter, physical tests, read-back and rollback |
