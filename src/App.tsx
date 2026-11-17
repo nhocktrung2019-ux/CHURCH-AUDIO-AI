@@ -18,6 +18,7 @@ import SPLMeterPanel from "./audio/SPLMeterPanel";
 import MicCalibrationPanel from "./audio/MicCalibrationPanel";
 import MicrophoneSensitivityPanel, { type MicrophoneSensitivityProfile } from "./audio/MicrophoneSensitivityPanel";
 import { rtaBandFrequency, rtaBandIndexForFrequency } from "./audio/rtaFrequency";
+import { rtaBarVisual, rtaDisplayFloorDb, type RtaSensitivity, type RtaSpeed } from "./audio/rtaDisplay";
 import ProjectBackupPanel from "./audio/ProjectBackupPanel";
 import MultiMicFeedbackPanel from "./audio/MultiMicFeedbackPanel";
 import VersionSupportPanel from "./audio/VersionSupportPanel";
@@ -44,6 +45,8 @@ const tabs: { id: TabId; label: string; short: string; icon: typeof Activity }[]
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<TabId>("overview");
+  const [rtaSensitivity, setRtaSensitivity] = usePersistentState<RtaSensitivity>("church-audio-rta-sensitivity", "medium");
+  const [rtaSpeed, setRtaSpeed] = usePersistentState<RtaSpeed>("church-audio-rta-speed", "medium");
   const [selectedRtaBand, setSelectedRtaBand] = usePersistentState<number | null>("church-audio-rta-selected-band", null);
   const [rtaCursorLocked, setRtaCursorLocked] = useState(false);
   const [rtaFrequencyInput, setRtaFrequencyInput] = useState(() => selectedRtaBand === null ? "" : String(Math.round(rtaBandFrequency(selectedRtaBand))));
@@ -51,7 +54,7 @@ export default function App() {
   const [calibrationOffsetDb, setCalibrationOffsetDb] = usePersistentState("church-audio-mic-offset-db",0);
   const [micCalibration, setMicCalibration] = usePersistentState<MicCalibrationFile | null>("church-audio-mic-calibration-file",null);
   const calibrationPoints = micCalibration?.points ?? EMPTY_MIC_CALIBRATION_POINTS;
-  const a = useAudioAnalyzer(calibrationPoints);
+  const a = useAudioAnalyzer(calibrationPoints, rtaSpeed);
   const selectRtaBand = (event: PointerEvent<HTMLDivElement>) => {
     if (rtaCursorLocked) return;
     const bounds = event.currentTarget.getBoundingClientRect();
@@ -124,15 +127,43 @@ export default function App() {
 
   const RtaPanel = () => <article className="panel">
     <div className="heading"><Activity /><h2>RTA · Real-time Analyzer</h2><span>{a.running ? "LIVE" : "WAITING"}</span></div>
+    <div className="rta-display-settings">
+      <label htmlFor="rta-sensitivity">ĐỘ NHẠY HIỂN THỊ
+        <select id="rta-sensitivity" value={rtaSensitivity} onChange={(event) => setRtaSensitivity(event.target.value as RtaSensitivity)}>
+          <option value="high">Cao · quan sát tín hiệu nhỏ</option>
+          <option value="medium">Vừa · cân bằng</option>
+          <option value="low">Thấp · lọc nền yếu</option>
+        </select>
+      </label>
+      <label htmlFor="rta-speed">TỐC ĐỘ CẬP NHẬT
+        <select id="rta-speed" value={rtaSpeed} onChange={(event) => setRtaSpeed(event.target.value as RtaSpeed)}>
+          <option value="fast">Nhanh · khoảng 30 fps</option>
+          <option value="medium">Vừa · khoảng 20 fps</option>
+          <option value="slow">Chậm · khoảng 10 fps</option>
+        </select>
+      </label>
+    </div>
+    <div className="rta-colour-legend"><span>MỨC THẤP</span><i aria-hidden="true" /><span>MỨC CAO / ĐỈNH PHỔ</span></div>
     <div
       className="chart rta-chart"
       style={{ position: "relative", touchAction: "pan-y", cursor: rtaCursorLocked ? "default" : "crosshair", userSelect: "none" }}
       onPointerDown={(event) => { if (event.pointerType !== "mouse") event.currentTarget.setPointerCapture?.(event.pointerId); selectRtaBand(event); }}
       onPointerMove={(event) => { if (event.buttons === 1) selectRtaBand(event); }}
-      aria-label="Biểu đồ RTA 20 Hz đến 20 kHz. Chạm hoặc kéo để chọn tần số."
+      aria-label={`Biểu đồ RTA đa màu 20 Hz đến 20 kHz. Độ nhạy ${rtaSensitivity}; tốc độ ${rtaSpeed}. Chạm hoặc kéo để chọn tần số.`}
       role="group"
     >
-      {a.spectrum.map((value, index) => <i key={index} style={{ height: `${Math.max(2, (value + 100) * .98)}%` }} />)}
+      {a.spectrum.map((value, index) => {
+        const visual = rtaBarVisual(value, rtaSensitivity);
+        return <i
+          key={index}
+          title={`${Math.round(rtaBandFrequency(index, a.spectrum.length))} Hz · ${value.toFixed(1)} dBFS`}
+          style={{
+            height: `${visual.heightPercent}%`,
+            background: `hsl(${visual.hueDegrees} 88% ${48 + visual.intensity * 10}%)`,
+            boxShadow: visual.intensity > 0.88 ? `0 0 7px hsla(${visual.hueDegrees}, 88%, 60%, .55)` : undefined,
+          }}
+        />;
+      })}
       {selectedRtaBand !== null && (
         <div
           className="rta-cursor-line"
@@ -175,7 +206,7 @@ export default function App() {
         Bỏ chọn
       </button>
     </div>
-    <small className="muted">FFT 8192 · LOG BAND · dBFS POWER AVERAGE · 20 Hz–20 kHz · Chạm, kéo hoặc nhập tần số để định vị band</small><p className="calibrated-inline">INPUT RMS {a.rmsDbfs <= -99 ? "—" : (a.rmsDbfs + calibrationOffsetDb).toFixed(1) + " dB SPL"} · {calibrationOffsetDb === 0 ? "NO CALIBRATION OFFSET" : "ONE-POINT OFFSET ACTIVE"}</p>
+    <small className="muted">FFT 8192 · LOG BAND · dBFS POWER AVERAGE · FLOOR {rtaDisplayFloorDb(rtaSensitivity)} dBFS · Chạm, kéo hoặc nhập tần số để định vị band</small><p className="calibrated-inline">INPUT RMS {a.rmsDbfs <= -99 ? "—" : (a.rmsDbfs + calibrationOffsetDb).toFixed(1) + " dB SPL"} · {calibrationOffsetDb === 0 ? "NO CALIBRATION OFFSET" : "ONE-POINT OFFSET ACTIVE"}</p>
   </article>;
 
   const SpectrogramPanel = () => <article className="panel">
