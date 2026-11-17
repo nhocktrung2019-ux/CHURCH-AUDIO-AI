@@ -32,3 +32,22 @@ V4 is a staged engineering track built on the v0.23 calibration, voice-command a
 ## Validation status
 
 The regression tests in this branch are authored but still require a successful CI run. The latest inspected v0.23 Actions run failed before any job steps were created and exposed no downloadable job log; this does not establish a source-code test failure or a passing build. No physical Android or DSP hardware test is claimed.
+
+
+## Increment 2 — independent multi-source input evidence
+
+- Multi-source monitoring now checks the actual `MediaStreamTrack` returned for each selected input.
+- When the browser exposes both requested and actual device IDs, a mismatch rejects that source rather than silently labelling the wrong microphone as selected.
+- Each source reports track state, actual sample rate/channel count/latency when exposed, and echo cancellation / noise suppression / AGC flags.
+- Missing device identity or track metadata is labelled unconfirmed rather than treated as a successful hardware validation.
+- Separate `getUserMedia` streams remain independent capture paths. A shared AudioContext does not prove the ADCs share a physical clock or have sample-aligned start times.
+- The cross-source composite is explicitly a relative trend view. It must not be used for phase, transfer function, absolute delay, calibrated SPL or phase-coherent feedback cancellation.
+- Voice recognition is stopped before measurement capture and blocked while multi-source measurement is active to reduce microphone contention.
+- Regression tests cover route mismatch, missing metadata, muted/ended tracks, audio-processing flags and the non-synchronous source gate.
+
+### Remaining acceptance gates
+
+- Run all tests and the TypeScript/Vite build in a functioning CI runner.
+- Verify concurrent input support and per-device routing on specific Android/WebView + USB interface combinations.
+- Characterize gain, latency and drift per microphone; calibrate each input independently.
+- For phase/transfer/delay, use a single multichannel hardware interface with verified common clock and preserved PCM channels. Independent Bluetooth/USB capture streams are not accepted as synchronous.
