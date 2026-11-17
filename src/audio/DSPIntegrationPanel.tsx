@@ -1,4 +1,6 @@
 import { useMemo, useState } from "react";
+import { usePersistentState } from "./usePersistentState";
+import { assessCD48NetworkConfig, type CD48HardwareRevision, type CD48NetworkLink } from "./cd48Network";
 import { Download, Network, ShieldCheck, ClipboardCheck, ExternalLink } from "lucide-react";
 import { dspProfiles } from "../data/dspProfiles";
 import { assessMeasurementReadiness, type MeasurementEvidence } from "./measurementReadiness";
@@ -22,12 +24,31 @@ export default function DSPIntegrationPanel() {
   const [delayMs, setDelayMs] = useState(0);
   const [notes, setNotes] = useState("");
   const [evidence, setEvidence] = useState<MeasurementEvidence>(initialEvidence);
+  const [cd48Revision, setCd48Revision] = usePersistentState<CD48HardwareRevision>("church-audio-cd48-hardware-revision", "unverified");
+  const [cd48Link, setCd48Link] = usePersistentState<CD48NetworkLink>("church-audio-cd48-network-link", "ethernet");
+  const [cd48DeviceIp, setCd48DeviceIp] = usePersistentState("church-audio-cd48-device-ip", "");
+  const [cd48ControllerIp, setCd48ControllerIp] = usePersistentState("church-audio-cd48-controller-ip", "");
+  const [cd48SubnetPrefix, setCd48SubnetPrefix] = usePersistentState("church-audio-cd48-subnet-prefix", 24);
+  const cd48Network = useMemo(() => assessCD48NetworkConfig({
+    hardwareRevision: cd48Revision, link: cd48Link, deviceIp: cd48DeviceIp,
+    controllerIp: cd48ControllerIp, subnetPrefix: cd48SubnetPrefix,
+  }), [cd48Revision, cd48Link, cd48DeviceIp, cd48ControllerIp, cd48SubnetPrefix]);
   const profile = dspProfiles.find((item) => item.id === profileId) ?? dspProfiles[0];
   const readiness = useMemo(() => assessMeasurementReadiness(evidence), [evidence]);
   const exportWorksheet = () => downloadJson("church-audio-dsp-worksheet.json", {
     schema: "church-audio-dsp-worksheet/v1", exportedAt: new Date().toISOString(),
     systemName: systemName.trim() || "Chưa đặt tên hệ thống", device: profile,
-    proposedSettings: { channelMap, highPassFilterHz: hpfHz, relativeDelayMs: delayMs, technicianNotes: notes },
+    proposedSettings: {
+      channelMap, highPassFilterHz: hpfHz, relativeDelayMs: delayMs, technicianNotes: notes,
+      ...(profile.id === "db-acoustics-cd48" ? {
+        cd48Network: {
+          hardwareRevision: cd48Revision, link: cd48Link, deviceIp: cd48DeviceIp,
+          controllerIp: cd48ControllerIp, subnetPrefix: cd48SubnetPrefix,
+          assessment: cd48Network,
+          liveControl: false,
+        },
+      } : {}),
+    },
     measurementReadiness: readiness,
     safety: { directHardwareControl: false, applyMode: "manual-review-required", warning: "Đây là phiếu cấu hình tham khảo; chưa kết nối hoặc ghi tham số vào DSP/mixer." },
   });
@@ -62,6 +83,41 @@ export default function DSPIntegrationPanel() {
         <div><small>TRẠNG THÁI ĐIỀU KHIỂN</small><b>Chỉ phiếu thủ công · Chưa ghi phần cứng</b></div>
       </div>
       <p className="device-notice">{profile.integrationNote}</p>
+      {profile.id === "db-acoustics-cd48" && <article className="panel cd48-network-panel">
+        <div className="heading"><Network /><h3>CD48 · Ethernet / Wi-Fi LAN</h3><span>NETWORK SETUP</span></div>
+        <p className="muted">Cấu hình mạng chỉ áp dụng khi đúng phiên bản CD48 có cổng RJ45. Xác minh tem model và mặt sau thiết bị trước khi chọn LAN.</p>
+        <div className="form-grid">
+          <div>
+            <label htmlFor="cd48-hardware-revision">PHIÊN BẢN / CỔNG VẬT LÝ</label>
+            <select id="cd48-hardware-revision" value={cd48Revision} onChange={(event) => setCd48Revision(event.target.value as CD48HardwareRevision)}>
+              <option value="unverified">Chưa xác minh mặt sau</option>
+              <option value="standard-usb-rs232">CD48 tiêu chuẩn · USB + RS232</option>
+              <option value="rj45-confirmed">Phiên bản có RJ45 · đã xác nhận trực tiếp</option>
+            </select>
+          </div>
+          <div>
+            <label htmlFor="cd48-link-type">ĐƯỜNG MẠNG ĐIỀU KHIỂN</label>
+            <select id="cd48-link-type" value={cd48Link} onChange={(event) => setCd48Link(event.target.value as CD48NetworkLink)}>
+              <option value="ethernet">Ethernet · Android qua LAN/USB-C Ethernet</option>
+              <option value="wifi-lan">Wi-Fi LAN · Android qua Wi-Fi router</option>
+            </select>
+          </div>
+          <div><label htmlFor="cd48-device-ip">IP CỦA CD48</label><input id="cd48-device-ip" value={cd48DeviceIp} onChange={(event) => setCd48DeviceIp(event.target.value)} placeholder="Nhập IP đã đọc từ thiết bị/tài liệu" inputMode="decimal" /></div>
+          <div><label htmlFor="cd48-controller-ip">IP ĐIỆN THOẠI / THIẾT BỊ ĐIỀU KHIỂN</label><input id="cd48-controller-ip" value={cd48ControllerIp} onChange={(event) => setCd48ControllerIp(event.target.value)} placeholder="Xem trong chi tiết Wi-Fi/LAN Android" inputMode="decimal" /></div>
+          <div><label htmlFor="cd48-subnet-prefix">SUBNET PREFIX</label><select id="cd48-subnet-prefix" value={String(cd48SubnetPrefix)} onChange={(event) => setCd48SubnetPrefix(Number(event.target.value))}>
+            {[24, 23, 22, 16, 25, 26, 27, 28, 29, 30].map((value) => <option key={value} value={value}>/{value}</option>)}
+          </select></div>
+        </div>
+        <div className={cd48Network.mayUseLanPath ? "readiness-item limited" : "readiness-item limited"}>
+          <b>{cd48Network.mayUseLanPath ? "Cấu hình IP cùng subnet" : "Chưa sẵn sàng cho LAN"}</b>
+          <p>{cd48Network.message}</p>
+        </div>
+        <div className="permission-help">
+          <b>Sơ đồ Wi-Fi LAN</b>
+          <span>CD48 (RJ45) → dây Ethernet → router/switch. Điện thoại → Wi-Fi của chính router đó. Tắt Guest Wi-Fi/AP isolation; kiểm tra hai IP và subnet giống nhau. Với chế độ Ethernet, điện thoại phải nối vào cùng LAN qua cổng Ethernet hoặc adapter USB-C LAN.</span>
+        </div>
+        <p className="warning">Chưa có tài liệu giao thức mạng/port điều khiển công khai được xác minh cho CD48 trong dự án. Trạng thái cùng subnet không đồng nghĩa DSP đã online. Ứng dụng hiện chỉ kiểm tra IP nhập tay; chưa ping, dò thiết bị hay gửi lệnh. Không tự dùng IP mặc định/port của PH48D cho CD48.</p>
+      </article>}
       <p className="muted">Mức bằng chứng: {profile.evidenceGrade === "manufacturer-documentation" ? "Tài liệu hãng/nhà sản xuất" : "Tài liệu giao thức cộng đồng, chưa phải xác nhận của hãng"}</p>
       <p className="warning">{profile.validationNeeded}</p>
       <a className="support-action" href={profile.documentationUrl} target="_blank" rel="noreferrer"><ExternalLink /> Tài liệu tham chiếu cho model đã chọn</a>
