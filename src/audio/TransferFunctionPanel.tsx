@@ -237,8 +237,15 @@ export default function TransferFunctionPanel({ selectedInput, selectedOutput, r
         if (!channelData) throw new Error("Không thể tách PCM theo từng kênh. Dữ liệu capture không hợp lệ.");
         const referenceSamples = channelData[referenceChannel];
         const measurementSamples = channelData[measurementChannel];
+        const referenceCaptureQuality = measurePcmCaptureQuality(referenceSamples);
         const captureQuality = measurePcmCaptureQuality(measurementSamples);
-        if (!captureQuality) throw new Error("Kênh Measurement không có dữ liệu PCM hợp lệ.");
+        if (!referenceCaptureQuality || !captureQuality) throw new Error("Kênh Reference hoặc Measurement không có dữ liệu PCM hợp lệ.");
+        if (referenceCaptureQuality.clippedSamplePercent > 0.1 || captureQuality.clippedSamplePercent > 0.1) {
+          throw new Error("Reference hoặc Measurement đang clipping. Giảm gain ngõ loopback/micro rồi đo lại.");
+        }
+        if (referenceCaptureQuality.rmsDbfs < -70 || captureQuality.rmsDbfs < -70) {
+          throw new Error("Mức tín hiệu Reference hoặc Measurement quá thấp. Kiểm tra dây loopback, gain input và micro.");
+        }
         const measured = analyzeSynchronousTransfer(
           referenceSamples, measurementSamples, audio.sampleRate, calibrationPoints,
         );
@@ -254,6 +261,7 @@ export default function TransferFunctionPanel({ selectedInput, selectedOutput, r
           referenceChannel,
           measurementChannel,
           clockBasis: "same-mediastream-audioworklet-frame-clock" as const,
+          referenceCaptureQuality,
         };
         setResult({ ...measured, captureQuality, captureMetadata });
         setNotice("Đã phân tích hai kênh đồng thời từ cùng AudioWorklet stream. Delay là chênh lệch Reference→Measurement ước lượng; magnitude/phase vẫn cần hiệu chuẩn riêng đường vào/ra và xác minh độ lệch ADC/DAC của interface. Auto EQ đang khóa an toàn.");
@@ -392,6 +400,7 @@ export default function TransferFunctionPanel({ selectedInput, selectedOutput, r
       {result.captureQuality && <p className="muted">Analysis mono · raw PCM {result.captureMetadata?.pcmChannelCount ?? 1} ch · Peak {result.captureQuality.peakDbfs.toFixed(1)} dBFS · RMS {result.captureQuality.rmsDbfs.toFixed(1)} dBFS · clipping {result.captureQuality.clippedSamplePercent.toFixed(3)}%</p>}
       {result.captureMetadata && <p className="muted">Capture {result.captureMetadata.captureEngine} · input {result.captureMetadata.inputChannelCount ?? "unknown"} ch → raw PCM {result.captureMetadata.pcmChannelCount} ch ({result.captureMetadata.channelMix}) · track {result.captureMetadata.trackChannelCount ?? "unknown"} ch / {result.captureMetadata.trackSampleRate?.toLocaleString("vi-VN") ?? "unknown"} Hz</p>}
       {result.captureMetadata.analysisMode === "synchronous-dual-channel" && <p className="device-notice">Synchronous pair · Reference CH {Number(result.captureMetadata.referenceChannel) + 1} → Measurement CH {Number(result.captureMetadata.measurementChannel) + 1} · common AudioWorklet frame clock</p>}
+      {result.captureMetadata.referenceCaptureQuality && <p className="muted">Reference · peak {result.captureMetadata.referenceCaptureQuality.peakDbfs.toFixed(1)} dBFS · RMS {result.captureMetadata.referenceCaptureQuality.rmsDbfs.toFixed(1)} dBFS · Measurement · peak {result.captureQuality?.peakDbfs.toFixed(1)} dBFS · RMS {result.captureQuality?.rmsDbfs.toFixed(1)} dBFS</p>}
       <div className="response-chart"><span className="chart-label">RELATIVE MAGNITUDE · dB</span>{result.points.filter((_,i)=>i%2===0).map((point,index)=><i key={index} title={point.frequencyHz.toFixed(0)+" Hz · "+point.magnitudeDb.toFixed(1)+" dB · coh "+point.coherence.toFixed(2)} style={{height:Math.max(3,Math.min(100,(point.magnitudeDb+45)*1.5))+"%",opacity:point.coherence<.5?.28:1}} />)}</div>
       <div className="phase-panel"><div className="heading"><Waves /><h3>{result.analysisMode === "synchronous-dual-channel" ? "Synchronous phase response · common clock" : "Time-aligned phase response"}</h3></div><svg viewBox="0 0 760 120" role="img" aria-label="Phase response"><path d="M10 12 H750 M10 56 H750 M10 100 H750" stroke="#354a55" strokeDasharray="4 4" fill="none"/><path d={phasePath} stroke="#e4b86f" strokeWidth="1.5" fill="none" vectorEffect="non-scaling-stroke"/></svg><div className="axis"><span>30 Hz</span><span>100 Hz</span><span>1 kHz</span><span>10 kHz</span><span>18 kHz</span></div></div>
       <div className="table-wrap"><table><thead><tr><th>Frequency</th><th>Magnitude</th><th>{result.analysisMode === "synchronous-dual-channel" ? "Phase · common clock" : "Phase aligned"}</th><th>Coherence</th></tr></thead><tbody>{result.points.filter((_,i)=>i%Math.max(1,Math.floor(result.points.length/16))===0).slice(0,16).map(point=><tr key={point.frequencyHz}><td>{point.frequencyHz.toFixed(0)} Hz</td><td>{point.magnitudeDb.toFixed(1)} dB</td><td>{point.phaseDeg.toFixed(0)}°</td><td><b className={point.coherence>=.8?"coherence-good":point.coherence>=.5?"coherence-mid":"coherence-low"}>{(point.coherence*100).toFixed(0)}%</b></td></tr>)}</tbody></table></div>
