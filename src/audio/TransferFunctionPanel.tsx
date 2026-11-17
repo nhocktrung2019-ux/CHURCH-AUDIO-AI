@@ -238,7 +238,9 @@ export default function TransferFunctionPanel({ selectedInput, running, calibrat
         pcmChannelCount: rawPcmChannelCount,
         channelMix: captureEngine === "AudioWorklet" && rawPcmChannelCount > 1
           ? "interleaved-preserved-then-arithmetic-mean" as const
-          : rawPcmChannelCount > 1 ? "arithmetic-mean" as const : "direct-mono" as const,
+          : captureEngine === "ScriptProcessor fallback" && (stableInputChannelCount ?? 1) > 1
+            ? "arithmetic-mean" as const
+            : "direct-mono" as const,
         trackChannelCount: Number.isInteger(trackSettings.channelCount) ? trackSettings.channelCount! : null,
         trackSampleRate: Number.isFinite(trackSettings.sampleRate) ? trackSettings.sampleRate! : null,
       };
