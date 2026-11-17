@@ -19,7 +19,7 @@ This roadmap describes the integrated beta branch. “Implemented” means code 
 ## Stage 3 — Feedback and multi-source measurement
 - [x] Persistent narrow-peak candidates, saved suspect feedback points and conservative advisory notch values.
 - [x] Attempted independent capture of up to four separately enumerated inputs, with per-source RTA histories.
-- [x] Vietnamese visual feedback warnings and optional speech synthesis for persistent narrow peaks; general voice-command recognition is not included.
+- [x] Vietnamese on-screen feedback warnings for persistent narrow peaks; speech recognition and speech synthesis are not included.
 - [ ] Validate concurrent capture on target Android devices and identify channels inside multichannel USB interfaces.
 - [ ] Confirm candidate feedback by listening and physical channel isolation before any EQ action.
 
