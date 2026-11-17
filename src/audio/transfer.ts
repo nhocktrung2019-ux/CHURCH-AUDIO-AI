@@ -321,16 +321,23 @@ export function analyzeSynchronousTransfer(
   const sxyRe = new Float64Array(bins);
   const sxyIm = new Float64Array(bins);
   let frames = 0;
+  const xr = new Float64Array(frameSize);
+  const xi = new Float64Array(frameSize);
+  const yr = new Float64Array(frameSize);
+  const yi = new Float64Array(frameSize);
+  const window = new Float64Array(frameSize);
+  for (let i = 0; i < frameSize; i++) {
+    window[i] = 0.5 - 0.5 * Math.cos(2 * Math.PI * i / (frameSize - 1));
+  }
 
   for (let offset = 0; offset + frameSize <= reference.length; offset += hopSize) {
-    const xr = new Float64Array(frameSize);
-    const xi = new Float64Array(frameSize);
-    const yr = new Float64Array(frameSize);
-    const yi = new Float64Array(frameSize);
+    xr.fill(0);
+    xi.fill(0);
+    yr.fill(0);
+    yi.fill(0);
     for (let i = 0; i < frameSize; i++) {
-      const window = 0.5 - 0.5 * Math.cos(2 * Math.PI * i / (frameSize - 1));
-      xr[i] = reference[offset + i] * window;
-      yr[i] = measurement[offset + i] * window;
+      xr[i] = reference[offset + i] * window[i];
+      yr[i] = measurement[offset + i] * window[i];
     }
     fft(xr, xi);
     fft(yr, yi);
