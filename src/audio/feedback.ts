@@ -1,4 +1,4 @@
-import { logBandFrequency } from "./acoustics";
+import { logBandFrequency } from "./acoustics.ts";
 
 export type FeedbackCandidate = {
   index: number;
