@@ -1,11 +1,11 @@
 # Integration and validation
 
-### v0.20.0-beta.1 — synchronous dual-channel foundation
+### v0.21.0-beta.1 — multichannel PCM preservation
 
-- Adds a pure validator for two distinct channels sharing one capture session, source stream, sample rate, frame start/count and declared clock domain.
-- Adds strict planar-channel extraction and a bounded broadband relative-delay estimator with a tested sign convention.
-- Regression tests cover independent stream/clock rejection, frame/sample-rate mismatch, incomplete channel data and a known synthetic delay.
-- Not wired into live Android capture yet. No channel-selection UI, dual-channel recording, per-channel calibration or hardware clock proof is claimed.
-- Physical USB multichannel interface testing and comparison with a reference analyser remain required.
-
+- Request up to two input channels when supported; do not force the browser capture to mono.
+- AudioWorklet sends frame-major interleaved Float32 PCM with exact frame count, channel count and render-frame position.
+- Main thread rejects channel-count changes, malformed payload sizes, missing frames and sample-rate mismatches.
+- The current H1 analyzer still performs an explicit arithmetic-mean downmix after capture. It does not yet calculate a true Reference CH1 / Measurement CH2 transfer function.
+- ScriptProcessor fallback remains mono-mixed and is not an equivalent multichannel path.
+- Validate USB interface channel mapping, Android WebView channel preservation, sustained capture and actual loopback routing on physical hardware before promoting the beta.
 
