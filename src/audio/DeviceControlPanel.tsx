@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { isOscUdpAvailable, OscUdp, type OscQueryResult } from "./oscUdp";
 import { Cable, Copy, Download, ExternalLink, ShieldAlert, SlidersHorizontal, Wifi } from "lucide-react";
 
 type ProtocolKind = "osc" | "ui-web" | "dbx-app" | "zonepro" | "hiqnet" | "serial-pending" | "manual-only";
@@ -95,18 +96,21 @@ export default function DeviceControlPanel() {
   const [host, setHost] = useState("192.168.1.100");
   const [port, setPort] = useState("10023");
   const [channel, setChannel] = useState("01");
-  const [gain, setGain] = useState("0");
-  const [mute, setMute] = useState(false);
   const [customModel, setCustomModel] = useState("");
+  const [queryPath, setQueryPath] = useState("mix/fader");
+  const [queryBusy, setQueryBusy] = useState(false);
+  const [queryError, setQueryError] = useState("");
+  const [queryResults, setQueryResults] = useState<OscQueryResult[]>([]);
+  const nativeOscAvailable = isOscUdpAvailable();
   const availableModels = profiles.filter(profile => profile.manufacturer === manufacturer);
   const selected = getProfile(deviceId);
   const isOsc = selected.protocol === "osc";
   const osc = useMemo(() => [
-    { action: "Read channel preamp trim", address: `/ch/${channel}/preamp/trim`, value: "query preview" },
-    { action: "Set channel mute", address: `/ch/${channel}/mix/on`, value: mute ? 0 : 1 },
-    { action: "Set channel preamp trim", address: `/ch/${channel}/preamp/trim`, value: Number(gain) },
-    { action: "Subscribe to console updates", address: "/xremote", value: "subscription preview" },
-  ], [channel, gain, mute]);
+    { action: "Read channel fader", address: "/ch/" + channel + "/mix/fader", value: "query · no arguments" },
+    { action: "Read channel mute state", address: "/ch/" + channel + "/mix/on", value: "query · no arguments" },
+    { action: "Read channel preamp trim", address: "/ch/" + channel + "/preamp/trim", value: "query · no arguments" },
+    { action: "Read channel EQ state", address: "/ch/" + channel + "/eq/on", value: "query · no arguments" },
+  ], [channel]);
 
   const config = {
     schema: "church-audio-device-profile/v2",
@@ -117,7 +121,7 @@ export default function DeviceControlPanel() {
     family: selected.family,
     connection: { transport: selected.transport, host, port: Number(port) || selected.port || null },
     protocol: selected.protocol,
-    protocolStatus: isOsc ? "documented-protocol-preview-only-no-live-transport" : selected.protocol,
+    protocolStatus: isOsc ? "documented-read-only-query-bridge-android-no-write-support" : selected.protocol,
     capabilities: selected.capabilities,
     safety: "No network, USB or serial command has been sent. Device state and firmware must be confirmed before enabling writes.",
     oscPreview: isOsc ? osc : [],
@@ -132,6 +136,25 @@ export default function DeviceControlPanel() {
     anchor.download = `church-audio-${selected.id}-profile.json`;
     anchor.click();
     URL.revokeObjectURL(url);
+  };
+  const validChannel = /^(0[1-9]|[12][0-9]|3[0-2])$/.test(channel);
+  const queryOsc = async (address: string) => {
+    if (!isOsc || !nativeOscAvailable || queryBusy) return;
+    setQueryBusy(true);
+    setQueryError("");
+    try {
+      const result = await OscUdp.query({
+        host: host.trim(),
+        port: Number(port) || selected.port || 10023,
+        address,
+        timeoutMs: 1500,
+      });
+      setQueryResults(current => [result, ...current].slice(0, 8));
+    } catch (error) {
+      setQueryError(error instanceof Error ? error.message : String(error));
+    } finally {
+      setQueryBusy(false);
+    }
   };
   const copyAddress = async (address: string) => {
     try { await navigator.clipboard.writeText(address); } catch { /* Clipboard may be unavailable in embedded Android WebView. */ }
@@ -168,9 +191,8 @@ export default function DeviceControlPanel() {
       <div className="protection-field"><label>ĐỊA CHỈ IP / HOST</label><input value={host} onChange={event => setHost(event.target.value)} placeholder="192.168.1.100" /></div>
       <div className="protection-field"><label>PORT (NẾU CÓ)</label><input value={port} onChange={event => setPort(event.target.value)} inputMode="numeric" placeholder="Model-specific" /></div>
       {isOsc && <>
-        <div className="protection-field"><label>INPUT CHANNEL (01–32)</label><input value={channel} onChange={event => setChannel(event.target.value.replace(/\D/g, "").slice(0, 2).padStart(2, "0"))} inputMode="numeric" /></div>
-        <div className="protection-field"><label>PREAMP TRIM PREVIEW (dB)</label><input value={gain} onChange={event => setGain(event.target.value)} inputMode="decimal" /></div>
-        <label className="device-mute-toggle"><input type="checkbox" checked={mute} onChange={event => setMute(event.target.checked)} /> Preview trạng thái mute ON</label>
+        <div className="protection-field"><label>INPUT CHANNEL (01–32)</label><input value={channel} onChange={event => { const digits = event.target.value.replace(/[^0-9]/g, "").slice(0, 2); setChannel(digits ? digits.padStart(2, "0") : ""); }} inputMode="numeric" /></div>
+        <div className="protection-field"><label>THAM SỐ CHỈ ĐỌC</label><select value={queryPath} onChange={event => setQueryPath(event.target.value)}><option value="mix/fader">Channel fader</option><option value="mix/on">Channel ON / MUTE state</option><option value="mix/pan">Channel pan</option><option value="config/name">Channel name</option><option value="preamp/trim">Preamp trim</option><option value="eq/on">EQ enabled</option><option value="eq/1/f">EQ band 1 frequency</option><option value="eq/1/g">EQ band 1 gain</option><option value="eq/1/q">EQ band 1 Q</option></div>
       </>}
     </div>
     <div className={isOsc || selected.protocol === "ui-web" ? "device-protocol-status" : "device-protocol-status pending"}>
@@ -180,10 +202,27 @@ export default function DeviceControlPanel() {
     <section className="osc-preview">
       <div className="protection-subheading"><SlidersHorizontal /><b>CHỨC NĂNG / CAPABILITY PROFILE</b><span>MODEL-SPECIFIC</span></div>
       <div className="device-capability-list">{selected.capabilities.map(capability => <span key={capability}>{capability}</span>)}</div>
+      {isOsc && <section className="osc-live-query">
+        <div className="protection-subheading"><Wifi /><b>ĐỌC TRẠNG THÁI MIXER QUA LAN</b><span>READ ONLY</span></div>
+        <div className="protection-actions">
+          <button type="button" disabled={!nativeOscAvailable || queryBusy} onClick={() => void queryOsc("/info")}>{queryBusy ? "Đang truy vấn..." : "Đọc thông tin mixer"}</button>
+          <button type="button" className="secondary" disabled={!nativeOscAvailable || queryBusy} onClick={() => void queryOsc("/status")}>Đọc trạng thái console</button>
+          <button type="button" className="secondary" disabled={!nativeOscAvailable || queryBusy || !validChannel} onClick={() => void queryOsc("/ch/" + channel + "/" + queryPath)}>Đọc tham số kênh {channel || "—"}</button>
+        </div>
+        {!nativeOscAvailable && <p className="warning">Cầu nối UDP native hiện chỉ được đóng gói trên Android. Bản web/desktop chưa có native transport.</p>}
+        {queryError && <p className="warning">{queryError}</p>}
+        {queryResults.length > 0 && <div className="osc-query-results">
+          {queryResults.map(result => <div className="osc-query-result" key={result.receivedAt + result.requestedAddress}>
+            <div><b>{result.responseAddress || result.requestedAddress}</b><small>{result.host}:{result.port} · {result.rttMs} ms · {new Date(result.receivedAt).toLocaleTimeString("vi-VN")}</small></div>
+            <code>{JSON.stringify(result.arguments)}</code>
+          </div>)}
+        </div>}
+        <p className="muted">Truy vấn OSC gửi không có tham số, chỉ yêu cầu mixer trả giá trị hiện tại. Chưa có lệnh ghi, mute, fader, EQ, preset hoặc polling nền.</p>
+      </section>}
       {isOsc && <>
-        <div className="protection-subheading"><SlidersHorizontal /><b>OSC COMMAND PREVIEW</b><span>NOT SENT</span></div>
+        <div className="protection-subheading"><SlidersHorizontal /><b>OSC READ COMMAND PREVIEW</b><span>NO WRITE</span></div>
         {osc.map(item => <div className="osc-line" key={item.action}><div><b>{item.action}</b><code>{item.address}</code><small>Value: {String(item.value)}</small></div><button type="button" className="icon-button" aria-label="Copy OSC address" onClick={() => void copyAddress(item.address)}><Copy /></button></div>)}
-        <p className="muted">Địa chỉ OSC chỉ để xem trước. Chưa có UDP socket/native bridge, chưa đọc trạng thái mixer và chưa thể ghi thông số thực.</p>
+        <p className="muted">Các địa chỉ OSC dưới đây được giới hạn ở truy vấn chỉ đọc. Thay đổi gain, mute, fader, EQ hoặc routing chưa được bật.</p>
       </>}
       {selected.protocol === "ui-web" && <div className="protection-actions"><button type="button" onClick={openUiConsole}><ExternalLink /> Mở giao diện web mixer</button></div>}
       {(selected.protocol === "dbx-app" || selected.protocol === "hiqnet") && <p className="muted">Sử dụng ứng dụng/tài liệu chính hãng qua liên kết bên dưới. Tích hợp trực tiếp vào Church Audio cần driver hoặc SDK/giao thức đã được hãng xác nhận.</p>}
