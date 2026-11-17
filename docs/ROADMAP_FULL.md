@@ -3,7 +3,7 @@
 | Stage | Scope | Current state | Production gate |
 |---|---|---|---|
 | 1 | Audio Engine, input/output, USB/OTG, generator | Browser/WebView beta implemented | Android hardware and long-run routing tests |
-| 2 | RTA, FFT, RT60, transfer, phase, Leq, calibration | v0.22 adds synchronous Reference/Measurement H1 analysis on a shared AudioWorklet frame clock; physical USB routing and per-channel calibration remain unverified | USB channel mapping, true Reference/Measurement processing, clock proof, per-channel calibration and reference-analyser comparison |
+| 2 | RTA, FFT, RT60, transfer, phase, Leq, calibration | v0.23 adds guided per-input USB loopback capture, exact-route profile storage, repeatability gating and differential Reference/Measurement correction; CI and physical USB routing remain unverified | successful CI, verified channel/output mapping, hardware clock/skew proof, acoustic validation and reference-analyser comparison |
 | 3 | Feedback detection, multi-mic, voice assistant | v0.16 beta adds persistence, valid-frame gating and confidence display | Per-device concurrency tests, channel attribution and listening verification |
 | 4 | Church 3D, CBT, polar data, coverage | Planning/approximation tools implemented | Surveyed geometry and verified manufacturer polar data |
 | 5 | X32/M32, Soundcraft, dbx, CD48 DSP | Manual configuration/export worksheet | Per-model protocol adapter, physical tests, read-back and rollback |
@@ -45,3 +45,15 @@ Status labels distinguish code availability from hardware verification. Beta cod
 - Relative delay is estimated with a bounded coarse search plus full-rate refinement.
 - Auto EQ is locked for this mode until per-channel ADC/DAC and loopback calibration exist.
 - Physical USB routing, ADC/DAC skew, long-duration Android capture and reference-analyser comparison remain unverified acceptance gates.
+
+
+## v0.23 channel calibration foundation status
+
+- Per-channel loopback calibration can be captured from a selected USB input/output route through AudioWorklet, subject to PCM quality and coherence gates.
+- A profile is bound to the selected input device ID, zero-based input channel, output device ID and sample rate; profile data is strictly validated and stored separately for each exact route.
+- Saving requires two repeated captures within application-defined magnitude, phase and delay repeatability limits. The limits are regression guardrails, not a certified accuracy specification.
+- Synchronous Reference/Measurement H1 can apply a differential correction from the two channel profiles, and only displays the common calibrated frequency band.
+- Calibration capture is limited to sample rates no higher than 96 kHz with the current 4096-point FFT so that the accepted band can extend to 50 Hz.
+- Browser APIs cannot establish that the selected input and output IDs belong to the same physical USB interface. The operator must verify the line-level loopback wiring and attenuator.
+- Auto EQ remains locked in synchronous mode. No Android device, OTG interface, ADC/DAC clock, or reference-analyser test has been verified. GitHub Actions runs observed on this branch failed before runner assignment with zero steps and no APK artifacts.
+- Next engineering gate: make GitHub Actions execute tests/build; then exercise USB input/output and per-channel repeatability on Android, compare H1 magnitude/phase/delay with a trusted reference analyser, and only after that consider unlocking dependent features.
