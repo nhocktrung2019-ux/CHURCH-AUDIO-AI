@@ -40,4 +40,19 @@ The monitor can read:
 
 The native receiver validates the source IP, not a fixed source port: OSC consoles may send replies to the phone's ephemeral UDP source port. Unrelated/malformed datagrams are ignored, and the receiver waits until the configured overall timeout.
 
-Snapshots save the values actually received on the device and can be exported as JSON. A snapshot is a measurement/state record only; there is no restore/write command yet. No fader, mute, gain, EQ, routing, preset, scene, or DSP parameter write is enabled. No physical X32/M32 console has yet been available for hardware validation; a successful CI build verifies compilation and packaging, not live console interoperability.
+Snapshots save the values actually received on the device and can be exported as JSON. Snapshot restore is not enabled.
+
+### Guarded input-channel writes (new, hardware validation required)
+
+The Android plugin exposes a separate `writeGuarded` operation with an exact write allowlist for input channels 01–32 only:
+- Channel fader: -90 to 0 dB. The plugin converts the dB value to the X32/M32's normalized OSC level representation.
+- Channel ON/OFF and preamp polarity: integer 0/1.
+- Preamp trim: -18 to 0 dB only; the protocol notes this parameter applies to digital sources only.
+- EQ enable; four EQ bands' frequency (20–20,000 Hz), gain (-15 to 0 dB only; cut-only), and Q (0.3–10).
+- Channel delay enable and delay time (0.3–200 ms).
+
+Every write requires a successful read in the UI, a separate explicit user confirmation, and a second native read immediately before sending. The native bridge aborts when the just-read value no longer matches the value prepared by the UI. After sending, it issues another read and reports `verified` only when the console's reply matches the requested wire value. A sent-but-unverified packet is reported as uncertain; the app warns not to send it again until the mixer is checked.
+
+The UI retains the previous verified value and offers a separately confirmed guarded restore for that one parameter. This is not a whole-scene restore. The write allowlist does not include bus/main/matrix changes, routing, phantom power, headamp gain, presets, scenes, or arbitrary OSC addresses. Fader/preamp/EQ gain increases are deliberately restricted in this phase.
+
+No physical X32/M32 console has yet been available for hardware validation. CI confirms Java/TypeScript compilation and APK packaging only; it does not certify live OSC interoperability, firmware-specific parameter behavior, audible outcome, or the safety of a venue system. Keep amplifiers muted or at a low safe level while first validating with a real console, and do not use this control path during a live service until tested.
