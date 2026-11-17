@@ -220,8 +220,48 @@ export default function TransferFunctionPanel({ selectedInput, selectedOutput, r
       for (const block of blocks) { interleavedCaptured.set(block, writeOffset); writeOffset += block.length; }
       const rawPcmChannelCount = captureEngine === "AudioWorklet" ? (stableInputChannelCount ?? 1) : 1;
       if (totalSamples % rawPcmChannelCount !== 0) throw new Error("PCM đa kênh có số mẫu không chia hết theo số kênh.");
+      const frameCount = totalSamples / rawPcmChannelCount;
+      const trackSettings = stream.getAudioTracks()[0]?.getSettings() ?? {};
+
+      if (analysisMode === "synchronous-dual-channel") {
+        if (captureEngine !== "AudioWorklet" || rawPcmChannelCount < 2) {
+          throw new Error("Input hiện chỉ cung cấp một kênh hoặc không dùng AudioWorklet. Cần USB interface trả về ít nhất hai kênh trong cùng một stream.");
+        }
+        if (!Number.isInteger(referenceChannel) || !Number.isInteger(measurementChannel)
+          || referenceChannel < 0 || measurementChannel < 0
+          || referenceChannel >= rawPcmChannelCount || measurementChannel >= rawPcmChannelCount
+          || referenceChannel === measurementChannel) {
+          throw new Error("Reference và Measurement phải là hai kênh khác nhau, tồn tại trên input hiện tại.");
+        }
+        const channelData = deinterleaveInterleavedPcm(interleavedCaptured, frameCount, rawPcmChannelCount);
+        if (!channelData) throw new Error("Không thể tách PCM theo từng kênh. Dữ liệu capture không hợp lệ.");
+        const referenceSamples = channelData[referenceChannel];
+        const measurementSamples = channelData[measurementChannel];
+        const captureQuality = measurePcmCaptureQuality(measurementSamples);
+        if (!captureQuality) throw new Error("Kênh Measurement không có dữ liệu PCM hợp lệ.");
+        const measured = analyzeSynchronousTransfer(
+          referenceSamples, measurementSamples, audio.sampleRate, calibrationPoints,
+        );
+        if (!measured) throw new Error("Không tìm thấy tín hiệu tương quan đủ rõ giữa Reference và Measurement. Kiểm tra loopback, dây nối, gain và chọn đúng kênh.");
+        const captureMetadata = {
+          captureEngine,
+          inputChannelCount: stableInputChannelCount,
+          pcmChannelCount: rawPcmChannelCount,
+          channelMix: "interleaved-preserved-synchronous-pair" as const,
+          trackChannelCount: Number.isInteger(trackSettings.channelCount) ? trackSettings.channelCount! : null,
+          trackSampleRate: Number.isFinite(trackSettings.sampleRate) ? trackSettings.sampleRate! : null,
+          analysisMode,
+          referenceChannel,
+          measurementChannel,
+          clockBasis: "same-mediastream-audioworklet-frame-clock" as const,
+        };
+        setResult({ ...measured, captureQuality, captureMetadata });
+        setNotice("Đã phân tích hai kênh đồng thời từ cùng AudioWorklet stream. Delay là chênh lệch Reference→Measurement ước lượng; magnitude/phase vẫn cần hiệu chuẩn riêng đường vào/ra và xác minh độ lệch ADC/DAC của interface. Auto EQ đang khóa an toàn.");
+        return;
+      }
+
       const captured = captureEngine === "AudioWorklet"
-        ? mixInterleavedPcmToMono(interleavedCaptured, totalSamples / rawPcmChannelCount, rawPcmChannelCount)
+        ? mixInterleavedPcmToMono(interleavedCaptured, frameCount, rawPcmChannelCount)
         : interleavedCaptured;
       if (!captured) throw new Error("Không thể giải mã PCM đa kênh; dữ liệu bị sai cấu trúc hoặc có mẫu không hợp lệ.");
       const playbackOffsetSeconds = playbackStartTime - firstBlockPlaybackTime;
@@ -246,7 +286,6 @@ export default function TransferFunctionPanel({ selectedInput, selectedOutput, r
       } else {
         setNotice("Đã thu PCM bằng ScriptProcessor dự phòng; kết quả cần được kiểm tra lại bằng AudioWorklet trước khi dùng cho nghiệm thu." + fallbackWarning);
       }
-      const trackSettings = stream.getAudioTracks()[0]?.getSettings() ?? {};
       const captureMetadata = {
         captureEngine,
         inputChannelCount: stableInputChannelCount,
@@ -258,6 +297,7 @@ export default function TransferFunctionPanel({ selectedInput, selectedOutput, r
             : "direct-mono" as const,
         trackChannelCount: Number.isInteger(trackSettings.channelCount) ? trackSettings.channelCount! : null,
         trackSampleRate: Number.isFinite(trackSettings.sampleRate) ? trackSettings.sampleRate! : null,
+        analysisMode,
       };
       setResult({ ...measured, captureQuality, captureMetadata });
     } catch (cause) {
