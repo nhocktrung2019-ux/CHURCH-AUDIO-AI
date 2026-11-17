@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { usePersistentState } from "./usePersistentState";
 import { Activity, Play, Square, AlertTriangle, Download, Waves } from "lucide-react";
 import { analyzeTransfer, makeReferenceNoise, measurePcmCaptureQuality, type TransferResult } from "./transfer";
+import { countPcmFrameDiscontinuity } from "./pcmCapture.ts";
 import { assessAutoEqReadiness, suggestParametricEq } from "./autoEq";
 import { comparePhaseInBand } from "./phaseAlignment";
 import { explainMicrophoneError, requestMicrophoneStream } from "./microphone";
@@ -77,7 +78,7 @@ export default function TransferFunctionPanel({ selectedInput, running, calibrat
               return;
             }
             if (previousFrameEnd !== null && frameStart !== previousFrameEnd) {
-              missedBlocks += Math.max(1, Math.round(Math.abs(frameStart - previousFrameEnd) / blockSize));
+              missedBlocks += countPcmFrameDiscontinuity(previousFrameEnd, frameStart, blockSize);
             }
             previousFrameEnd = frameStart + pcm.byteLength / Float32Array.BYTES_PER_ELEMENT;
             if (firstBlockPlaybackTime === null) firstBlockPlaybackTime = frameStart / audio!.sampleRate;
