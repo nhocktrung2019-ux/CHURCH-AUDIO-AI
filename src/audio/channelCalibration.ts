@@ -323,3 +323,76 @@ export function correctDifferentialLoopbackDelayMs(
     || referenceProfile.inputChannel === measurementProfile.inputChannel) return null;
   return measuredDelayMs - (measurementProfile.loopbackDelayMs - referenceProfile.loopbackDelayMs);
 }
+
+
+export type ChannelCalibrationRepeatability = {
+  stable: boolean;
+  comparedPoints: number;
+  meanMagnitudeDeltaDb: number;
+  rmsPhaseDeltaDeg: number;
+  delayDeltaMs: number;
+  reason: string;
+};
+
+export type ChannelCalibrationRepeatabilityLimits = {
+  maxMeanMagnitudeDeltaDb?: number;
+  maxRmsPhaseDeltaDeg?: number;
+  maxDelayDeltaMs?: number;
+  minComparedPoints?: number;
+};
+
+/**
+ * Compare two independent loopback captures made with the same exact route.
+ * These are conservative application-level repeatability gates, not a
+ * published instrument accuracy specification or a substitute for bench tests.
+ */
+export function assessChannelCalibrationRepeatability(
+  first: ChannelCalibrationProfile,
+  second: ChannelCalibrationProfile,
+  limits: ChannelCalibrationRepeatabilityLimits = {},
+): ChannelCalibrationRepeatability | null {
+  if (!validateChannelCalibrationProfile(first).valid
+    || !isChannelCalibrationCompatible(first, second)) return null;
+
+  const maxMeanMagnitudeDeltaDb = limits.maxMeanMagnitudeDeltaDb ?? 0.75;
+  const maxRmsPhaseDeltaDeg = limits.maxRmsPhaseDeltaDeg ?? 10;
+  const maxDelayDeltaMs = limits.maxDelayDeltaMs ?? 0.15;
+  const minComparedPoints = limits.minComparedPoints ?? 8;
+  if (![maxMeanMagnitudeDeltaDb, maxRmsPhaseDeltaDeg, maxDelayDeltaMs, minComparedPoints]
+    .every(value => Number.isFinite(value) && value >= 0)
+    || !Number.isInteger(minComparedPoints) || minComparedPoints < 1) return null;
+
+  let magnitudeError = 0;
+  let phaseErrorSquared = 0;
+  let comparedPoints = 0;
+  for (const point of second.points) {
+    if (point.frequencyHz < 50 || point.frequencyHz > 10000) continue;
+    const previous = interpolateChannelCalibration(first.points, point.frequencyHz);
+    if (!previous) continue;
+    magnitudeError += Math.abs(point.magnitudeDb - previous.magnitudeDb);
+    let phaseDelta = point.phaseDeg - previous.phaseDeg;
+    while (phaseDelta > 180) phaseDelta -= 360;
+    while (phaseDelta < -180) phaseDelta += 360;
+    phaseErrorSquared += phaseDelta * phaseDelta;
+    comparedPoints++;
+  }
+  if (comparedPoints < minComparedPoints) return null;
+
+  const meanMagnitudeDeltaDb = magnitudeError / comparedPoints;
+  const rmsPhaseDeltaDeg = Math.sqrt(phaseErrorSquared / comparedPoints);
+  const delayDeltaMs = Math.abs(second.loopbackDelayMs - first.loopbackDelayMs);
+  const stable = meanMagnitudeDeltaDb <= maxMeanMagnitudeDeltaDb
+    && rmsPhaseDeltaDeg <= maxRmsPhaseDeltaDeg
+    && delayDeltaMs <= maxDelayDeltaMs;
+  const reason = stable
+    ? "Repeated loopback captures are within the configured repeatability limits."
+    : "Repeated loopback captures exceed one or more repeatability limits.";
+  return {
+    stable,
+    comparedPoints,
+    meanMagnitudeDeltaDb,
+    rmsPhaseDeltaDeg,
+    delayDeltaMs,
+    reason,
+  };
+}
