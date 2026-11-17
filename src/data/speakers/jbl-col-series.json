@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "manufacturer": "JBL Professional",
+  "series": "COL Series",
+  "models": [
+    {
+      "id": "jbl-col600",
+      "model": "COL600",
+      "category": "passive-column-loudspeaker",
+      "manufacturerDataStatus": "pending-official-datasheet-verification",
+      "specifications": {},
+      "measurementProfiles": {
+        "frequencyResponse": null,
+        "phaseResponse": null,
+        "impulseResponse": null,
+        "polarData": null
+      },
+      "notes": [
+        "Import manufacturer specifications from the exact regional/revision datasheet.",
+        "Do not fabricate frequency, phase or polar curves; accept measured FRD/CSV and calibrated measurement captures separately."
+      ]
+    },
+    {
+      "id": "jbl-col800",
+      "model": "COL800",
+      "category": "passive-column-loudspeaker",
+      "manufacturerDataStatus": "pending-official-datasheet-verification",
+      "specifications": {},
+      "measurementProfiles": {
+        "frequencyResponse": null,
+        "phaseResponse": null,
+        "impulseResponse": null,
+        "polarData": null
+      },
+      "notes": [
+        "Import manufacturer specifications from the exact regional/revision datasheet.",
+        "Do not fabricate frequency, phase or polar curves; accept measured FRD/CSV and calibrated measurement captures separately."
+      ]
+    }
+  ]
+}

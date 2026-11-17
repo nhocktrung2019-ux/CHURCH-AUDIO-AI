@@ -1,7 +1,9 @@
 import { useState } from "react";
+import { APP_VERSION } from "./appVersion";
 import { usePersistentState } from "./audio/usePersistentState";
 import { micCorrectionAt, type MicCalibrationFile, type MicCalibrationPoint } from "./audio/micCalibration";
-import { Activity, AudioWaveform, Mic, Radio, Volume2, Waves, RefreshCw, Square, Layers3, CheckCircle2, AlertCircle, LayoutDashboard, SlidersHorizontal, ShieldCheck, Box, Settings2, Ruler, Speaker } from "lucide-react";
+import { logBandFrequency } from "./audio/acoustics";
+import { Activity, AudioWaveform, Mic, Radio, Volume2, Waves, RefreshCw, Square, Layers3, CheckCircle2, AlertCircle, LayoutDashboard, SlidersHorizontal, ShieldCheck, Box, Settings2, Ruler, Speaker, LifeBuoy } from "lucide-react";
 import { useAudioAnalyzer } from "./audio/useAudioAnalyzer";
 import { useToneGenerator } from "./audio/useToneGenerator";
 import { equipment } from "./data/equipment";
@@ -17,9 +19,21 @@ import PolarDataStudio from "./audio/PolarDataStudio";
 import SPLMeterPanel from "./audio/SPLMeterPanel";
 import MicCalibrationPanel from "./audio/MicCalibrationPanel";
 import ProjectBackupPanel from "./audio/ProjectBackupPanel";
+import VersionSupportPanel from "./audio/VersionSupportPanel";
+import SpeakerProtectionPanel from "./audio/SpeakerProtectionPanel";
+import DeviceControlPanel from "./audio/DeviceControlPanel";
 
-type TabId = "overview" | "rta" | "room" | "align" | "system" | "design" | "tools";
+type TabId = "overview" | "rta" | "room" | "align" | "system" | "design" | "tools" | "support";
 const EMPTY_MIC_CALIBRATION_POINTS: MicCalibrationPoint[] = [];
+type RtaFrequencyBookmark = { id: string; frequencyHz: number; levelDb: number; savedAt: string };
+
+function getInputTypeLabel(label: string): string {
+  const value = label.toLowerCase();
+  if (/bluetooth|wireless|headset|hands.?free|airpods|buds/.test(value)) return "Bluetooth";
+  if (/usb|audio interface|sound card|scarlett|behringer|focusrite|umc|motu|steinberg/.test(value)) return "USB / OTG";
+  if (/built.?in|internal|phone|handset|microphone array/.test(value)) return "Tích hợp";
+  return "External / Chưa phân loại";
+}
 const tabs: { id: TabId; label: string; short: string; icon: typeof Activity }[] = [
   { id: "overview", label: "Tổng quan", short: "HOME", icon: LayoutDashboard },
   { id: "rta", label: "Phân tích tín hiệu", short: "RTA", icon: Activity },
@@ -28,10 +42,13 @@ const tabs: { id: TabId; label: string; short: string; icon: typeof Activity }[]
   { id: "system", label: "Chống hú & tối ưu", short: "SYSTEM", icon: ShieldCheck },
   { id: "design", label: "Thiết kế phủ âm 3D", short: "3D", icon: Box },
   { id: "tools", label: "Generator & thiết bị", short: "TOOLS", icon: Settings2 },
+  { id: "support", label: "Cập nhật & hỗ trợ", short: "SUPPORT", icon: LifeBuoy },
 ];
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<TabId>("overview");
+  const [selectedRtaIndex, setSelectedRtaIndex] = useState<number | null>(null);
+  const [rtaFrequencyBookmarks, setRtaFrequencyBookmarks] = usePersistentState<RtaFrequencyBookmark[]>("church-audio-rta-frequency-bookmarks", []);
   const [calibrationOffsetDb, setCalibrationOffsetDb] = usePersistentState("church-audio-mic-offset-db",0);
   const [micCalibration, setMicCalibration] = usePersistentState<MicCalibrationFile | null>("church-audio-mic-calibration-file",null);
   const calibrationPoints = micCalibration?.points ?? EMPTY_MIC_CALIBRATION_POINTS;
@@ -47,9 +64,11 @@ export default function App() {
     <div className={`mic-status ${micStatusClass}`}><span className="mic-status-icon">{a.running ? <CheckCircle2 /> : a.error ? <AlertCircle /> : <Mic />}</span><div><b>{micStatus}</b><small>{a.trackInfo || (a.permissionState === "denied" ? "Mở Cài đặt Android và cho phép Microphone." : "Nhấn Bắt đầu đo để yêu cầu quyền truy cập micro.")}</small></div></div>
     <label htmlFor="mic-input">MICROPHONE INPUT</label>
     <select id="mic-input" value={a.selectedInput} disabled={a.running || a.connecting} onChange={(event) => a.setSelectedInput(event.target.value)}>
-      <option value="">Micro mặc định hệ thống</option>{inputs.map((device, index) => <option key={device.deviceId || `mic-${index}`} value={device.deviceId}>{device.label || `Microphone ${index + 1}`}</option>)}
+      <option value="">Micro mặc định hệ thống</option>{inputs.map((device, index) => <option key={device.deviceId || `mic-${index}`} value={device.deviceId}>[{getInputTypeLabel(device.label)}] {device.label || `Microphone ${index + 1}`}</option>)}
     </select>
-    <p className="muted">{a.running ? "Đang dùng micro hiện tại. Dừng đo trước khi đổi thiết bị." : "Tên thiết bị có thể hiển thị đầy đủ hơn sau khi cấp quyền micro."}</p>
+    <p className="muted">{a.running ? "Đang dùng micro hiện tại. Dừng đo trước khi đổi thiết bị." : "Chọn micro tích hợp, Bluetooth hoặc sound card USB/OTG nếu Android và WebView nhận diện được thiết bị."}</p>
+    {inputs.some(device => getInputTypeLabel(device.label) === "Bluetooth") && <p className="warning">Bluetooth có thể bị giới hạn băng thông, AGC/khử ồn và độ trễ biến thiên. Chỉ dùng kiểm tra sơ bộ; không dùng để chứng nhận SPL, phase hoặc delay tuyệt đối.</p>}
+    <p className="muted">Đo chuyên nghiệp: ưu tiên measurement mic có calibration file qua sound card USB OTG. Cần sound card 2 kênh cùng clock và loopback/reference đồng bộ để đo delay/transfer function tuyệt đối.</p>
     <label htmlFor="audio-output">OUTPUT DEVICE</label>
     <select id="audio-output" value={t.outputDevice} disabled={!t.supportsOutputSelection || outputs.length === 0} onChange={(event) => void t.selectOutput(event.target.value)}>
       <option value="">Đầu ra mặc định của hệ thống</option>{outputs.map((device, index) => <option key={device.deviceId || `out-${index}`} value={device.deviceId}>{device.label || `Thiết bị đầu ra ${index + 1}`}</option>)}
@@ -62,11 +81,42 @@ export default function App() {
     {a.error && <p className="error">{a.error}</p>}
   </article>;
 
+  const selectedRtaFrequencyHz = selectedRtaIndex === null ? null : Math.round(logBandFrequency(selectedRtaIndex, a.spectrum.length));
+  const selectedRtaLevelDb = selectedRtaIndex === null ? null : a.spectrum[selectedRtaIndex];
+  const saveSelectedRtaFrequency = () => {
+    if (selectedRtaFrequencyHz === null || selectedRtaLevelDb === null) return;
+    const bookmark: RtaFrequencyBookmark = {
+      id: String(selectedRtaFrequencyHz) + "-" + Date.now(),
+      frequencyHz: selectedRtaFrequencyHz,
+      levelDb: selectedRtaLevelDb,
+      savedAt: new Date().toISOString(),
+    };
+    setRtaFrequencyBookmarks((current) => [
+      bookmark,
+      ...current.filter((item) => Math.abs(item.frequencyHz - bookmark.frequencyHz) > Math.max(15, bookmark.frequencyHz * 0.02)),
+    ].slice(0, 30));
+  };
+
   const RtaPanel = () => <article className="panel">
     <div className="heading"><Activity /><h2>RTA · Real-time Analyzer</h2><span>{a.running ? "LIVE" : "WAITING"}</span></div>
-    <div className="chart">{a.spectrum.map((value, index) => <i key={index} style={{ height: `${Math.max(2, (value + 100) * .98)}%` }} />)}</div>
+    <div className="chart rta-interactive-chart" role="group" aria-label="Biểu đồ RTA. Chạm vào một cột để chọn tần số">
+      {a.spectrum.map((value, index) => {
+        const frequency = Math.round(logBandFrequency(index, a.spectrum.length));
+        return <button type="button" key={index} className={selectedRtaIndex === index ? "rta-bin selected" : "rta-bin"} aria-label={"Chọn " + frequency + " héc, mức " + value.toFixed(1) + " dBFS"} aria-pressed={selectedRtaIndex === index} title={frequency.toLocaleString("vi-VN") + " Hz · " + value.toFixed(1) + " dBFS"} style={{ height: Math.max(2, (value + 100) * .98) + "%" }} onClick={() => setSelectedRtaIndex(index)} />
+      })}
+    </div>
     <div className="axis"><span>20 Hz</span><span>100 Hz</span><span>1 kHz</span><span>5 kHz</span><span>20 kHz</span></div>
-    <small className="muted">FFT 8192 · 64 LOG BANDS · dBFS POWER AVERAGE · 20 Hz–20 kHz</small><p className="calibrated-inline">INPUT RMS {a.rmsDbfs <= -99 ? "—" : (a.rmsDbfs + calibrationOffsetDb).toFixed(1) + " dB SPL"} · {calibrationOffsetDb === 0 ? "NO CALIBRATION OFFSET" : "ONE-POINT OFFSET ACTIVE"}</p>
+    {selectedRtaFrequencyHz !== null && <div className="rta-frequency-cursor">
+      <div><small>SELECTED FREQUENCY</small><strong>{selectedRtaFrequencyHz.toLocaleString("vi-VN")} Hz</strong><span>{selectedRtaLevelDb === null ? "—" : selectedRtaLevelDb.toFixed(1) + " dBFS"}</span></div>
+      <button type="button" onClick={saveSelectedRtaFrequency}>Lưu tần số</button>
+    </div>}
+    {rtaFrequencyBookmarks.length > 0 && <details className="rta-frequency-bookmarks">
+      <summary>Nhật ký tần số đã lưu · {rtaFrequencyBookmarks.length} điểm</summary>
+      <div className="table-wrap"><table><thead><tr><th>Tần số</th><th>Mức lúc lưu</th><th>Thời điểm</th><th></th></tr></thead><tbody>
+        {rtaFrequencyBookmarks.slice(0, 8).map((item) => <tr key={item.id}><td><b>{item.frequencyHz.toLocaleString("vi-VN")} Hz</b></td><td>{item.levelDb.toFixed(1)} dBFS</td><td>{new Date(item.savedAt).toLocaleString("vi-VN")}</td><td><button type="button" className="icon-button" aria-label={"Xóa điểm " + item.frequencyHz + " Hz"} onClick={() => setRtaFrequencyBookmarks((current) => current.filter((saved) => saved.id !== item.id))}>×</button></td></tr>)}
+      </tbody></table></div>
+    </details>}
+    <small className="muted">FFT 8192 · 64 LOG BANDS · dBFS POWER AVERAGE · 20 Hz–20 kHz · Chạm cột để chọn tần số</small><p className="calibrated-inline">INPUT RMS {a.rmsDbfs <= -99 ? "—" : (a.rmsDbfs + calibrationOffsetDb).toFixed(1) + (Math.abs(calibrationOffsetDb) > 0.001 ? " dB SPL" : " dBFS")} · {Math.abs(calibrationOffsetDb) > 0.001 ? "ONE-POINT LEVEL CALIBRATION ACTIVE" : "NO ABSOLUTE LEVEL CALIBRATION"}</p>
   </article>;
 
   const SpectrogramPanel = () => <article className="panel">
@@ -106,10 +156,11 @@ export default function App() {
     {activeTab === "rta" && <section className="tab-stack"><section className="grid"><RtaPanel /><SpectrogramPanel /><DevicePanel /></section><SPLMeterPanel weighted={a.weightedLevels} leq={a.leqLevels} timeWeighted={a.timeWeightedLevels} peakDbfs={a.level} offsetDb={calibrationOffsetDb} durationSeconds={a.measurementSeconds} running={a.running} /><MeasurementCalibrationPanel inputDbfs={a.rmsDbfs + micCorrectionAt(calibrationPoints,1000)} offsetDb={calibrationOffsetDb} onOffsetChange={setCalibrationOffsetDb} /><MicCalibrationPanel value={micCalibration} onChange={setMicCalibration} /></section>}
     {activeTab === "room" && <section className="tab-stack"><RT60MeasurementPanel selectedInput={a.selectedInput} running={a.running} /><MeasurementPlanner running={a.running} spectrum={a.spectrum} /><SpectrogramPanel /></section>}
     {activeTab === "align" && <section className="tab-stack"><TransferFunctionPanel selectedInput={a.selectedInput} running={a.running} calibrationPoints={calibrationPoints} /><MeasurementPlanner running={a.running} spectrum={a.spectrum} /></section>}
-    {activeTab === "system" && <section className="tab-stack"><FeedbackMonitor history={a.history} /><TuningAdvisor history={a.history} /></section>}
+    {activeTab === "system" && <section className="tab-stack"><FeedbackMonitor history={a.history} /><DeviceControlPanel /><SpeakerProtectionPanel /><TuningAdvisor history={a.history} /></section>}
     {activeTab === "design" && <section className="tab-stack"><CBTCalculator /><PolarDataStudio /><RoomPlanner3D /></section>}
     {activeTab === "tools" && <section className="tab-stack"><section className="grid"><GeneratorPanel /><DevicePanel /><article className="panel"><div className="heading"><Speaker /><h2>Thư viện thiết bị</h2><span>{equipment.length} ITEMS</span></div>{equipment.map(item => <div className="item" key={item.name}><b>{item.name}</b><small>{item.type} · Cần xác minh thông số hãng</small></div>)}</article></section><ProjectBackupPanel /></section>}
+    {activeTab === "support" && <section className="tab-stack"><VersionSupportPanel /></section>}
     <section className="roadmap"><small>PHƯƠNG PHÁP / WORKFLOW</small><p>01 KHẢO SÁT <b>→</b> 02 ĐO LƯỜNG <b>→</b> 03 CĂN CHỈNH <b>→</b> 04 KIỂM SOÁT HỆ THỐNG <b>→</b> 05 THIẾT KẾ PHỦ ÂM</p></section>
-    <footer>CHURCH AUDIO ANALYZER <span>PRO MEASUREMENT BETA · BUILD 0.11.0</span></footer>
+    <footer>CHURCH AUDIO ANALYZER <span>PRO MEASUREMENT BETA · BUILD {APP_VERSION}</span></footer>
   </main>;
 }
