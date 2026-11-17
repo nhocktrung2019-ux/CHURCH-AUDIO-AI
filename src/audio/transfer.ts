@@ -283,7 +283,7 @@ export function analyzeSynchronousTransfer(
     || measurement.some(sample => !Number.isFinite(sample))) return null;
 
   // Reduce the coarse search size for mobile, then refine at native sample rate.
-  const delayFactor = sampleRate >= 32000 ? 4 : 2;
+  const delayFactor = sampleRate >= 32000 ? 4 : sampleRate >= 16000 ? 2 : 1;
   const coarseReference = decimateForLag(reference, delayFactor);
   const coarseMeasurement = decimateForLag(measurement, delayFactor);
   const coarseDelay = estimateSynchronousRelativeDelay(
