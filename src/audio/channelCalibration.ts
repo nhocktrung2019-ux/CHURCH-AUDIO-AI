@@ -40,12 +40,20 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
+function isFiniteNumber(value: unknown): value is number {
+  return typeof value === "number" && Number.isFinite(value);
+}
+
+function isNonNegativeInteger(value: unknown): value is number {
+  return typeof value === "number" && Number.isInteger(value) && value >= 0;
+}
+
 function isValidTarget(target: unknown): target is CalibrationTarget {
   if (!isRecord(target)) return false;
   return typeof target.deviceKey === "string" && target.deviceKey.trim().length > 0
-    && Number.isInteger(target.inputChannel) && (target.inputChannel as number) >= 0
+    && isNonNegativeInteger(target.inputChannel)
     && typeof target.outputKey === "string" && target.outputKey.trim().length > 0
-    && Number.isFinite(target.sampleRate)
+    && isFiniteNumber(target.sampleRate)
     && (target.sampleRate as number) >= 8000 && (target.sampleRate as number) <= 192000;
 }
 
@@ -58,14 +66,14 @@ export function validateChannelCalibrationProfile(
     || typeof profile.outputKey !== "string" || !profile.outputKey.trim()) {
     return { valid: false, reason: "Calibration must identify the exact interface and output." };
   }
-  if (!Number.isInteger(profile.inputChannel) || (profile.inputChannel as number) < 0) {
+  if (!isNonNegativeInteger(profile.inputChannel)) {
     return { valid: false, reason: "Invalid calibrated input channel." };
   }
-  if (!Number.isFinite(profile.sampleRate) || (profile.sampleRate as number) < 8000
+  if (!isFiniteNumber(profile.sampleRate) || (profile.sampleRate as number) < 8000
     || (profile.sampleRate as number) > 192000) {
     return { valid: false, reason: "Invalid calibration sample rate." };
   }
-  if (!Number.isFinite(profile.loopbackDelayMs) || Math.abs(profile.loopbackDelayMs as number) > 500) {
+  if (!isFiniteNumber(profile.loopbackDelayMs) || Math.abs(profile.loopbackDelayMs as number) > 500) {
     return { valid: false, reason: "Invalid loopback delay." };
   }
   if (!Array.isArray(profile.points) || profile.points.length < 3) {
@@ -78,7 +86,7 @@ export function validateChannelCalibrationProfile(
     const frequencyHz = rawPoint.frequencyHz;
     const magnitudeDb = rawPoint.magnitudeDb;
     const phaseDeg = rawPoint.phaseDeg;
-    if (!Number.isFinite(frequencyHz) || (frequencyHz as number) <= previousFrequency
+    if (!isFiniteNumber(frequencyHz) || frequencyHz <= previousFrequency
       || (frequencyHz as number) < 10
       || (frequencyHz as number) > Math.min(40000, (profile.sampleRate as number) * 0.45)) {
       return { valid: false, reason: "Calibration frequencies must be finite, strictly increasing and below Nyquist." };
