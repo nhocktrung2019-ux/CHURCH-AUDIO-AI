@@ -183,7 +183,7 @@ export default function DeviceControlPanel() {
 
   return <article className="panel device-control-panel">
     <div className="heading"><Cable /><h2>DSP & Mixer Control</h2><span>{profiles.length} MODEL PROFILES</span></div>
-    <p className="muted">Thư viện model đa hãng. Mỗi model có giao thức và trạng thái xác minh riêng; chỉ X32/M32 có bản xem trước OSC trong ứng dụng, Soundcraft Ui có thể mở giao diện mixer trên trình duyệt.</p>
+    <p className="muted">Thư viện model đa hãng. X32/M32 hỗ trợ truy vấn OSC chỉ đọc trên Android; Soundcraft Ui có thể mở giao diện mixer qua trình duyệt. Các driver khác được tách theo model và trạng thái xác minh.</p>
     <div className="device-control-grid">
       <div className="protection-field"><label>HÃNG / MANUFACTURER</label><select value={manufacturer} onChange={event => chooseManufacturer(event.target.value as Manufacturer)}>{manufacturers.map(item => <option key={item} value={item}>{item}</option>)}</select></div>
       <div className="protection-field"><label>MODEL CỤ THỂ</label><select value={availableModels.some(item => item.id === deviceId) ? deviceId : availableModels[0]?.id ?? ""} onChange={event => chooseDevice(event.target.value)}>{availableModels.map(item => <option key={item.id} value={item.id}>{item.model}</option>)}</select></div>
@@ -192,7 +192,7 @@ export default function DeviceControlPanel() {
       <div className="protection-field"><label>PORT (NẾU CÓ)</label><input value={port} onChange={event => setPort(event.target.value)} inputMode="numeric" placeholder="Model-specific" /></div>
       {isOsc && <>
         <div className="protection-field"><label>INPUT CHANNEL (01–32)</label><input value={channel} onChange={event => { const digits = event.target.value.replace(/[^0-9]/g, "").slice(0, 2); setChannel(digits ? digits.padStart(2, "0") : ""); }} inputMode="numeric" /></div>
-        <div className="protection-field"><label>THAM SỐ CHỈ ĐỌC</label><select value={queryPath} onChange={event => setQueryPath(event.target.value)}><option value="mix/fader">Channel fader</option><option value="mix/on">Channel ON / MUTE state</option><option value="mix/pan">Channel pan</option><option value="config/name">Channel name</option><option value="preamp/trim">Preamp trim</option><option value="eq/on">EQ enabled</option><option value="eq/1/f">EQ band 1 frequency</option><option value="eq/1/g">EQ band 1 gain</option><option value="eq/1/q">EQ band 1 Q</option></div>
+        <div className="protection-field"><label>THAM SỐ CHỈ ĐỌC</label><select value={queryPath} onChange={event => setQueryPath(event.target.value)}><option value="mix/fader">Channel fader</option><option value="mix/on">Channel ON / MUTE state</option><option value="mix/pan">Channel pan</option><option value="config/name">Channel name</option><option value="preamp/trim">Preamp trim</option><option value="eq/on">EQ enabled</option><option value="eq/1/f">EQ band 1 frequency</option><option value="eq/1/g">EQ band 1 gain</option><option value="eq/1/q">EQ band 1 Q</option></select></div>
       </>}
     </div>
     <div className={isOsc || selected.protocol === "ui-web" ? "device-protocol-status" : "device-protocol-status pending"}>
