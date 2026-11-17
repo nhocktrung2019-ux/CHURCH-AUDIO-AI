@@ -90,15 +90,15 @@ export const dspProfiles: DspProfile[] = [
     id: "db-acoustics-cd48",
     name: "db Acoustics CD48",
     family: "Loudspeaker management processor",
-    models: ["CD48 (verify standard / Premium / regional revision)"],
+    models: ["db Acoustics CD48 · pictured 100M Ethernet revision (front display Ver 2215)"],
     controlStatus: "manual-only",
-    transport: "USB + RS232 (manufacturer product page); RJ45/Ethernet only on revisions with a physically confirmed LAN port",
+    transport: "RJ45 100M Ethernet (shown on supplied rear-panel image) · front USB COM2 · rear R/T/G terminal; LCD image shows IP 192.168.20.20",
 
     evidenceGrade: "manufacturer-documentation",
     documentationUrl: "https://dbacoustic.vn/crossover-dbacoustic-cd48",
-    integrationNote: "The manufacturer CD48 product page lists front USB and rear RS232; it does not list Ethernet. A third-party CD48 Premium listing reports RJ45/LAN, so hardware revisions must be distinguished and the rear-panel RJ45 confirmed before configuring LAN. Wi-Fi is provided by an external router/access point, not assumed to be built into the DSP. No public network or serial command protocol has been verified.",
+    integrationNote: "The supplied front/rear images show a db Acoustics CD48 with a rear RJ45 port labelled 100M Ethernet, a front display showing IP 192.168.20.20 and Ver 2215, and a front USB port labelled COM2. This establishes the visible hardware profile in the supplied images. Wi-Fi is provided by an external router/access point; the DSP itself is not assumed to have a Wi-Fi radio. The network command protocol and service port are still unverified.",
 
-    validationNeeded: "Read the exact rear-panel model/revision. For standard CD48 use the documented USB/RS232 route. For a Premium/revision with RJ45, confirm IP settings and obtain the vendor network protocol/service port before any connection or control code. Do not reuse PH48D defaults or assume a port, TCP/UDP protocol, Wi-Fi radio, or command set. Verify serial pinout/baud/parity and vendor software version for serial integration.",
+    validationNeeded: "Use 192.168.20.20 only as the IP visibly shown in the supplied image; verify the actual LCD address and subnet on the physical unit before connecting. Confirm the Android IP is on the same LAN and that router client isolation is disabled. Obtain the exact CD48 software/protocol specification, service port, authentication and command schema before implementing live control. Do not reuse PH48D or CD4008RTS port counts/defaults. USB COM2 and the rear R/T/G terminal remain alternative vendor control paths pending protocol validation.",
 
   },
 ];
