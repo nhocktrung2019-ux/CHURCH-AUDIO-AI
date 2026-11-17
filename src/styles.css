@@ -537,3 +537,16 @@ footer{padding-bottom:calc(26px + env(safe-area-inset-bottom))}
 .device-doc-link{display:inline-flex;align-items:center;gap:8px;margin-top:12px;color:#8dddc1;font-size:10px;line-height:1.5;text-decoration:none;overflow-wrap:anywhere}
 .device-doc-link:hover{text-decoration:underline}
 .device-doc-link svg{width:14px;height:14px;flex:none}
+
+
+/* Android native read-only OSC console */
+.osc-live-query{margin:16px 0;padding:13px;border:1px solid #3c5964;border-radius:9px;background:rgba(10,25,33,.75)}
+.osc-live-query .protection-subheading{margin-top:2px}
+.osc-query-results{display:grid;gap:8px;margin:12px 0}
+.osc-query-result{display:grid;gap:7px;padding:11px;border:1px solid #35534f;border-radius:7px;background:#0b191b}
+.osc-query-result>div{display:grid;gap:4px;min-width:0}
+.osc-query-result b{font:11px ui-monospace,SFMono-Regular,Consolas,monospace;color:#9ce3c7;overflow-wrap:anywhere}
+.osc-query-result small{font-size:9px;color:#8ca6a5}
+.osc-query-result code{padding:7px;border-radius:5px;background:#061114;color:#d9e9e4;font-size:10px;overflow-wrap:anywhere;white-space:pre-wrap}
+.osc-live-query .protection-actions button:disabled{opacity:.45;cursor:not-allowed}
+@media(max-width:620px){.osc-live-query{padding:10px}.osc-query-result code{font-size:9px}}
