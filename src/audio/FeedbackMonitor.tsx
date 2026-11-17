@@ -107,12 +107,13 @@ export default function FeedbackMonitor({
           <div className="feedback-alert"><VolumeX /><b>Phát hiện {peaks.length} đỉnh phổ cần kiểm tra</b></div>
           <div className="table-wrap">
             <table>
-              <thead><tr><th>Tần số</th><th>Độ nổi</th><th>Filter tham khảo</th><th>Q</th><th>Lưu</th></tr></thead>
+              <thead><tr><th>Tần số</th><th>Độ nổi</th><th>Bền vững / tin cậy</th><th>Filter tham khảo</th><th>Q</th><th>Lưu</th></tr></thead>
               <tbody>
                 {peaks.map((peak) => (
                   <tr key={peak.index}>
                     <td><b>{formatFrequency(peak.frequencyHz)}</b><small>{peak.levelDb.toFixed(1)} dBFS</small></td>
                     <td>{peak.prominenceDb.toFixed(1)} dB</td>
+                    <td><b>{peak.confidence === "high" ? "Cao" : "Trung bình"}</b><small>{peak.persistence}% khung đo</small></td>
                     <td>{peak.recommendedCutDb} dB</td>
                     <td>{peak.q}</td>
                     <td>
