@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Download, Network, ShieldCheck, ClipboardCheck } from "lucide-react";
+import { Download, Network, ShieldCheck, ClipboardCheck, ExternalLink } from "lucide-react";
 import { dspProfiles } from "../data/dspProfiles";
 import { assessMeasurementReadiness, type MeasurementEvidence } from "./measurementReadiness";
 const initialEvidence: MeasurementEvidence = {
@@ -55,8 +55,16 @@ export default function DSPIntegrationPanel() {
         <div><label htmlFor="dsp-delay">DELAY TƯƠNG ĐỐI ĐỀ XUẤT (ms)</label><input id="dsp-delay" type="number" min="0" max="500" step="0.01" value={delayMs} onChange={(event) => setDelayMs(Math.max(0, Math.min(500, Number(event.target.value) || 0)))} /></div>
         <div><label htmlFor="dsp-notes">GHI CHÚ KỸ THUẬT</label><input id="dsp-notes" value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="Điều kiện đo, vị trí, preset..." /></div>
       </div>
-      <div className="dsp-device-summary"><div><small>NHÓM THIẾT BỊ</small><b>{profile.family}</b></div><div><small>TRẠNG THÁI ĐIỀU KHIỂN</small><b>Chỉ phiếu thủ công</b></div></div>
-      <p className="device-notice">{profile.integrationNote}</p><p className="warning">{profile.validationNeeded}</p>
+      <div className="dsp-device-summary">
+        <div><small>NHÓM THIẾT BỊ</small><b>{profile.family}</b></div>
+        <div><small>MODEL ĐƯỢC LIỆT KÊ</small><b>{profile.models.join(" · ")}</b></div>
+        <div><small>ĐƯỜNG KẾT NỐI ĐƯỢC TÀI LIỆU HÓA</small><b>{profile.transport}</b></div>
+        <div><small>TRẠNG THÁI ĐIỀU KHIỂN</small><b>Chỉ phiếu thủ công · Chưa ghi phần cứng</b></div>
+      </div>
+      <p className="device-notice">{profile.integrationNote}</p>
+      <p className="muted">Mức bằng chứng: {profile.evidenceGrade === "manufacturer-documentation" ? "Tài liệu hãng/nhà sản xuất" : "Tài liệu giao thức cộng đồng, chưa phải xác nhận của hãng"}</p>
+      <p className="warning">{profile.validationNeeded}</p>
+      <a className="support-action" href={profile.documentationUrl} target="_blank" rel="noreferrer"><ExternalLink /> Tài liệu tham chiếu cho model đã chọn</a>
       <button onClick={exportWorksheet}><Download /> Xuất phiếu cấu hình JSON</button>
       <p className="muted">Kỹ thuật viên phải kiểm tra đúng model, firmware, routing, limiter và mức đầu ra trước khi nhập thông số. Không áp dụng trực tiếp các giá trị đề xuất trong buổi lễ đang diễn ra.</p>
     </article>
