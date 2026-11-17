@@ -1,4 +1,5 @@
 import { micCorrectionAt, type MicCalibrationPoint } from "./micCalibration.ts";
+import { estimateSynchronousRelativeDelay } from "./dualChannel.ts";
 
 export type TransferPoint = { frequencyHz: number; magnitudeDb: number; phaseDeg: number; coherence: number };
 export type PcmCaptureQuality = {
@@ -28,6 +29,7 @@ export type TransferResult = {
   framesAveraged: number;
   captureQuality?: PcmCaptureQuality;
   captureMetadata?: TransferCaptureMetadata;
+  analysisMode?: "mono-acoustic" | "synchronous-dual-channel";
 };
 
 export function makeReferenceNoise(sampleRate: number, durationSeconds = 6): Float32Array {
@@ -250,5 +252,99 @@ export function analyzeTransfer(
     reliableBandPercent,
     sampleRate,
     framesAveraged: frames,
+  };
+}
+
+
+/**
+ * Welch H1 transfer analysis for two channels captured simultaneously from one
+ * multichannel AudioWorklet stream. No independent lag alignment is performed:
+ * phase remains tied to the common capture clock.
+ *
+ * Reference must be an electrical loopback of the output and Measurement the
+ * microphone input. A common WebAudio frame clock does not replace per-channel
+ * interface latency/phase calibration.
+ */
+export function analyzeSynchronousTransfer(
+  reference: Float32Array,
+  measurement: Float32Array,
+  sampleRate: number,
+  calibrationPoints: MicCalibrationPoint[] = [],
+): TransferResult | null {
+  const frameSize = 4096;
+  const hopSize = 2048;
+  if (!Number.isFinite(sampleRate) || sampleRate < 8000 || sampleRate > 192000
+    || reference.length !== measurement.length || reference.length < frameSize * 3
+    || reference.some(sample => !Number.isFinite(sample))
+    || measurement.some(sample => !Number.isFinite(sample))) return null;
+
+  const delay = estimateSynchronousRelativeDelay(reference, measurement, sampleRate, 100);
+  if (!delay || delay.correlation < 0.1) return null;
+
+  const bins = frameSize / 2 + 1;
+  const sxx = new Float64Array(bins);
+  const syy = new Float64Array(bins);
+  const sxyRe = new Float64Array(bins);
+  const sxyIm = new Float64Array(bins);
+  let frames = 0;
+
+  for (let offset = 0; offset + frameSize <= reference.length; offset += hopSize) {
+    const xr = new Float64Array(frameSize);
+    const xi = new Float64Array(frameSize);
+    const yr = new Float64Array(frameSize);
+    const yi = new Float64Array(frameSize);
+    for (let i = 0; i < frameSize; i++) {
+      const window = 0.5 - 0.5 * Math.cos(2 * Math.PI * i / (frameSize - 1));
+      xr[i] = reference[offset + i] * window;
+      yr[i] = measurement[offset + i] * window;
+    }
+    fft(xr, xi);
+    fft(yr, yi);
+    for (let k = 1; k < bins - 1; k++) {
+      const xRe = xr[k], xIm = xi[k], yRe = yr[k], yIm = yi[k];
+      sxx[k] += xRe * xRe + xIm * xIm;
+      syy[k] += yRe * yRe + yIm * yIm;
+      // S_yx = Y * conjugate(X)
+      sxyRe[k] += yRe * xRe + yIm * xIm;
+      sxyIm[k] += yIm * xRe - yRe * xIm;
+    }
+    frames++;
+  }
+  if (frames < 3) return null;
+
+  const points: TransferPoint[] = [];
+  for (let k = 2; k < bins - 1; k++) {
+    if (sxx[k] < 1e-12 || syy[k] < 1e-12) continue;
+    const re = sxyRe[k] / sxx[k];
+    const im = sxyIm[k] / sxx[k];
+    const magnitude = Math.hypot(re, im);
+    const frequencyHz = k * sampleRate / frameSize;
+    const coherence = Math.max(0, Math.min(1,
+      (sxyRe[k] * sxyRe[k] + sxyIm[k] * sxyIm[k]) / (sxx[k] * syy[k] + 1e-20),
+    ));
+    if (!Number.isFinite(magnitude) || magnitude < 1e-9) continue;
+    points.push({
+      frequencyHz,
+      magnitudeDb: 20 * Math.log10(magnitude) + micCorrectionAt(calibrationPoints, frequencyHz),
+      phaseDeg: Math.atan2(im, re) * 180 / Math.PI,
+      coherence,
+    });
+  }
+  unwrapPhase(points);
+  const useful = points.filter(point =>
+    point.frequencyHz >= 100 && point.frequencyHz <= Math.min(10000, sampleRate * 0.4),
+  );
+  if (useful.length < 8) return null;
+  const averageCoherence = useful.reduce((sum, point) => sum + point.coherence, 0) / useful.length;
+  const reliableBandPercent = 100 * useful.filter(point => point.coherence >= 0.8).length / useful.length;
+  return {
+    points,
+    estimatedDelayMs: delay.delayMs,
+    confidence: delay.correlation,
+    averageCoherence,
+    reliableBandPercent,
+    sampleRate,
+    framesAveraged: frames,
+    analysisMode: "synchronous-dual-channel",
   };
 }
