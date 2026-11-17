@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { usePersistentState } from "./usePersistentState";
-import { ShieldCheck, RadioTower, Users, Download, Volume2, AlertTriangle } from "lucide-react";
+import { ShieldCheck, RadioTower, Users, Download, AlertTriangle } from "lucide-react";
 
 type MicChannel = { id: string; name: string; open: boolean; gainTrimDb: number };
 type SpeakerProfile = {
