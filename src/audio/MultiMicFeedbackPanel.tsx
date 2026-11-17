@@ -93,6 +93,8 @@ export default function MultiMicFeedbackPanel() {
     setBusy(true);
     setError("");
     setNotice("");
+    setAlertMessage("");
+    announcedPeakAtRef.current.clear();
     let audio: AudioContext | null = null;
     const opened: Session[] = [];
     const failed: string[] = [];
@@ -211,7 +213,7 @@ export default function MultiMicFeedbackPanel() {
   };
 
   useEffect(() => {
-    if (!running || channels.length === 0) return;
+    if (!running || !feedbackAlertsEnabled || channels.length === 0) return;
     const now = Date.now();
     const candidates: Array<{ key: string; label: string; frequencyHz: number }> = [];
     for (const channel of channels) {
