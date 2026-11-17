@@ -19,8 +19,13 @@ import MicCalibrationPanel from "./audio/MicCalibrationPanel";
 import MicrophoneSensitivityPanel, { type MicrophoneSensitivityProfile } from "./audio/MicrophoneSensitivityPanel";
 import { rtaBandFrequency, rtaBandIndexForFrequency } from "./audio/rtaFrequency";
 import ProjectBackupPanel from "./audio/ProjectBackupPanel";
+import MultiMicFeedbackPanel from "./audio/MultiMicFeedbackPanel";
+import VersionSupportPanel from "./audio/VersionSupportPanel";
+import DSPIntegrationPanel from "./audio/DSPIntegrationPanel";
+import { APP_VERSION } from "./appVersion";
+import { LifeBuoy } from "lucide-react";
 
-type TabId = "overview" | "rta" | "room" | "align" | "system" | "design" | "tools";
+type TabId = "overview" | "rta" | "room" | "align" | "system" | "design" | "tools" | "dsp" | "support";
 const EMPTY_MIC_CALIBRATION_POINTS: MicCalibrationPoint[] = [];
 const tabs: { id: TabId; label: string; short: string; icon: typeof Activity }[] = [
   { id: "overview", label: "Tổng quan", short: "HOME", icon: LayoutDashboard },
@@ -30,6 +35,8 @@ const tabs: { id: TabId; label: string; short: string; icon: typeof Activity }[]
   { id: "system", label: "Chống hú & tối ưu", short: "SYSTEM", icon: ShieldCheck },
   { id: "design", label: "Thiết kế phủ âm 3D", short: "3D", icon: Box },
   { id: "tools", label: "Generator & thiết bị", short: "TOOLS", icon: Settings2 },
+  { id: "dsp", label: "DSP & Mixer", short: "DSP", icon: Settings2 },
+  { id: "support", label: "Cập nhật & hỗ trợ", short: "SUPPORT", icon: LifeBuoy },
 ];
 
 export default function App() {
@@ -182,10 +189,12 @@ export default function App() {
     <MicrophoneSensitivityPanel value={micSensitivityProfile} onChange={setMicSensitivityProfile} activeDeviceLabel={inputs.find((device) => device.deviceId === a.selectedInput)?.label || "Micro mặc định hệ thống"} /></section>}
     {activeTab === "room" && <section className="tab-stack"><RT60MeasurementPanel selectedInput={a.selectedInput} running={a.running} /><MeasurementPlanner running={a.running} spectrum={a.spectrum} /><SpectrogramPanel /></section>}
     {activeTab === "align" && <section className="tab-stack"><TransferFunctionPanel selectedInput={a.selectedInput} running={a.running} calibrationPoints={calibrationPoints} /><MeasurementPlanner running={a.running} spectrum={a.spectrum} /></section>}
-    {activeTab === "system" && <section className="tab-stack"><FeedbackMonitor history={a.history} selectedFrequencyHz={selectedRtaFrequency} selectedLevelDbfs={selectedRtaLevel} /><TuningAdvisor history={a.history} /></section>}
+    {activeTab === "system" && <section className="tab-stack"><MultiMicFeedbackPanel /><FeedbackMonitor history={a.history} selectedFrequencyHz={selectedRtaFrequency} selectedLevelDbfs={selectedRtaLevel} /><TuningAdvisor history={a.history} /></section>}
     {activeTab === "design" && <section className="tab-stack"><CBTCalculator /><PolarDataStudio /><RoomPlanner3D /></section>}
     {activeTab === "tools" && <section className="tab-stack"><section className="grid"><GeneratorPanel /><DevicePanel /><article className="panel"><div className="heading"><Speaker /><h2>Thư viện thiết bị</h2><span>{equipment.length} ITEMS</span></div>{equipment.map(item => <div className="item" key={item.name}><b>{item.name}</b><small>{item.type} · Cần xác minh thông số hãng</small></div>)}</article></section><ProjectBackupPanel /></section>}
+    {activeTab === "dsp" && <DSPIntegrationPanel />}
+    {activeTab === "support" && <section className="tab-stack"><VersionSupportPanel /></section>}
     <section className="roadmap"><small>PHƯƠNG PHÁP / WORKFLOW</small><p>01 KHẢO SÁT <b>→</b> 02 ĐO LƯỜNG <b>→</b> 03 CĂN CHỈNH <b>→</b> 04 KIỂM SOÁT HỆ THỐNG <b>→</b> 05 THIẾT KẾ PHỦ ÂM</p></section>
-    <footer>CHURCH AUDIO ANALYZER <span>PRO MEASUREMENT BETA · BUILD 0.11.0</span></footer>
+    <footer>CHURCH AUDIO ANALYZER <span>PRO MEASUREMENT BETA · BUILD {APP_VERSION}</span></footer>
   </main>;
 }
