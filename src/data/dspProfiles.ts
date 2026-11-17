@@ -224,7 +224,7 @@ export const dspProfiles: DspProfile[] = [
       "CD48 Premium · 4 IN / 8 OUT worksheet profile",
     ],
     controlStatus: "manual-only",
-    transport: "RJ45 Ethernet / USB COM2 / serial options vary by revision; Android OTG transport not verified",
+    transport: "RJ45 100M Ethernet (pictured revision; LCD image shows IP 192.168.20.20) / USB COM2 / serial options vary by revision; Android OTG transport not verified",
     evidenceGrade: "user-supplied-image",
     documentationUrl: "https://dbacoustic.vn/crossover-dbacoustic-cd48",
     integrationNote: "The supplied device images show one CD48 revision with RJ45 100M Ethernet, front USB COM2 and LCD IP/firmware values. The 4×8 Premium scene editor is a local draft only. CD48, CD48RTS and Premium firmware/protocols are not assumed interchangeable.",
