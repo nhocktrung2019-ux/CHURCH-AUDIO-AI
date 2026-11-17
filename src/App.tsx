@@ -36,7 +36,7 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<TabId>("overview");
   const [selectedRtaBand, setSelectedRtaBand] = usePersistentState<number | null>("church-audio-rta-selected-band", null);
   const [rtaCursorLocked, setRtaCursorLocked] = useState(false);
-  const [rtaFrequencyInput, setRtaFrequencyInput] = useState("");
+  const [rtaFrequencyInput, setRtaFrequencyInput] = useState(() => selectedRtaBand === null ? "" : String(Math.round(rtaBandFrequency(selectedRtaBand))));
   const [micSensitivityProfile, setMicSensitivityProfile] = usePersistentState<MicrophoneSensitivityProfile | null>("church-audio-mic-sensitivity-profile", null);
   const [calibrationOffsetDb, setCalibrationOffsetDb] = usePersistentState("church-audio-mic-offset-db",0);
   const [micCalibration, setMicCalibration] = usePersistentState<MicCalibrationFile | null>("church-audio-mic-calibration-file",null);
