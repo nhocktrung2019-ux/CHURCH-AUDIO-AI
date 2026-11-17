@@ -39,5 +39,5 @@ test("CD48 Ethernet profile evidence is attributed to user-supplied hardware ima
   const cd48 = getDspProfile("db-acoustics-cd48");
   assert.equal(cd48.evidenceGrade, "user-supplied-image");
   assert.match(cd48.transport, /RJ45 100M Ethernet/);
-  assert.match(cd48.transport, /192\\.168\\.20\\.20/);
+  assert.match(cd48.transport, /192\.168\.20\.20/);
 });
