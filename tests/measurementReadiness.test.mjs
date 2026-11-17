@@ -10,7 +10,7 @@ test("unverified chain never claims absolute SPL or coherent delay", () => {
   const result = assessMeasurementReadiness(emptyEvidence);
   assert.equal(result.find((item) => item.id === "spl")?.state, "limited");
   assert.equal(result.find((item) => item.id === "transfer")?.state, "limited");
-  assert.equal(result.find((item) => item.id === "delay")?.state, "limited);
+  assert.equal(result.find((item) => item.id === "delay")?.state, "limited");
   assert.equal(result.find((item) => item.id === "coverage")?.state, "limited");
 });
 test("absolute SPL requires all input-chain and calibrator evidence", () => {
