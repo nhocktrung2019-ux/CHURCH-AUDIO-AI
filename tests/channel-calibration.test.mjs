@@ -172,3 +172,25 @@ test("rejects differential profiles from different interfaces or incomplete over
     { frequencyHz: 500, magnitudeDb: 1, phaseDeg: 0, coherence: 0.9 },
   ], referenceProfile, narrowMeasurement), null);
 });
+
+test("differential calibration trims uncalibrated bins to the shared measured band", () => {
+  const referenceProfile = { ...profile, inputChannel: 0 };
+  const measurementProfile = {
+    ...profile,
+    inputChannel: 1,
+    points: [
+      { frequencyHz: 1000, magnitudeDb: 3, phaseDeg: 10 },
+      { frequencyHz: 5000, magnitudeDb: 4, phaseDeg: 20 },
+      { frequencyHz: 10000, magnitudeDb: 5, phaseDeg: 30 },
+    ],
+  };
+  const corrected = applyDifferentialChannelCalibration([
+    { frequencyHz: 1000, magnitudeDb: 10, phaseDeg: 50, coherence: 0.95 },
+    { frequencyHz: 12000, magnitudeDb: 11, phaseDeg: 60, coherence: 0.9 },
+  ], referenceProfile, measurementProfile);
+  assert.ok(corrected);
+  assert.equal(corrected.length, 1);
+  assert.equal(corrected[0].frequencyHz, 1000);
+  assert.equal(corrected[0].magnitudeDb, 9);
+  assert.equal(corrected[0].phaseDeg, 40);
+});
