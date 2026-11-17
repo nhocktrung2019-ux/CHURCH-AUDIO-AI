@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
-import { classifySpeakerCabinet } from "./roomGeometry";
+import { speakerCabinetDimensions } from "./roomGeometry";
 
 export type WebGLSpeaker = {
   id: number; name: string; model: string; x: number; y: number; z: number;
@@ -121,12 +121,7 @@ function createFurnitureGroup(item: WebGLObject): THREE.Group {
 
 function createSpeakerGroup(speaker: WebGLSpeaker, index: number, coverageDistance: number): THREE.Group {
   const group = new THREE.Group();
-  const cabinetKind = classifySpeakerCabinet(speaker.model);
-  const isColumn = cabinetKind === "column";
-  const isSub = cabinetKind === "sub";
-  const width = isSub ? 0.62 : isColumn ? 0.28 : 0.42;
-  const height = isSub ? 0.48 : isColumn ? 1.12 : 0.68;
-  const depth = isSub ? 0.58 : isColumn ? 0.24 : 0.32;
+  const { width, height, depth } = speakerCabinetDimensions(speaker.model);
   const tint = new THREE.Color(speakerColors[index % speakerColors.length]);
   group.userData = {
     kind: "speaker",
@@ -286,7 +281,7 @@ export default function ChurchSceneWebGL(props: Props) {
     groups: Map<string, THREE.Group>;
     raycaster: THREE.Raycaster;
     pointer: THREE.Vector2;
-    drag: { kind: "speaker" | "object"; id: number; group: THREE.Group } | null;
+    drag: { kind: "speaker" | "object"; id: number; group: THREE.Group; offset: THREE.Vector2 } | null;
     floorPlane: THREE.Plane;
     invalidate: () => void;
   } | null>(null);
@@ -355,7 +350,7 @@ export default function ChurchSceneWebGL(props: Props) {
       groups,
       raycaster: new THREE.Raycaster(),
       pointer: new THREE.Vector2(),
-      drag: null as { kind: "speaker" | "object"; id: number; group: THREE.Group } | null,
+      drag: null as { kind: "speaker" | "object"; id: number; group: THREE.Group; offset: THREE.Vector2 } | null,
       floorPlane: new THREE.Plane(new THREE.Vector3(0, 1, 0), 0),
       invalidate: () => {},
     };
@@ -429,7 +424,12 @@ export default function ChurchSceneWebGL(props: Props) {
       const id = node.userData.id as number;
       const group = groups.get((kind === "speaker" ? "s:" : "o:") + id);
       if (!group) return;
-      state.drag = { kind, id, group };
+      const floorPoint = new THREE.Vector3();
+      const offset = new THREE.Vector2();
+      if (state.raycaster.ray.intersectPlane(state.floorPlane, floorPoint)) {
+        offset.set(group.position.x - floorPoint.x, group.position.z - floorPoint.z);
+      }
+      state.drag = { kind, id, group, offset };
       controls.enabled = false;
       invalidate();
       renderer.domElement.setPointerCapture(event.pointerId);
@@ -449,8 +449,8 @@ export default function ChurchSceneWebGL(props: Props) {
         const padX = bounds?.x ?? 0.25;
         const padZ = bounds?.z ?? 0.25;
         const room = latest.current;
-        state.drag.group.position.x = THREE.MathUtils.clamp(point.x, Math.min(padX, room.length / 2), Math.max(room.length - padX, room.length / 2));
-        state.drag.group.position.z = THREE.MathUtils.clamp(point.z, Math.min(padZ, room.width / 2), Math.max(room.width - padZ, room.width / 2));
+        state.drag.group.position.x = THREE.MathUtils.clamp(point.x + state.drag.offset.x, Math.min(padX, room.length / 2), Math.max(room.length - padX, room.length / 2));
+        state.drag.group.position.z = THREE.MathUtils.clamp(point.z + state.drag.offset.y, Math.min(padZ, room.width / 2), Math.max(room.width - padZ, room.width / 2));
         invalidate();
       }
     };
