@@ -90,42 +90,295 @@ const profiles: DeviceProfile[] = [
 const manufacturers: Manufacturer[] = ["dBacoustics", "Behringer", "Midas", "dbx", "Soundcraft"];
 const getProfile = (id: string) => profiles.find(profile => profile.id === id) ?? profiles[0];
 
+type MixerScope = "channels" | "buses" | "main" | "matrices" | "auxin" | "fxrtn" | "dca";
+type MixerSnapshot = {
+  id: string;
+  label: string;
+  host: string;
+  port: number;
+  scope: MixerScope;
+  capturedAt: string;
+  results: OscQueryResult[];
+};
+
+const scopeLabels: Record<MixerScope, string> = {
+  channels: "Input channels 01–32",
+  buses: "Mix buses 01–16",
+  main: "Main Stereo / Mono",
+  matrices: "Matrix 01–06",
+  auxin: "Aux inputs 01–08",
+  fxrtn: "FX returns 01–08",
+  dca: "DCA groups 01–08",
+};
+
+function makeScopeAddresses(scope: MixerScope): string[] {
+  const addresses: string[] = [];
+  const add = (base: string, paths: string[]) => paths.forEach(path => addresses.push(base + "/" + path));
+  if (scope === "channels") {
+    for (let i = 1; i <= 32; i++) {
+      const base = "/ch/" + String(i).padStart(2, "0");
+      add(base, ["config/name", "mix/fader", "mix/on", "mix/pan", "preamp/trim", "eq/on", "dyn/on"]);
+    }
+  } else if (scope === "buses") {
+    for (let i = 1; i <= 16; i++) {
+      const base = "/bus/" + String(i).padStart(2, "0");
+      add(base, ["config/name", "mix/fader", "mix/on", "mix/pan", "eq/on", "dyn/on"]);
+    }
+  } else if (scope === "main") {
+    ["/main/st", "/main/m"].forEach(base => add(base, ["config/name", "mix/fader", "mix/on", "eq/on", "dyn/on"]));
+  } else if (scope === "matrices") {
+    for (let i = 1; i <= 6; i++) add("/mtx/0" + i, ["config/name", "mix/fader", "mix/on", "eq/on", "dyn/on"]);
+  } else if (scope === "auxin" || scope === "fxrtn") {
+    for (let i = 1; i <= 8; i++) add("/" + scope + "/0" + i, ["config/name", "mix/fader", "mix/on", "mix/pan", "eq/on"]);
+  } else {
+    for (let i = 1; i <= 8; i++) add("/dca/" + i, ["config/name", "mix/fader", "mix/on"]);
+  }
+  return addresses;
+}
+
+function makeDetailAddresses(scope: MixerScope, strip: string): string[] {
+  const n = Number(strip);
+  if (!Number.isInteger(n)) return [];
+  const padded = String(n).padStart(2, "0");
+  const prefix = scope === "channels" ? "/ch/" + padded
+    : scope === "buses" ? "/bus/" + padded
+    : scope === "matrices" ? "/mtx/" + padded
+    : scope === "auxin" ? "/auxin/" + padded
+    : scope === "fxrtn" ? "/fxrtn/" + padded
+    : scope === "dca" ? "/dca/" + n
+    : scope === "main" ? (n === 1 ? "/main/st" : "/main/m")
+    : "";
+  if (!prefix) return [];
+  const paths: string[] = ["config/name", "mix/fader", "mix/on"];
+  if (scope === "channels") {
+    paths.push("mix/pan", "preamp/trim", "preamp/invert", "gate/on", "gate/thr", "gate/range",
+      "dyn/on", "dyn/thr", "dyn/ratio", "dyn/attack", "dyn/hold", "dyn/release", "dyn/mgain", "eq/on");
+    for (let band = 1; band <= 4; band++) paths.push("eq/" + band + "/type", "eq/" + band + "/f", "eq/" + band + "/g", "eq/" + band + "/q");
+  } else if (scope === "buses" || scope === "matrices" || scope === "main") {
+    paths.push("eq/on", "dyn/on", "dyn/thr", "dyn/ratio");
+    for (let band = 1; band <= 6; band++) paths.push("eq/" + band + "/type", "eq/" + band + "/f", "eq/" + band + "/g", "eq/" + band + "/q");
+  } else if (scope === "auxin" || scope === "fxrtn") {
+    paths.push("mix/pan", "eq/on");
+    for (let band = 1; band <= 4; band++) paths.push("eq/" + band + "/type", "eq/" + band + "/f", "eq/" + band + "/g", "eq/" + band + "/q");
+  }
+  return paths.map(path => prefix + "/" + path);
+}
+
+function resultStripKey(address: string): string {
+  const parts = address.split("/");
+  if (parts.length < 4) return "Console";
+  if (parts[1] === "main") return "/main/" + parts[2];
+  return "/" + parts[1] + "/" + parts[2];
+}
+
+function resultFieldKey(address: string): string {
+  const parts = address.split("/");
+  const tail = parts.slice(parts[1] === "main" ? 3 : 3).join("/");
+  if (tail === "config/name") return "name";
+  if (tail === "mix/fader") return "fader";
+  if (tail === "mix/on") return "on";
+  if (tail === "mix/pan") return "pan";
+  if (tail === "preamp/trim") return "trim";
+  if (tail === "eq/on") return "eq";
+  if (tail === "dyn/on") return "dyn";
+  return tail;
+}
+
+function renderOscValue(value: OscValue | undefined): string {
+  if (value === undefined || value === null) return "—";
+  if (typeof value === "boolean") return value ? "ON" : "OFF";
+  if (typeof value === "number") return Number.isFinite(value) ? value.toFixed(3) : "—";
+  return value;
+}
+
 export default function DeviceControlPanel() {
   const [manufacturer, setManufacturer] = useState<Manufacturer>("Behringer");
   const [deviceId, setDeviceId] = useState("x32");
   const [host, setHost] = useState("192.168.1.100");
   const [port, setPort] = useState("10023");
-  const [channel, setChannel] = useState("01");
   const [customModel, setCustomModel] = useState("");
-  const [queryPath, setQueryPath] = useState("mix/fader");
+  const [scope, setScope] = useState<MixerScope>("channels");
+  const [selectedStrip, setSelectedStrip] = useState("01");
   const [queryBusy, setQueryBusy] = useState(false);
+  const [queryProgress, setQueryProgress] = useState("");
   const [queryError, setQueryError] = useState("");
   const [queryResults, setQueryResults] = useState<OscQueryResult[]>([]);
+  const [liveMonitoring, setLiveMonitoring] = useState(false);
+  const queryBusyRef = useRef(false);
+  const [snapshots, setSnapshots] = usePersistentState<MixerSnapshot[]>("church-audio-x32-mixer-snapshots", []);
   const nativeOscAvailable = isOscUdpAvailable();
   const availableModels = profiles.filter(profile => profile.manufacturer === manufacturer);
   const selected = getProfile(deviceId);
   const isOsc = selected.protocol === "osc";
+  const validHost = /^[0-9.]+$/.test(host.trim());
+  const portNumber = Number(port) || selected.port || 10023;
+
   const osc = useMemo(() => [
-    { action: "Read channel fader", address: "/ch/" + channel + "/mix/fader", value: "query · no arguments" },
-    { action: "Read channel mute state", address: "/ch/" + channel + "/mix/on", value: "query · no arguments" },
-    { action: "Read channel preamp trim", address: "/ch/" + channel + "/preamp/trim", value: "query · no arguments" },
-    { action: "Read channel EQ state", address: "/ch/" + channel + "/eq/on", value: "query · no arguments" },
-  ], [channel]);
+    { action: "Read input channel fader", address: "/ch/" + selectedStrip + "/mix/fader", value: "read-only" },
+    { action: "Read input channel mute state", address: "/ch/" + selectedStrip + "/mix/on", value: "read-only" },
+    { action: "Read input channel preamp trim", address: "/ch/" + selectedStrip + "/preamp/trim", value: "read-only" },
+    { action: "Read input channel EQ state", address: "/ch/" + selectedStrip + "/eq/on", value: "read-only" },
+  ], [selectedStrip]);
+
+  const monitorRows = useMemo(() => {
+    const grouped = new Map<string, Record<string, OscValue>>();
+    for (const item of queryResults) {
+      const key = resultStripKey(item.responseAddress || item.requestedAddress);
+      const field = resultFieldKey(item.responseAddress || item.requestedAddress);
+      const row = grouped.get(key) ?? {};
+      row[field] = item.arguments.length > 0 ? item.arguments[0] : null;
+      grouped.set(key, row);
+    }
+    return Array.from(grouped.entries()).map(([id, values]) => ({ id, values })).sort((a, b) => a.id.localeCompare(b.id));
+  }, [queryResults]);
 
   const config = {
-    schema: "church-audio-device-profile/v2",
+    schema: "church-audio-device-profile/v3",
     generatedAt: new Date().toISOString(),
     manufacturer: selected.manufacturer,
     model: selected.model,
     customModel: customModel || null,
     family: selected.family,
-    connection: { transport: selected.transport, host, port: Number(port) || selected.port || null },
+    connection: { transport: selected.transport, host, port: portNumber },
     protocol: selected.protocol,
-    protocolStatus: isOsc ? "documented-read-only-query-bridge-android-no-write-support" : selected.protocol,
+    protocolStatus: isOsc ? "android-native-osc-read-only-query-and-batch" : selected.protocol,
     capabilities: selected.capabilities,
-    safety: "Only allowlisted read-only OSC requests may be sent from Android. No mixer write commands are implemented; confirm the model and live device state before any future write feature.",
-    oscPreview: isOsc ? osc : [],
+    safety: "Read-only OSC query is enabled for allowlisted X32/M32 paths. No mixer write command is enabled.",
     references: [selected.docs],
+  };
+
+  const updateResults = (incoming: OscQueryResult[]) => {
+    setQueryResults(current => {
+      const values = new Map(current.map(item => [item.requestedAddress, item]));
+      incoming.forEach(item => values.set(item.requestedAddress, item));
+      return Array.from(values.values()).slice(-700);
+    });
+  };
+
+  const runBatch = async (addresses: string[], label: string, reset: boolean) => {
+    if (!isOsc || !nativeOscAvailable || queryBusyRef.current) return;
+    if (!validHost || !Number.isInteger(portNumber) || portNumber < 1024 || portNumber > 65535) {
+      setQueryError("Kiểm tra IP LAN và port trước khi truy vấn.");
+      return;
+    }
+    if (reset) setQueryResults([]);
+    setQueryBusy(true);
+    queryBusyRef.current = true;
+    setQueryError("");
+    try {
+      const chunks: string[][] = [];
+      for (let i = 0; i < addresses.length; i += 24) chunks.push(addresses.slice(i, i + 24));
+      let received = 0;
+      for (let i = 0; i < chunks.length; i++) {
+        setQueryProgress(label + " · gói " + (i + 1) + "/" + chunks.length + " · " + received + "/" + addresses.length + " phản hồi");
+        const batch = await OscUdp.queryBatch({
+          host: host.trim(),
+          port: portNumber,
+          addresses: chunks[i],
+          timeoutMs: 1200,
+        });
+        received += batch.receivedCount;
+        updateResults(batch.results);
+      }
+      setQueryProgress(label + " · hoàn tất " + received + "/" + addresses.length + " phản hồi");
+      if (received < addresses.length) setQueryError("Có " + (addresses.length - received) + " tham số chưa phản hồi. Kiểm tra firmware, đường mạng và thử lại theo từng nhóm.");
+    } catch (error) {
+      setQueryError(error instanceof Error ? error.message : String(error));
+    } finally {
+      setQueryBusy(false);
+      queryBusyRef.current = false;
+    }
+  };
+
+  const readScope = () => runBatch(makeScopeAddresses(scope), scopeLabels[scope], true);
+  const readSelectedDetail = () => runBatch(makeDetailAddresses(scope, selectedStrip), "Chi tiết " + selectedStrip, false);
+
+  const readConsoleInfo = async () => {
+    await runBatch(["/info", "/xinfo", "/status"], "Console identity/status", false);
+  };
+
+  useEffect(() => {
+    if (!liveMonitoring || !nativeOscAvailable || !isOsc) return;
+    let stopped = false;
+    let timer: number | undefined;
+    const poll = async () => {
+      if (stopped) return;
+      if (queryBusyRef.current) {
+        timer = window.setTimeout(poll, 500);
+        return;
+      }
+      queryBusyRef.current = true;
+      try {
+        const base = scope === "channels" ? "/ch/" + selectedStrip
+          : scope === "buses" ? "/bus/" + selectedStrip
+          : scope === "matrices" ? "/mtx/" + selectedStrip
+          : scope === "auxin" ? "/auxin/" + selectedStrip
+          : scope === "fxrtn" ? "/fxrtn/" + selectedStrip
+          : scope === "dca" ? "/dca/" + Number(selectedStrip)
+          : selectedStrip === "02" ? "/main/m" : "/main/st";
+        const paths = scope === "channels"
+          ? ["mix/fader", "mix/on", "mix/pan", "preamp/trim"]
+          : ["mix/fader", "mix/on"];
+        const batch = await OscUdp.queryBatch({
+          host: host.trim(),
+          port: portNumber,
+          addresses: paths.map(path => base + "/" + path),
+          timeoutMs: 1000,
+        });
+        if (!stopped) {
+          updateResults(batch.results);
+          setQueryProgress("Live polling · " + batch.receivedCount + "/" + paths.length + " · 2 giây/lần");
+        }
+      } catch (error) {
+        if (!stopped) setQueryError(error instanceof Error ? error.message : String(error));
+      } finally {
+        queryBusyRef.current = false;
+      }
+      if (!stopped) timer = window.setTimeout(poll, 2000);
+    };
+    void poll();
+    return () => {
+      stopped = true;
+      if (timer !== undefined) window.clearTimeout(timer);
+      queryBusyRef.current = false;
+    };
+  }, [liveMonitoring, nativeOscAvailable, isOsc, host, portNumber, scope, selectedStrip]);
+
+  const saveSnapshot = () => {
+    if (queryResults.length === 0) {
+      setQueryError("Chưa có dữ liệu để lưu snapshot.");
+      return;
+    }
+    const snapshot: MixerSnapshot = {
+      id: String(Date.now()),
+      label: selected.model + " · " + scopeLabels[scope],
+      host: host.trim(),
+      port: portNumber,
+      scope,
+      capturedAt: new Date().toISOString(),
+      results: queryResults,
+    };
+    setSnapshots(current => [snapshot, ...current].slice(0, 10));
+    setQueryProgress("Đã lưu snapshot tại thiết bị này · " + queryResults.length + " tham số");
+  };
+
+  const exportSnapshot = (snapshot?: MixerSnapshot) => {
+    const data = snapshot ?? {
+      id: String(Date.now()),
+      label: selected.model + " · " + scopeLabels[scope],
+      host: host.trim(),
+      port: portNumber,
+      scope,
+      capturedAt: new Date().toISOString(),
+      results: queryResults,
+    };
+    const blob = new Blob([JSON.stringify({ schema: "church-audio-mixer-snapshot/v1", ...data }, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = "church-audio-mixer-snapshot-" + data.id + ".json";
+    anchor.click();
+    URL.revokeObjectURL(url);
   };
 
   const exportConfig = () => {
@@ -133,37 +386,17 @@ export default function DeviceControlPanel() {
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement("a");
     anchor.href = url;
-    anchor.download = `church-audio-${selected.id}-profile.json`;
+    anchor.download = "church-audio-" + selected.id + "-profile.json";
     anchor.click();
     URL.revokeObjectURL(url);
   };
-  const validChannel = /^(0[1-9]|[12][0-9]|3[0-2])$/.test(channel);
-  const queryOsc = async (address: string) => {
-    if (!isOsc || !nativeOscAvailable || queryBusy) return;
-    setQueryBusy(true);
-    setQueryError("");
-    try {
-      const result = await OscUdp.query({
-        host: host.trim(),
-        port: Number(port) || selected.port || 10023,
-        address,
-        timeoutMs: 1500,
-      });
-      setQueryResults(current => [result, ...current].slice(0, 8));
-    } catch (error) {
-      setQueryError(error instanceof Error ? error.message : String(error));
-    } finally {
-      setQueryBusy(false);
-    }
-  };
-  const copyAddress = async (address: string) => {
-    try { await navigator.clipboard.writeText(address); } catch { /* Clipboard may be unavailable in embedded Android WebView. */ }
-  };
+
   const openUiConsole = () => {
     const safeHost = host.trim();
     if (!/^[a-zA-Z0-9.-]+$/.test(safeHost)) return;
-    window.open(`http://${safeHost}`, "_blank", "noopener,noreferrer");
+    window.open("http://" + safeHost, "_blank", "noopener,noreferrer");
   };
+
   const chooseManufacturer = (next: Manufacturer) => {
     setManufacturer(next);
     const first = profiles.find(profile => profile.manufacturer === next);
@@ -171,28 +404,39 @@ export default function DeviceControlPanel() {
       setDeviceId(first.id);
       setPort(String(first.port ?? ""));
       setHost(first.protocol === "ui-web" ? "10.10.1.1" : "192.168.1.100");
+      setLiveMonitoring(false);
+      setQueryResults([]);
     }
   };
+
   const chooseDevice = (nextId: string) => {
     const next = getProfile(nextId);
     setDeviceId(nextId);
     setPort(String(next.port ?? ""));
     if (next.protocol === "ui-web") setHost("10.10.1.1");
     else if (next.port) setHost("192.168.1.100");
+    setLiveMonitoring(false);
+    setQueryResults([]);
   };
+
+  const stripOptions = scope === "channels" ? 32 : scope === "buses" ? 16 : scope === "main" ? 2 : scope === "matrices" ? 6 : 8;
+  const tableScopeRows = monitorRows.filter(row => {
+    const prefix = scope === "channels" ? "/ch/" : scope === "buses" ? "/bus/" : scope === "main" ? "/main/" : scope === "matrices" ? "/mtx/" : scope === "auxin" ? "/auxin/" : scope === "fxrtn" ? "/fxrtn/" : "/dca/";
+    return row.id.startsWith(prefix);
+  });
 
   return <article className="panel device-control-panel">
     <div className="heading"><Cable /><h2>DSP & Mixer Control</h2><span>{profiles.length} MODEL PROFILES</span></div>
-    <p className="muted">Thư viện model đa hãng. X32/M32 hỗ trợ truy vấn OSC chỉ đọc trên Android; Soundcraft Ui có thể mở giao diện mixer qua trình duyệt. Các driver khác được tách theo model và trạng thái xác minh.</p>
+    <p className="muted">Thư viện model đa hãng. X32/M32 hỗ trợ truy vấn OSC chỉ đọc trên Android; danh sách input, bus, main, matrix và nhóm DCA được đọc theo từng lô nhằm hạn chế rơi gói UDP.</p>
     <div className="device-control-grid">
       <div className="protection-field"><label>HÃNG / MANUFACTURER</label><select value={manufacturer} onChange={event => chooseManufacturer(event.target.value as Manufacturer)}>{manufacturers.map(item => <option key={item} value={item}>{item}</option>)}</select></div>
       <div className="protection-field"><label>MODEL CỤ THỂ</label><select value={availableModels.some(item => item.id === deviceId) ? deviceId : availableModels[0]?.id ?? ""} onChange={event => chooseDevice(event.target.value)}>{availableModels.map(item => <option key={item.id} value={item.id}>{item.model}</option>)}</select></div>
       <div className="protection-field full"><label>MODEL / FIRMWARE KHÁC (TÙY CHỌN)</label><input value={customModel} onChange={event => setCustomModel(event.target.value)} placeholder="Nhập model hoặc firmware nếu không có trong danh sách" /></div>
       <div className="protection-field"><label>ĐỊA CHỈ IP / HOST</label><input value={host} onChange={event => setHost(event.target.value)} placeholder="192.168.1.100" /></div>
-      <div className="protection-field"><label>PORT (NẾU CÓ)</label><input value={port} onChange={event => setPort(event.target.value)} inputMode="numeric" placeholder="Model-specific" /></div>
+      <div className="protection-field"><label>PORT (NẾU CÓ)</label><input value={port} onChange={event => setPort(event.target.value)} inputMode="numeric" placeholder="10023" /></div>
       {isOsc && <>
-        <div className="protection-field"><label>INPUT CHANNEL (01–32)</label><input value={channel} onChange={event => { const digits = event.target.value.replace(/[^0-9]/g, "").slice(0, 2); setChannel(digits ? digits.padStart(2, "0") : ""); }} inputMode="numeric" /></div>
-        <div className="protection-field"><label>THAM SỐ CHỈ ĐỌC</label><select value={queryPath} onChange={event => setQueryPath(event.target.value)}><option value="mix/fader">Channel fader</option><option value="mix/on">Channel ON / MUTE state</option><option value="mix/pan">Channel pan</option><option value="config/name">Channel name</option><option value="preamp/trim">Preamp trim</option><option value="eq/on">EQ enabled</option><option value="eq/1/f">EQ band 1 frequency</option><option value="eq/1/g">EQ band 1 gain</option><option value="eq/1/q">EQ band 1 Q</option></select></div>
+        <div className="protection-field"><label>NHÓM DỮ LIỆU</label><select value={scope} onChange={event => { setScope(event.target.value as MixerScope); setLiveMonitoring(false); }}><option value="channels">Input channels 01–32</option><option value="buses">Mix buses 01–16</option><option value="main">Main Stereo / Mono</option><option value="matrices">Matrix 01–06</option><option value="auxin">Aux inputs 01–08</option><option value="fxrtn">FX returns 01–08</option><option value="dca">DCA groups 01–08</option></select></div>
+        <div className="protection-field"><label>STRIP / CHANNEL DETAIL</label><select value={selectedStrip} onChange={event => { setSelectedStrip(event.target.value); setLiveMonitoring(false); }}>{Array.from({ length: stripOptions }, (_, index) => { const value = String(index + 1).padStart(2, "0"); return <option key={value} value={value}>{scope === "main" ? (index === 0 ? "Main Stereo" : "Main Mono") : value}</option>; })}</select></div>
       </>}
     </div>
     <div className={isOsc || selected.protocol === "ui-web" ? "device-protocol-status" : "device-protocol-status pending"}>
@@ -203,32 +447,65 @@ export default function DeviceControlPanel() {
       <div className="protection-subheading"><SlidersHorizontal /><b>CHỨC NĂNG / CAPABILITY PROFILE</b><span>MODEL-SPECIFIC</span></div>
       <div className="device-capability-list">{selected.capabilities.map(capability => <span key={capability}>{capability}</span>)}</div>
       {isOsc && <section className="osc-live-query">
-        <div className="protection-subheading"><Wifi /><b>ĐỌC TRẠNG THÁI MIXER QUA LAN</b><span>READ ONLY</span></div>
+        <div className="protection-subheading"><Wifi /><b>X32 / M32 NETWORK MONITOR</b><span>READ ONLY</span></div>
         <div className="protection-actions">
-          <button type="button" disabled={!nativeOscAvailable || queryBusy} onClick={() => void queryOsc("/info")}>{queryBusy ? "Đang truy vấn..." : "Đọc thông tin mixer"}</button>
-          <button type="button" className="secondary" disabled={!nativeOscAvailable || queryBusy} onClick={() => void queryOsc("/status")}>Đọc trạng thái console</button>
-          <button type="button" className="secondary" disabled={!nativeOscAvailable || queryBusy || !validChannel} onClick={() => void queryOsc("/ch/" + channel + "/" + queryPath)}>Đọc tham số kênh {channel || "—"}</button>
+          <button type="button" disabled={!nativeOscAvailable || queryBusy} onClick={() => void readConsoleInfo()}>Đọc model / firmware</button>
+          <button type="button" disabled={!nativeOscAvailable || queryBusy} onClick={() => void readScope()}>Đọc toàn bộ {scopeLabels[scope]}</button>
+          <button type="button" className="secondary" disabled={!nativeOscAvailable || queryBusy} onClick={() => void readSelectedDetail()}>Đọc chi tiết strip {selectedStrip}</button>
         </div>
-        {!nativeOscAvailable && <p className="warning">Cầu nối UDP native hiện chỉ được đóng gói trên Android. Bản web/desktop chưa có native transport.</p>}
+        <div className="protection-actions">
+          <button type="button" className={liveMonitoring ? "secondary" : ""} disabled={!nativeOscAvailable || !isOsc} onClick={() => setLiveMonitoring(value => !value)}>{liveMonitoring ? "Dừng Live Monitor" : "Bật Live Monitor · 2 giây"}</button>
+          <button type="button" className="secondary" disabled={queryResults.length === 0} onClick={saveSnapshot}>Lưu Snapshot</button>
+          <button type="button" className="secondary" disabled={queryResults.length === 0} onClick={() => exportSnapshot()}>Xuất Snapshot JSON</button>
+        </div>
+        {!nativeOscAvailable && <p className="warning">Cầu nối UDP native chỉ được đóng gói trên Android. Bản web/desktop chưa có native transport.</p>}
+        {queryBusy && <p className="muted">Đang truy vấn… {queryProgress}</p>}
+        {!queryBusy && queryProgress && <p className="muted">{queryProgress}</p>}
         {queryError && <p className="warning">{queryError}</p>}
-        {queryResults.length > 0 && <div className="osc-query-results">
-          {queryResults.map(result => <div className="osc-query-result" key={result.receivedAt + result.requestedAddress}>
-            <div><b>{result.responseAddress || result.requestedAddress}</b><small>{result.host}:{result.port} · {result.rttMs} ms · {new Date(result.receivedAt).toLocaleTimeString("vi-VN")}</small></div>
-            <code>{JSON.stringify(result.arguments)}</code>
-          </div>)}
+        {tableScopeRows.length > 0 && <div className="table-wrap mixer-state-table">
+          <table>
+            <thead><tr><th>STRIP</th><th>TÊN</th><th>FADER*</th><th>ON</th><th>PAN</th><th>PREAMP</th><th>EQ</th><th>DYN</th></tr></thead>
+            <tbody>{tableScopeRows.map(row => <tr key={row.id}>
+              <td><b>{row.id.replace("/", "").toUpperCase()}</b></td>
+              <td>{renderOscValue(row.values.name)}</td>
+              <td>{renderOscValue(row.values.fader)}</td>
+              <td>{row.values.on === undefined ? "—" : Number(row.values.on) === 1 ? "ON" : "OFF"}</td>
+              <td>{renderOscValue(row.values.pan)}</td>
+              <td>{renderOscValue(row.values.trim)}</td>
+              <td>{row.values.eq === undefined ? "—" : Number(row.values.eq) === 1 ? "ON" : "OFF"}</td>
+              <td>{row.values.dyn === undefined ? "—" : Number(row.values.dyn) === 1 ? "ON" : "OFF"}</td>
+            </tr>)}</tbody>
+          </table>
+          <small className="muted">* Fader là giá trị OSC chuẩn hóa 0.000–1.000, chưa đổi sang dB.</small>
         </div>}
-        <p className="muted">Truy vấn OSC gửi không có tham số, chỉ yêu cầu mixer trả giá trị hiện tại. Chưa có lệnh ghi, mute, fader, EQ, preset hoặc polling nền.</p>
+        {queryResults.length > 0 && <details className="rta-frequency-bookmarks">
+          <summary>Dữ liệu OSC nhận được · {queryResults.length} tham số</summary>
+          <div className="osc-query-results">
+            {queryResults.slice(-24).map(result => <div className="osc-query-result" key={result.requestedAddress}>
+              <div><b>{result.responseAddress || result.requestedAddress}</b><small>{result.host}:{result.port} · {result.rttMs} ms · {new Date(result.receivedAt).toLocaleTimeString("vi-VN")}</small></div>
+              <code>{JSON.stringify(result.arguments)}</code>
+            </div>)}
+          </div>
+        </details>}
+        {snapshots.length > 0 && <details className="rta-frequency-bookmarks">
+          <summary>Snapshot đã lưu · {snapshots.length}</summary>
+          {snapshots.map(snapshot => <div className="osc-line" key={snapshot.id}>
+            <div><b>{snapshot.label}</b><small>{new Date(snapshot.capturedAt).toLocaleString("vi-VN")} · {snapshot.host} · {snapshot.results.length} tham số</small></div>
+            <button type="button" className="icon-button" aria-label="Xuất snapshot" onClick={() => exportSnapshot(snapshot)}><Download /></button>
+          </div>)}
+        </details>}
+        <p className="muted">Đọc trạng thái và Live Monitor hiện chỉ gửi OSC truy vấn không có giá trị. Snapshot lưu dữ liệu đã đọc để so sánh/đối chiếu; chưa tự ghi trả lại mixer.</p>
       </section>}
-      {isOsc && <>
-        <div className="protection-subheading"><SlidersHorizontal /><b>OSC READ COMMAND PREVIEW</b><span>NO WRITE</span></div>
-        {osc.map(item => <div className="osc-line" key={item.action}><div><b>{item.action}</b><code>{item.address}</code><small>Value: {String(item.value)}</small></div><button type="button" className="icon-button" aria-label="Copy OSC address" onClick={() => void copyAddress(item.address)}><Copy /></button></div>)}
-        <p className="muted">Các địa chỉ OSC dưới đây được giới hạn ở truy vấn chỉ đọc. Thay đổi gain, mute, fader, EQ hoặc routing chưa được bật.</p>
-      </>}
+      {isOsc && <section className="osc-preview">
+        <div className="protection-subheading"><SlidersHorizontal /><b>OSC READ PATH PREVIEW</b><span>NO WRITE</span></div>
+        {osc.map(item => <div className="osc-line" key={item.action}><div><b>{item.action}</b><code>{item.address}</code><small>{item.value}</small></div><button type="button" className="icon-button" aria-label="Copy OSC address" onClick={() => void navigator.clipboard.writeText(item.address).catch(() => undefined)}><Copy /></button></div>)}
+        <a className="device-doc-link" href="https://www.z80ne.com/behringer/docs/X32-OSC%20v.4.0.pdf" target="_blank" rel="noreferrer">X32/M32 OSC protocol reference <ExternalLink /></a>
+      </section>}
       {selected.protocol === "ui-web" && <div className="protection-actions"><button type="button" onClick={openUiConsole}><ExternalLink /> Mở giao diện web mixer</button></div>}
       {(selected.protocol === "dbx-app" || selected.protocol === "hiqnet") && <p className="muted">Sử dụng ứng dụng/tài liệu chính hãng qua liên kết bên dưới. Tích hợp trực tiếp vào Church Audio cần driver hoặc SDK/giao thức đã được hãng xác nhận.</p>}
       <a className="device-doc-link" href={selected.docs} target="_blank" rel="noreferrer">Tài liệu / hỗ trợ chính hãng hoặc nguồn thông số model <ExternalLink /></a>
     </section>
     <div className="protection-actions"><button type="button" onClick={exportConfig}><Download /> Xuất hồ sơ model JSON</button></div>
-    <p className="warning protection-warning"><ShieldAlert /> Ứng dụng chỉ gửi truy vấn OSC chỉ đọc trên Android; chưa có lệnh ghi thay đổi mixer. Mọi chức năng ghi trong tương lai phải đọc trạng thái trước, hiển thị giá trị trước/sau và yêu cầu người vận hành xác nhận.</p>
+    <p className="warning protection-warning"><ShieldAlert /> X32/M32 hiện chỉ hỗ trợ đọc trạng thái. Ứng dụng chưa gửi lệnh thay đổi gain, mute, fader, EQ hoặc routing. Mọi chức năng ghi sẽ yêu cầu đọc giá trị hiện tại, so sánh giá trị trước/sau và xác nhận riêng.</p>
   </article>;
 }
