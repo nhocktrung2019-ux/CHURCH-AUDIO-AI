@@ -28,7 +28,7 @@
 - [x] Read-only batch monitor for input channels, buses, main, matrices, aux, FX returns and DCA.
 - [x] Two-second selected-strip monitor and local/exportable read-only snapshots.
 - [ ] Hardware validation against real X32 and M32 consoles/firmware.
-- [ ] Guarded write controls (fader, mute, preamp, EQ and delay): read-before-write, strict range checks, before/after display, explicit confirmation and rollback guidance.
+- [x] Implemented guarded X32 input-channel writes: read-before-write conflict check, constrained fader/preamp/EQ/delay controls, explicit confirmation, post-write readback and one-parameter restore. Software milestone only; hardware acceptance remains pending.
 - [ ] Scene/snapshot restore only after guarded write controls are validated.
 - [ ] Separate model-specific driver research and validation for dbx DriveRack/ZonePRO and dBacoustics CD48/CD48 Premium.
 - [ ] Soundcraft Ui browser workflow; HiQnet/ViSi Remote models only after protocol/SDK validation.
