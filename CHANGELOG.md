@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.18.0-beta.1 — AudioWorklet PCM engine
+
+- Add a dedicated AudioWorklet processor that transfers raw Float32 PCM blocks with AudioContext frame positions; no MediaRecorder codec path is used.
+- Detect dropped, duplicated or out-of-order PCM frames using the audio render clock and reject discontinuous sessions.
+- Retain a clearly labeled ScriptProcessor compatibility fallback for older Android WebView builds; fallback is not treated as the preferred measurement engine.
+- Preserve conservative Auto EQ gates and advisory-only DSP output.
+- Keep absolute A/B delay disabled until simultaneous channels from one shared-clock multichannel interface and per-channel calibration are verified.
+
 ## 0.17.0-beta.1 — Raw PCM, Auto EQ quality gate and phase alignment
 
 - Replace compressed MediaRecorder capture in Transfer Function with raw Float32 PCM blocks from the Web Audio graph.
