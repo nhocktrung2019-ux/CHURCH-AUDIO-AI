@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.21.0-beta.1 — Multichannel PCM preservation
+
+- Request two microphone channels when the selected device supports them; mono inputs remain supported.
+- AudioWorklet now transports frame-major interleaved Float32 PCM without averaging away the input channels.
+- Validate that PCM channel count matches the actual input channel count and that payload byte length matches frame/channel metadata.
+- Explicitly downmix preserved channels only at the current mono H1 analysis boundary; keep capture metadata honest about raw channel count and downmix policy.
+- Add tested pure helpers for interleaved PCM deinterleaving and mono downmix.
+- This is not yet dual-channel Reference/Measurement analysis: the current H1 estimator remains mono, and USB interface routing/clock synchronization still require device validation.
+
+# Changelog
+
 ## 0.20.0-beta.1 — Synchronous dual-channel measurement foundation
 
 - Add strict provenance validation for Reference/Measurement channel pairs: same capture session, source stream, sample rate, frame start/count and distinct channel indices.
@@ -81,3 +92,4 @@
 ## 0.11.0
 
 - Add advanced measurement workspaces, calibration tools, transfer-function diagnostics and room/system planning.
+
