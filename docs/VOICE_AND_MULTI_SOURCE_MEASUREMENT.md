@@ -1,12 +1,18 @@
-# Voice assistant and multi-source measurement
+# Multi-source measurement and Vietnamese feedback alerts
 
-## Voice assistant
+## Feedback warnings
 
-- Speech commands are supported through the browser/WebView Web Speech Recognition API when the platform exposes it. The recognition locale is Vietnamese (vi-VN).
-- Commands: scan microphone inputs, start a multi-source measurement, stop the measurement, read the current report, and request help.
-- Spoken reports use SpeechSynthesis with a Vietnamese voice when the platform provides one. A typed-command fallback remains available if speech recognition is not supported.
-- The current assistant parses a limited set of local intents and summarizes measured RTA/feedback indicators. It is not a connected cloud LLM and does not send measurement input streams or measurement data to an AI model provider.
-- Speech recognition availability, network use, and privacy behavior depend on Android WebView and its configured speech service. Spoken command audio may be processed by that platform service; operators should review the device's speech-service privacy settings.
+The general voice-command assistant, Web Speech Recognition and typed voice-command fallback are not part of the current application workspace.
+
+The multi-source feedback monitor can optionally speak a Vietnamese warning using the device's speech-synthesis service. It is an operator notification only:
+- It monitors persistent narrow spectral peaks for each separately captured input.
+- A warning candidate requires at least 60% persistence and 5 dB prominence in the current detector.
+- Repeated announcements for the same source/frequency bucket are rate-limited to 30 seconds.
+- The warning names the input and approximate frequency, and tells the operator to lower the system level and inspect the microphone/monitor path.
+- Speech synthesis can be disabled with the in-app checkbox. When unavailable, the visual Vietnamese warning remains.
+- A narrow peak is not proof of an acoustic feedback loop. The operator must confirm by listening and controlled channel isolation.
+
+No automatic mixer gain, mute, automix, ducker or hardware EQ action is triggered by a warning. Speech synthesis is not a control path and does not send commands to DSP or mixer devices.
 
 ## One measurement with multiple sources
 
@@ -30,4 +36,5 @@ A composite display is computed by converting each source band from dBFS to line
 3. Start with low PA/monitor levels and verify every independent channel has signal.
 4. Check each source's level and spectrum separately; use the composite graph only as a quick shared overview.
 5. Calibrate every measurement chain before comparing SPL.
-6. Use a shared-clock multichannel interface, loopback reference and channel-separated driver for phase/delay/transfer-function work.
+6. Confirm every feedback candidate by listening and controlled channel isolation before making manual corrective changes.
+7. Use a shared-clock multichannel interface, loopback reference and channel-separated driver for phase/delay/transfer-function work.
