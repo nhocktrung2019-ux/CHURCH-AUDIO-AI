@@ -21,6 +21,7 @@ export type TransferCaptureMetadata = {
   referenceChannel?: number;
   measurementChannel?: number;
   clockBasis?: "same-mediastream-audioworklet-frame-clock";
+  referenceCaptureQuality?: PcmCaptureQuality;
 };
 
 export type TransferResult = {
