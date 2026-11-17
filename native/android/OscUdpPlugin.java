@@ -34,7 +34,7 @@ public class OscUdpPlugin extends Plugin {
     private static final int MAX_PACKET_BYTES = 8192;
     private static final int MAX_BATCH_ADDRESSES = 64;
     private static final Pattern CHANNEL_QUERY = Pattern.compile(
-        "^/ch/(0[1-9]|[12][0-9]|3[0-2])/(config/(name|color|icon)|mix/(fader|on|pan|st|mono)|preamp/(trim|invert)|eq/on|eq/[1-4]/(type|f|g|q)|dyn/(on|thr|ratio|attack|hold|release|mgain)|gate/(on|thr|range|attack|hold|release)|grp/(dca|mute))$"
+        "^/ch/(0[1-9]|[12][0-9]|3[0-2])/(config/(name|color|icon)|mix/(fader|on|pan|st|mono)|preamp/(trim|invert)|eq/on|eq/[1-4]/(type|f|g|q)|delay/(on|time)|dyn/(on|thr|ratio|attack|hold|release|mgain)|gate/(on|thr|range|attack|hold|release)|grp/(dca|mute))$"
     );
     private static final Pattern BUS_QUERY = Pattern.compile(
         "^/bus/(0[1-9]|1[0-6])/(config/(name|color|icon)|mix/(fader|on|pan|st)|eq/on|eq/[1-6]/(type|f|g|q)|dyn/(on|thr|ratio|attack|hold|release|mgain))$"
@@ -194,6 +194,55 @@ public class OscUdpPlugin extends Plugin {
         } catch (Exception error) {
             call.reject("Lỗi truy vấn OSC: " + error.getMessage(), error);
         }
+    }
+
+
+    @PluginMethod
+    public void writeGuarded(PluginCall call) {
+        final String host = call.getString("host");
+        final String address = call.getString("address");
+        final Double expectedRawValue = call.getDouble("expectedRawValue");
+        final Double requestedValue = call.getDouble("value");
+        final Integer portValue = call.getInt("port");
+        final Integer timeoutValue = call.getInt("timeoutMs");
+        final int port = portValue == null ? DEFAULT_PORT : portValue;
+        final int timeoutMs = timeoutValue == null ? 1800 : timeoutValue;
+        final WriteSpec spec = getWriteSpec(address);
+
+        if (host == null || host.trim().isEmpty() || spec == null) {
+            call.reject("Địa chỉ hoặc tham số ghi không nằm trong danh sách được bảo vệ.");
+            return;
+        }
+        if (expectedRawValue == null || requestedValue == null
+            || !Double.isFinite(expectedRawValue) || !Double.isFinite(requestedValue)) {
+            call.reject("Giá trị đọc trước hoặc giá trị mới không hợp lệ.");
+            return;
+        }
+        if (port < 1024 || port > 65535 || timeoutMs < 500 || timeoutMs > 8000) {
+            call.reject("Port hoặc timeout không hợp lệ.");
+            return;
+        }
+        if (requestedValue < spec.minValue || requestedValue > spec.maxValue) {
+            call.reject("Giá trị mới vượt giới hạn an toàn của tham số (" + spec.minValue + " đến " + spec.maxValue + ").");
+            return;
+        }
+        if (spec.integer && requestedValue != Math.rint(requestedValue)) {
+            call.reject("Tham số ON/OFF chỉ nhận giá trị nguyên 0 hoặc 1.");
+            return;
+        }
+        if (spec.step > 0 && !spec.integer) {
+            double steps = (requestedValue - spec.minValue) / spec.step;
+            if (Math.abs(steps - Math.rint(steps)) > 0.02) {
+                call.reject("Giá trị phải tuân theo bước chỉnh " + spec.step + ".");
+                return;
+            }
+        }
+
+        Thread worker = new Thread(
+            () -> performGuardedWrite(call, host.trim(), port, address, expectedRawValue, requestedValue, spec, timeoutMs),
+            "ChurchAudio-OscGuardedWrite"
+        );
+        worker.start();
     }
 
     private static boolean uniqueContains(List<String> addresses, String address) {
