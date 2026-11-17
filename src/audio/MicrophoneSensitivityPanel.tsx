@@ -24,10 +24,12 @@ type Props = {
 
 export default function MicrophoneSensitivityPanel({ value, onChange, activeDeviceLabel }: Props) {
   const profile = value ?? EMPTY_PROFILE;
-  const update = <K extends keyof MicrophoneSensitivityProfile>(
+  function update<K extends keyof MicrophoneSensitivityProfile>(
     key: K,
     next: MicrophoneSensitivityProfile[K],
-  ) => onChange({ ...profile, [key]: next });
+  ): void {
+    onChange({ ...profile, [key]: next });
+  }
 
   const sensitivity = profile.sensitivityMvPa;
   const dbvPerPa =
