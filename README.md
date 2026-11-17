@@ -11,8 +11,8 @@ A Vietnamese-first measurement and system-tuning workspace for church sound syst
 - **Level and calibration:** Z/A/C-weighted estimates, elapsed-time Leq integration, microphone correction profiles and one-point SPL calibration workflow.
 - **Room acoustics:** sweep-based impulse response and Schroeder decay analysis with RT20/RT30/RT60 estimates and fit/noise indicators.
 - **Transfer and alignment:** transfer-response/coherence and phase-shape diagnostics, relative delay estimates and cut-only PEQ suggestions.
-- **Feedback watch:** persistent narrow-peak candidates, Vietnamese visual warnings and optional Vietnamese spoken warnings, saved suspected feedback points and advisory notch recommendations.
-- **Multi-source:** attempt independent capture of up to four separately enumerated inputs, per-source RTA histories and a relative linear-power overview; optional speech synthesis is reserved for feedback warnings, with no general voice-command assistant.
+- **Feedback watch:** persistent narrow-peak candidates, Vietnamese on-screen warnings, saved suspected feedback points and advisory notch recommendations.
+- **Multi-source:** attempt independent capture of up to four separately enumerated inputs, per-source RTA histories and a relative linear-power overview; only Vietnamese on-screen feedback warnings are included; speech recognition and speech synthesis are removed, with no general voice-command assistant.
 - **Church 3D and loudspeaker planning:** Three.js room layout, speaker placement, approximate coverage visualisation, CBT planning and polar-data inspection.
 - **DSP and mixer catalogue:** selectable named models across Behringer X32/WING/X AIR, Midas M32/HD96, Yamaha digital mixers and installation DSP, Soundcraft Ui/Si/Vi, dbx DriveRack and db Acoustics CD48. The worksheet remains manual/offline; no generic model compatibility or live parameter writes are claimed.
 - **Backup, update and support:** local project backup/restore, update links, device diagnostics and technical-support guidance.
