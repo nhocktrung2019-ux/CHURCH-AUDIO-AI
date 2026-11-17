@@ -10,7 +10,8 @@ function getAudioConstraints(deviceId?: string): MediaStreamConstraints {
     echoCancellation: { ideal: false },
     noiseSuppression: { ideal: false },
     autoGainControl: { ideal: false },
-    // Ask for stereo when available; mono devices remain valid and are reported as such.\n    channelCount: { ideal: 2 },
+    // Ask for stereo when available; mono devices remain valid and are reported as such.
+    channelCount: { ideal: 2 },
     ...(deviceId ? { deviceId: { exact: deviceId } } : {}),
   };
   return { audio, video: false };
