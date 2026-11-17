@@ -4,7 +4,7 @@ import { Activity, Play, Square, AlertTriangle, Download, Waves, MapPin, Trash2 
 import { analyzeSynchronousTransfer, analyzeTransfer, makeReferenceNoise, measurePcmCaptureQuality, type TransferResult } from "./transfer";
 import { deinterleaveInterleavedPcm, mixInterleavedPcmToMono } from "./pcmCapture.ts";
 import { PcmCaptureIntegrityMonitor } from "./pcmCaptureIntegrity";
-import { AUTO_EQ_TARGETS, assessAutoEqReadiness, suggestParametricEq, type AutoEqTargetProfile } from "./autoEq";
+import { AUTO_EQ_TARGETS, assessAutoEqReadiness, suggestParametricEq, type AutoEqTargetProfile } from "./autoEq.ts";
 import { comparePhaseInBand } from "./phaseAlignment";
 import { aggregateMultiPositionAutoEq, assessMultiPositionAutoEq, type MultiPositionAutoEqSample } from "./multiPositionAutoEq";
 import { explainMicrophoneError, requestMicrophoneStream } from "./microphone";
