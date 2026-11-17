@@ -177,7 +177,7 @@ export default function MultiMicFeedbackPanel() {
           if (!track || track.readyState !== "live") {
             throw new Error("Thiết bị không trả về audio track đang hoạt động.");
           }
-          const settings = track.getSettings?.();
+          const settings = track.getSettings?.() as (MediaTrackSettings & { latency?: number }) | undefined;
           const diagnostics = assessMultiSourceInput({
             requestedDeviceId: id,
             actualDeviceId: settings?.deviceId,

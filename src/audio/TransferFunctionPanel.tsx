@@ -213,11 +213,12 @@ export default function TransferFunctionPanel({ selectedInput, selectedOutput, r
       source.start(playbackStartTime);
       await new Promise<void>(resolve => window.setTimeout(resolve, 5600));
       if (legacyProcessor) legacyProcessor.onaudioprocess = null;
-      if (workletNode) {
+      const activeWorkletNode = workletNode;
+      if (activeWorkletNode) {
         await new Promise<void>((resolve) => {
           const timeout = window.setTimeout(resolve, 750);
           resolveWorkletStopped = () => { window.clearTimeout(timeout); resolve(); };
-          workletNode.port.postMessage({ command: "stop" });
+          activeWorkletNode.port.postMessage({ command: "stop" });
         });
         if (!workletStopped) throw new Error("AudioWorklet không xác nhận kết thúc và xả block PCM cuối. Hãy đo lại.");
       }
@@ -251,7 +252,7 @@ export default function TransferFunctionPanel({ selectedInput, selectedOutput, r
         if (captureEngine !== "AudioWorklet" || rawPcmChannelCount < 1) {
           throw new Error("Hiệu chuẩn loopback yêu cầu AudioWorklet và ít nhất một kênh input được bảo toàn.");
         }
-        if (audio.sampleRate > 96000) {
+        if (audio!.sampleRate > 96000) {
           throw new Error("Hiệu chuẩn kênh hiện yêu cầu sample rate 96 kHz trở xuống để FFT 4096 bao phủ đúng vùng từ 50 Hz. Hãy đặt interface ở 48 kHz hoặc 96 kHz rồi đo lại.");
         }
         if (!selectedInput || !selectedOutput) {
