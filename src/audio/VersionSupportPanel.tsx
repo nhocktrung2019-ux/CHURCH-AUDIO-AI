@@ -29,6 +29,12 @@ async function collectDiagnosticReport(): Promise<string> {
   const audioContextSupported =
     typeof window.AudioContext !== "undefined" ||
     typeof extendedWindow.webkitAudioContext !== "undefined";
+  const audioWorkletSupported = typeof window.AudioContext !== "undefined"
+    && "audioWorklet" in window.AudioContext.prototype;
+  const outputSelectionSupported = typeof window.AudioContext !== "undefined"
+    && "setSinkId" in window.AudioContext.prototype;
+  const speechRecognitionSupported = "SpeechRecognition" in window
+    || "webkitSpeechRecognition" in window;
 
   return [
     "CHURCH AUDIO ANALYZER — TECHNICAL SUPPORT DIAGNOSTICS",
@@ -41,6 +47,9 @@ async function collectDiagnosticReport(): Promise<string> {
     `MediaDevices API: ${mediaDevices ? "available" : "unavailable"}`,
     `Microphone capture API: ${mediaDevices ? "available" : "unavailable"}`,
     `AudioContext API: ${audioContextSupported ? "available" : "unavailable"}`,
+    `AudioWorklet API: ${audioWorkletSupported ? "available" : "unavailable"}`,
+    `AudioContext output selection: ${outputSelectionSupported ? "available" : "unavailable"}`,
+    `Web Speech Recognition API: ${speechRecognitionSupported ? "available" : "unavailable"}`,
     `Enumerated audio inputs: ${inputCount}`,
     `Enumerated audio outputs: ${outputCount}`,
     `Language: ${navigator.language || "unknown"}`,
