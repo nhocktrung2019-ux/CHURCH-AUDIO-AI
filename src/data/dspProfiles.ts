@@ -1,4 +1,7 @@
-export type DspEvidenceGrade = "manufacturer-documentation" | "community-protocol-reference";
+export type DspEvidenceGrade =
+  | "manufacturer-documentation"
+  | "community-protocol-reference"
+  | "user-supplied-image";
 
 export type DspProfile = {
   id: string;
@@ -94,7 +97,7 @@ export const dspProfiles: DspProfile[] = [
     controlStatus: "manual-only",
     transport: "RJ45 100M Ethernet (shown on supplied rear-panel image) · front USB COM2 · rear R/T/G terminal; LCD image shows IP 192.168.20.20",
 
-    evidenceGrade: "manufacturer-documentation",
+    evidenceGrade: "user-supplied-image",
     documentationUrl: "https://dbacoustic.vn/crossover-dbacoustic-cd48",
     integrationNote: "The supplied front/rear images show a db Acoustics CD48 with a rear RJ45 port labelled 100M Ethernet, a front display showing IP 192.168.20.20 and Ver 2215, and a front USB port labelled COM2. This establishes the visible hardware profile in the supplied images. Wi-Fi is provided by an external router/access point; the DSP itself is not assumed to have a Wi-Fi radio. The network command protocol and service port are still unverified.",
 
