@@ -36,6 +36,21 @@ test("synchronous H1 keeps common-clock delay and recovers known gain", () => {
   assert.ok(Math.abs(meanMagnitudeDb - (-6.0206)) < 0.5);
 });
 
+test("48 kHz dual-channel capture keeps sub-sample delay precision at phone-sized buffers", () => {
+  const sampleRate = 48000;
+  const reference = makeNoise(120000, 0x98765432);
+  const expectedDelaySamples = 153;
+  const measurement = new Float32Array(reference.length);
+  for (let i = expectedDelaySamples; i < measurement.length; i++) {
+    measurement[i] = reference[i - expectedDelaySamples] * 0.5;
+  }
+  const result = analyzeSynchronousTransfer(reference, measurement, sampleRate);
+  assert.ok(result);
+  assert.ok(Math.abs(result.estimatedDelayMs - expectedDelaySamples / sampleRate * 1000) < 0.02);
+  assert.ok(result.averageCoherence > 0.95);
+  assert.ok(result.framesAveraged >= 50);
+});
+
 test("synchronous H1 preserves the measured phase slope instead of time-aligning it away", () => {
   const sampleRate = 16000;
   const reference = makeNoise(20000, 0x3456789a);
