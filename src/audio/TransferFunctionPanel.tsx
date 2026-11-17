@@ -89,7 +89,7 @@ export default function TransferFunctionPanel({ selectedInput, running, calibrat
           silentGain.gain.value = 0;
           workletNode.connect(silentGain);
           silentGain.connect(audio.destination);
-        } catch (workletError) {
+        } catch {
           workletNode?.disconnect();
           workletNode = undefined;
           captureEngine = "ScriptProcessor fallback";
@@ -162,15 +162,19 @@ export default function TransferFunctionPanel({ selectedInput, running, calibrat
         reference, captured, audio.sampleRate, calibrationPoints, playbackOffsetSeconds,
       );
       if (!measured) throw new Error("Không tìm được tín hiệu tham chiếu đủ rõ. Kiểm tra loa, micro, tiếng ồn và mức phát.");
+      const fallbackWarning = captureEngine === "ScriptProcessor fallback"
+        ? " CẢNH BÁO: phiên đo đang dùng ScriptProcessor dự phòng đã lỗi thời; nên cập nhật WebView và đo lại bằng AudioWorklet."
+        : "";
       if (measured.averageCoherence < 0.6) {
-        setNotice("Coherence thấp: phép đo có thể bị nhiễu, phản xạ hoặc tín hiệu không ổn định. Không dùng EQ tự động từ lần đo này.");
+        setNotice("Coherence thấp: phép đo có thể bị nhiễu, phản xạ hoặc tín hiệu không ổn định. Không dùng EQ tự động từ lần đo này." + fallbackWarning);
       } else if (captureQuality.clippedSamplePercent > 0.1 || captureQuality.rmsDbfs < -55 || captureQuality.peakDbfs > -0.5) {
-        setNotice("PCM đã được thu không nén. Tuy nhiên, mức vào/clipping chưa đạt điều kiện Auto EQ; điều chỉnh gain và đo lại.");
+        setNotice("PCM đã được thu không nén. Tuy nhiên, mức vào/clipping chưa đạt điều kiện Auto EQ; điều chỉnh gain và đo lại." + fallbackWarning);
+      } else if (captureEngine === "AudioWorklet") {
+        setNotice("Đã thu PCM thô bằng AudioWorklet trên sample clock của AudioContext; pre-roll đã được bù. Đường đo vẫn là loa–phòng–micro, chưa phải loopback đồng bộ hai kênh.");
       } else {
-        setNotice("Đã thu PCM thô theo sample clock AudioContext; pre-roll đã được bù. Đây vẫn là phép đo đường loa–phòng–micro, chưa phải loopback hai kênh.");
+        setNotice("Đã thu PCM bằng ScriptProcessor dự phòng; kết quả cần được kiểm tra lại bằng AudioWorklet trước khi dùng cho nghiệm thu." + fallbackWarning);
       }
       setResult({ ...measured, captureQuality });
-      if (captureEngine === "AudioWorklet") setNotice("Đã thu PCM thô bằng AudioWorklet trên sample clock của AudioContext; pre-roll đã được bù. Đường đo vẫn là loa–phòng–micro, chưa phải loopback đồng bộ hai kênh.");
     } catch (cause) {
       setError(explainMicrophoneError(cause));
     } finally {
