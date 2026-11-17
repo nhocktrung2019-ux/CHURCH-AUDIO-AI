@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.26.0-beta.1 — Multi-position weighted Auto EQ
+
+- Save up to eight named church listening positions with operator weights from 0.5 to 2.0; at least three positions are required.
+- Require operator confirmation that the microphone, input/interface, gain, routing, loudspeaker system, processing and playback level are unchanged between positions.
+- Accept only clean AudioWorklet mono-acoustic captures with valid PCM quality, coherent bins and matching sample rates. Reject synchronous loopback and legacy ScriptProcessor sessions.
+- Interpolate in log-frequency space without extrapolating across gaps; require at least 80% position coverage per bin.
+- Aggregate using operator weights after limiting outliers to median ±4 dB; omit bins with spatial spread above 8 dB rather than equalizing an inconsistent region.
+- Feed the aggregate to the existing target-aware cut-only PEQ advisor. Export position names, weights and spatial spread summary. No automatic DSP/mixer writes are enabled.
+
+**Validation status:** new regression tests and Android packaging await CI; physical multi-position validation is still required.
+
+
 ## 0.25.0-beta.1 — Target-aware Auto EQ
 
 - Add selectable Flat / Spoken-word / Worship-music target contours for PEQ analysis.

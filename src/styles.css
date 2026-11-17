@@ -509,3 +509,23 @@ footer{padding-bottom:calc(26px + env(safe-area-inset-bottom))}
 .multi-mic-alert-settings input{flex:0 0 auto;width:18px;min-height:18px;accent-color:#65d2b6}
 .multi-mic-alert-settings p{margin:0;color:#a8bbc1;font-size:11px;line-height:1.6}
 .multi-mic-alert-settings .device-notice{padding:10px 11px;border:1px solid #765b36;border-radius:7px;background:rgba(92,62,24,.18);color:#f0d2a0}
+
+
+/* Weighted, spatially consistent multi-position Auto EQ. */
+.multi-position-eq{margin:15px 0;padding:15px;border:1px solid #3b5e60;border-radius:11px;background:linear-gradient(140deg,rgba(22,57,53,.3),rgba(8,18,25,.7))}
+.multi-position-eq>.heading{margin-bottom:8px}
+.multi-position-eq>.heading h3{flex:1;margin:0;color:#dff4eb;font-size:14px}
+.multi-position-eq>.heading>span{font:9px ui-monospace,SFMono-Regular,Consolas,monospace;color:#85d9bd}
+.multi-position-eq>p{font-size:11px;line-height:1.65}
+.multi-position-confirm{display:flex!important;align-items:flex-start;gap:9px;margin:12px 0!important;padding:11px 12px;border:1px solid #4a625c;border-radius:8px;background:rgba(6,15,20,.58);color:#d8eee5;font-size:11px!important;line-height:1.55;letter-spacing:0!important}
+.multi-position-confirm input{flex:0 0 auto;width:17px;min-height:17px;margin-top:1px;accent-color:#65d2b6}
+.multi-position-eq .form-grid{margin:12px 0}
+.multi-position-list{display:grid;gap:7px;margin:12px 0}
+.multi-position-item{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;border:1px solid #2c4650;border-radius:8px;background:rgba(8,18,25,.7)}
+.multi-position-item>div{display:grid;gap:5px;min-width:0}
+.multi-position-item b{font-size:11px;color:#d7e9e3;overflow-wrap:anywhere}
+.multi-position-item span{font-size:9px;color:#8fa6af}
+.multi-position-item .icon-button{flex:0 0 auto}
+.multi-position-eq .feedback-clear,.multi-position-eq .device-notice{margin:10px 0}
+.multi-position-eq .feedback-clear small,.multi-position-eq .device-notice small{display:block;margin-top:6px;line-height:1.5}
+@media(max-width:540px){.multi-position-eq{padding:12px}.multi-position-item{padding:9px}.multi-position-eq .phase-ab-controls{display:grid;grid-template-columns:1fr}.multi-position-eq .phase-ab-controls button{width:100%}}
