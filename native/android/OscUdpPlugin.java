@@ -245,6 +245,207 @@ public class OscUdpPlugin extends Plugin {
         worker.start();
     }
 
+
+    private void performGuardedWrite(
+        PluginCall call,
+        String host,
+        int port,
+        String address,
+        double expectedRawValue,
+        double requestedValue,
+        WriteSpec spec,
+        int timeoutMs
+    ) {
+        long started = System.currentTimeMillis();
+        boolean packetSent = false;
+        try {
+            InetAddress target = InetAddress.getByName(host);
+            if (!(target instanceof Inet4Address) || !isPrivateIpv4((Inet4Address) target)) {
+                call.reject("Chỉ cho phép IP LAN IPv4 riêng (10.x, 172.16–31.x hoặc 192.168.x).");
+                return;
+            }
+
+            try (DatagramSocket socket = new DatagramSocket()) {
+                socket.setReuseAddress(false);
+
+                // Re-read immediately before the write. Abort if another operator changed the control.
+                OscMessage before = queryOne(socket, target, port, address, timeoutMs);
+                if (before == null) {
+                    call.reject("Không đọc được giá trị hiện tại. Đã hủy lệnh ghi.");
+                    return;
+                }
+                double beforeRaw = firstNumericArgument(before);
+                if (Math.abs(beforeRaw - expectedRawValue) > spec.rawTolerance) {
+                    call.reject("Giá trị mixer đã thay đổi kể từ lúc chuẩn bị. Đã hủy để tránh ghi đè thao tác khác.");
+                    return;
+                }
+
+                double wireValue = toWireValue(spec, requestedValue);
+                byte[] packet = encodeOscWrite(address, spec.integer, wireValue);
+                socket.send(new DatagramPacket(packet, packet.length, target, port));
+                packetSent = true;
+
+                // Query again after the set packet. A UDP send alone is not proof of success.
+                OscMessage after = queryOne(socket, target, port, address, timeoutMs);
+                Double afterRaw = after == null ? null : firstNumericArgument(after);
+                boolean verified = afterRaw != null && Math.abs(afterRaw - wireValue) <= spec.rawTolerance;
+
+                JSObject output = new JSObject();
+                output.put("host", target.getHostAddress());
+                output.put("port", port);
+                output.put("address", address);
+                output.put("sent", true);
+                output.put("verified", verified);
+                output.put("beforeRawValue", beforeRaw);
+                output.put("requestedValue", requestedValue);
+                output.put("wireValue", wireValue);
+                output.put("afterRawValue", afterRaw == null ? org.json.JSONObject.NULL : afterRaw);
+                output.put("elapsedMs", System.currentTimeMillis() - started);
+                output.put("completedAt", System.currentTimeMillis());
+                output.put("status", verified ? "verified" : "sent-unverified");
+                call.resolve(output);
+            }
+        } catch (Exception error) {
+            if (packetSent) {
+                JSObject output = new JSObject();
+                output.put("host", host);
+                output.put("port", port);
+                output.put("address", address);
+                output.put("sent", true);
+                output.put("verified", false);
+                output.put("status", "sent-unverified");
+                output.put("warning", "Đã gửi gói OSC nhưng không thể xác minh phản hồi: " + error.getMessage());
+                output.put("elapsedMs", System.currentTimeMillis() - started);
+                call.resolve(output);
+            } else {
+                call.reject("Lệnh ghi an toàn thất bại: " + error.getMessage(), error);
+            }
+        }
+    }
+
+    private static OscMessage queryOne(
+        DatagramSocket socket,
+        InetAddress target,
+        int port,
+        String address,
+        int timeoutMs
+    ) throws Exception {
+        byte[] request = encodeOscQuery(address);
+        socket.send(new DatagramPacket(request, request.length, target, port));
+        long deadline = System.currentTimeMillis() + timeoutMs;
+        byte[] buffer = new byte[MAX_PACKET_BYTES];
+        while (System.currentTimeMillis() < deadline) {
+            int remaining = (int) Math.max(1, deadline - System.currentTimeMillis());
+            socket.setSoTimeout(Math.min(250, remaining));
+            DatagramPacket inbound = new DatagramPacket(buffer, buffer.length);
+            try {
+                socket.receive(inbound);
+            } catch (SocketTimeoutException idle) {
+                continue;
+            }
+            if (!target.equals(inbound.getAddress())) continue;
+            byte[] response = Arrays.copyOfRange(
+                inbound.getData(),
+                inbound.getOffset(),
+                inbound.getOffset() + inbound.getLength()
+            );
+            try {
+                OscMessage parsed = parseOscMessage(response);
+                if (address.equals(parsed.address)) return parsed;
+            } catch (Exception malformedPacket) {
+                // Ignore malformed or unrelated traffic while waiting for the requested address.
+            }
+        }
+        return null;
+    }
+
+    private static double firstNumericArgument(OscMessage message) throws Exception {
+        if (message.arguments.length() < 1) throw new IllegalArgumentException("Mixer trả về không có giá trị tham số.");
+        Object value = message.arguments.get(0);
+        if (value instanceof Number) return ((Number) value).doubleValue();
+        if (value instanceof Boolean) return ((Boolean) value) ? 1.0 : 0.0;
+        throw new IllegalArgumentException("Mixer trả về kiểu dữ liệu không phải số.");
+    }
+
+    private static byte[] encodeOscWrite(String address, boolean integer, double wireValue) {
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        writeOscString(out, address);
+        writeOscString(out, integer ? ",i" : ",f");
+        ByteBuffer value = ByteBuffer.allocate(4).order(ByteOrder.BIG_ENDIAN);
+        if (integer) value.putInt((int) Math.rint(wireValue));
+        else value.putFloat((float) wireValue);
+        byte[] bytes = value.array();
+        out.write(bytes, 0, bytes.length);
+        return out.toByteArray();
+    }
+
+    private static WriteSpec getWriteSpec(String address) {
+        if (address == null || !address.matches("^/ch/(0[1-9]|[12][0-9]|3[0-2])/.+$")) return null;
+        if (address.endsWith("/mix/fader")) return new WriteSpec("fader", false, -90.0, 0.0, 0.1, 0.003);
+        if (address.endsWith("/mix/on")) return new WriteSpec("toggle", true, 0.0, 1.0, 1.0, 0.01);
+        if (address.endsWith("/preamp/trim")) return new WriteSpec("trim", false, -18.0, 0.0, 0.25, 0.003);
+        if (address.endsWith("/preamp/invert") || address.endsWith("/eq/on") || address.endsWith("/delay/on")) {
+            return new WriteSpec("toggle", true, 0.0, 1.0, 1.0, 0.01);
+        }
+        if (address.matches("^/ch/(0[1-9]|[12][0-9]|3[0-2])/eq/[1-4]/f$")) {
+            return new WriteSpec("eq-frequency", false, 20.0, 20000.0, 0.0, 0.003);
+        }
+        if (address.matches("^/ch/(0[1-9]|[12][0-9]|3[0-2])/eq/[1-4]/g$")) {
+            return new WriteSpec("eq-gain", false, -15.0, 0.0, 0.25, 0.003);
+        }
+        if (address.matches("^/ch/(0[1-9]|[12][0-9]|3[0-2])/eq/[1-4]/q$")) {
+            return new WriteSpec("eq-q", false, 0.3, 10.0, 0.0, 0.003);
+        }
+        if (address.endsWith("/delay/time")) return new WriteSpec("delay-time", false, 0.3, 200.0, 0.1, 0.003);
+        return null;
+    }
+
+    private static double toWireValue(WriteSpec spec, double value) {
+        switch (spec.kind) {
+            case "toggle":
+                return Math.rint(value);
+            case "fader":
+                double f;
+                if (value < -60.0) f = (value + 90.0) / 480.0;
+                else if (value < -30.0) f = (value + 70.0) / 160.0;
+                else if (value < -10.0) f = (value + 50.0) / 80.0;
+                else f = (value + 30.0) / 40.0;
+                return Math.min(1.0, Math.max(0.0, Math.floor(f * 1023.5) / 1023.0));
+            case "trim":
+                return Math.rint((value + 18.0) / 0.25) / 144.0;
+            case "eq-frequency":
+                double frequencyIndex = Math.rint(Math.log(value / 20.0) / Math.log(1000.0) * 200.0);
+                return frequencyIndex / 200.0;
+            case "eq-gain":
+                return Math.rint((value + 15.0) / 0.25) / 120.0;
+            case "eq-q":
+                double qIndex = Math.rint(Math.log(value / 10.0) / Math.log(0.03) * 71.0);
+                return Math.min(1.0, Math.max(0.0, qIndex / 71.0));
+            case "delay-time":
+                double delayIndex = Math.rint((value - 0.3) / 0.1);
+                return delayIndex / 4997.0;
+            default:
+                throw new IllegalArgumentException("Unsupported guarded OSC write type.");
+        }
+    }
+
+    private static final class WriteSpec {
+        final String kind;
+        final boolean integer;
+        final double minValue;
+        final double maxValue;
+        final double step;
+        final double rawTolerance;
+        WriteSpec(String kind, boolean integer, double minValue, double maxValue, double step, double rawTolerance) {
+            this.kind = kind;
+            this.integer = integer;
+            this.minValue = minValue;
+            this.maxValue = maxValue;
+            this.step = step;
+            this.rawTolerance = rawTolerance;
+        }
+    }
+
     private static boolean uniqueContains(List<String> addresses, String address) {
         return addresses.contains(address);
     }
