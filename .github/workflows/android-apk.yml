@@ -48,6 +48,8 @@ jobs:
         run: npx cap add android
       - name: Sync Capacitor
         run: npx cap sync android
+      - name: Install native OSC UDP plugin
+        run: node scripts/install-android-native-plugins.mjs
       - name: Add microphone runtime permission
         run: |
           python - <<'PY'
