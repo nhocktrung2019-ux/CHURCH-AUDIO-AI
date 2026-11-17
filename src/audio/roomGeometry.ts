@@ -95,7 +95,7 @@ export function clampRoomObject<T extends RoomFurnitureBounds>(
 export type SpeakerCabinetKind = "column" | "sub" | "standard";
 
 export function classifySpeakerCabinet(model: string): SpeakerCabinetKind {
-  const normalized = (model || "").toLowerCase().replace(/[\\s_-]+/g, "");
+  const normalized = (model || "").toLowerCase().replace(/[\s_-]+/g, "");
   if (/subwoofer|sub/.test(normalized) || /(?:18|218)s(?:p|x)?$/.test(normalized)) {
     return "sub";
   }
