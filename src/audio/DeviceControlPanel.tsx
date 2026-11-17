@@ -123,7 +123,7 @@ export default function DeviceControlPanel() {
     protocol: selected.protocol,
     protocolStatus: isOsc ? "documented-read-only-query-bridge-android-no-write-support" : selected.protocol,
     capabilities: selected.capabilities,
-    safety: "No network, USB or serial command has been sent. Device state and firmware must be confirmed before enabling writes.",
+    safety: "Only allowlisted read-only OSC requests may be sent from Android. No mixer write commands are implemented; confirm the model and live device state before any future write feature.",
     oscPreview: isOsc ? osc : [],
     references: [selected.docs],
   };
@@ -229,6 +229,6 @@ export default function DeviceControlPanel() {
       <a className="device-doc-link" href={selected.docs} target="_blank" rel="noreferrer">Tài liệu / hỗ trợ chính hãng hoặc nguồn thông số model <ExternalLink /></a>
     </section>
     <div className="protection-actions"><button type="button" onClick={exportConfig}><Download /> Xuất hồ sơ model JSON</button></div>
-    <p className="warning protection-warning"><ShieldAlert /> Không có lệnh điều khiển nào được gửi. Trước khi bật ghi tham số cần có kết nối native phù hợp, đọc trạng thái hiện tại, xác nhận model/firmware, hiển thị giá trị trước-sau và yêu cầu người vận hành xác nhận.</p>
+    <p className="warning protection-warning"><ShieldAlert /> Ứng dụng chỉ gửi truy vấn OSC chỉ đọc trên Android; chưa có lệnh ghi thay đổi mixer. Mọi chức năng ghi trong tương lai phải đọc trạng thái trước, hiển thị giá trị trước/sau và yêu cầu người vận hành xác nhận.</p>
   </article>;
 }
