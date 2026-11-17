@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.28.0-beta.1 — Repeatability-gated multi-position Auto EQ
+
+- Require 3–5 repeated AudioWorklet mono captures at each fixed microphone position before saving it for multi-position Auto EQ.
+- Compare repeated responses per frequency in log-frequency space; accept only bins with at least 80% repeat coverage and spread no greater than 3 dB.
+- Exclude unstable and under-covered bins from the per-position median response and report included/unstable/under-covered counts and spread statistics.
+- Store repeatability summaries and rejected-frequency diagnostics in each position and exported PEQ worksheet.
+- Keep within-position repeatability separate from between-position spatial variation. PEQ remains advisory and cut-only; no DSP/mixer writes.
+
+**Validation status:** regression tests and Android debug packaging are pending CI. Real-room comparison against a calibrated reference analyser remains required.
+
 ## 0.27.0-beta.1 — Spatial consistency diagnostics
 
 - Add per-frequency multi-position diagnostics with position coverage, spatial spread and an explicit included / insufficient-coverage / spatial-variance status.

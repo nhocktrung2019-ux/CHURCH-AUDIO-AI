@@ -1,4 +1,5 @@
 import { assessAutoEqReadiness, type AutoEqMeasurementPoint, type AutoEqReadiness } from "./autoEq.ts";
+import { type MeasurementRepeatabilityDiagnostic, type MeasurementRepeatabilitySummary } from "./measurementRepeatability.ts";
 import type { TransferResult } from "./transfer";
 
 export type MultiPositionAutoEqSample = {
@@ -8,6 +9,8 @@ export type MultiPositionAutoEqSample = {
   savedAt: string;
   sameChainConfirmed: boolean;
   result: TransferResult;
+  repeatability?: MeasurementRepeatabilitySummary;
+  repeatabilityDiagnostics?: MeasurementRepeatabilityDiagnostic[];
 };
 export type MultiPositionAutoEqDiagnostic = {
   frequencyHz: number;
@@ -74,6 +77,7 @@ export function assessMultiPositionAutoEq(samples: MultiPositionAutoEqSample[]):
   samples.forEach((s,i)=>{
     const name=s.label.trim() || `Vị trí ${i+1}`;
     if(!s.sameChainConfirmed) issues.push(`${name}: chưa xác nhận giữ nguyên chuỗi đo và hệ thống loa.`);
+    if(!s.repeatability || !s.repeatability.passed || s.repeatability.captureCount < 3) issues.push(`${name}: cần đo lặp tối thiểu 3 lần cùng vị trí và đạt kiểm tra độ ổn định trước khi tổng hợp Auto EQ.`);
     if(!Number.isFinite(s.weight)||s.weight<0.5||s.weight>2) issues.push(`${name}: trọng số phải từ 0,5 đến 2,0.`);
     if(s.result.captureMetadata?.analysisMode!=="mono-acoustic") issues.push(`${name}: chỉ nhận phép đo acoustic mono, không nhận loopback hai kênh.`);
     if(s.result.captureMetadata?.captureEngine!=="AudioWorklet") issues.push(`${name}: yêu cầu PCM AudioWorklet, không dùng ScriptProcessor dự phòng.`);
