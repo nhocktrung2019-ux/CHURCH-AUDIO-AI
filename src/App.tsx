@@ -23,8 +23,6 @@ import ProjectBackupPanel from "./audio/ProjectBackupPanel";
 import MultiMicFeedbackPanel from "./audio/MultiMicFeedbackPanel";
 import VersionSupportPanel from "./audio/VersionSupportPanel";
 import DSPIntegrationPanel from "./audio/DSPIntegrationPanel";
-import VoiceAssistantPanel from "./audio/VoiceAssistantPanel";
-import { describeVoiceIntent, type VoiceIntent } from "./audio/voiceCommands";
 import { APP_VERSION } from "./appVersion";
 import { LifeBuoy } from "lucide-react";
 import SystemHealthPanel from "./audio/SystemHealthPanel";
@@ -76,30 +74,6 @@ export default function App() {
     }
   };
   const t = useToneGenerator();
-  const handleVoiceIntent = (intent: VoiceIntent): string => {
-    switch (intent.type) {
-      case "navigate":
-        setActiveTab(intent.tab);
-        return describeVoiceIntent(intent);
-      case "measurement-start":
-        setActiveTab("rta");
-        if (a.running) return "Microphone đang hoạt động; không tạo phiên đo thứ hai.";
-        if (a.connecting) return "Microphone đang kết nối. Chờ trạng thái hiện tại hoàn tất.";
-        void a.start();
-        return "Đã gửi yêu cầu bắt đầu đo. Theo dõi trạng thái microphone và cảnh báo quyền truy cập.";
-      case "measurement-stop":
-        if (!a.running && !a.connecting) return "Không có phiên đo microphone đang chạy.";
-        a.stop();
-        return "Đã gửi yêu cầu dừng phép đo microphone.";
-      case "rta-frequency":
-        setActiveTab("rta");
-        setRtaFrequency(intent.frequencyHz);
-        return describeVoiceIntent(intent);
-      case "help":
-      case "unknown":
-        return describeVoiceIntent(intent);
-    }
-  };
   const inputs = a.devices.filter((device) => device.kind === "audioinput");
   const outputs = a.devices.filter((device) => device.kind === "audiooutput");
   const micStatus = a.running ? "MICRO ĐANG HOẠT ĐỘNG" : a.connecting ? "ĐANG XIN QUYỀN / KẾT NỐI" : a.permissionState === "denied" ? "CHƯA CÓ QUYỀN MICRO" : "SẴN SÀNG KIỂM TRA";
@@ -238,7 +212,6 @@ export default function App() {
     <section className="hero compact-hero"><small>PROFESSIONAL SOUND SYSTEM WORKSPACE</small><h1>Church Audio <em>Workbench.</em></h1><p>Bộ công cụ khảo sát âm học, phân tích hệ thống loa và căn chỉnh âm thanh nhà thờ trên Android và máy tính.</p></section>
     <nav className="workspace-tabs" aria-label="Các phân hệ phần mềm">{tabs.map(({id,label,short,icon:Icon}) => <button key={id} className={activeTab === id ? "workspace-tab active" : "workspace-tab"} onClick={() => setActiveTab(id)} aria-current={activeTab === id ? "page" : undefined}><Icon /><span>{label}</span><small>{short}</small></button>)}</nav>
     <div className="workspace-title"><div><small>WORKSPACE / {tabs.find(x => x.id === activeTab)?.short}</small><h2>{tabs.find(x => x.id === activeTab)?.label}</h2></div><span className={a.running ? "live" : "idle"}>{a.running ? "● INPUT LIVE" : "● INPUT IDLE"}</span></div>
-    <VoiceAssistantPanel measuring={a.running || a.connecting} onIntent={handleVoiceIntent} />
 
     {activeTab === "overview" && <>
       <section className="metrics overview-metrics"><article><small>INPUT PEAK</small><strong>{a.level <= -99 ? "−∞" : a.level.toFixed(1)} <small>dBFS</small></strong><div className="meter"><i style={{width:`${Math.max(0,Math.min(100,((a.level+60)/60)*100))}%`}} /></div></article><article><small>INPUT RMS</small><strong>{a.rmsDbfs <= -99 ? "—" : a.rmsDbfs.toFixed(1)} <small>dBFS</small></strong></article><article><small>INPUT DEVICES</small><strong>{inputs.length} <small>MIC</small></strong></article><article><small>OUTPUT DEVICES</small><strong>{outputs.length} <small>OUT</small></strong></article></section>
