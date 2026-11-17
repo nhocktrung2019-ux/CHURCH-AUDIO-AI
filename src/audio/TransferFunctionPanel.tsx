@@ -38,7 +38,8 @@ export default function TransferFunctionPanel({ selectedInput, running, calibrat
     setBusy(true); setError(""); setNotice(""); setResult(null); setEqCopied(false);
     let stream: MediaStream | undefined, audio: AudioContext | undefined;
     let microphoneSource: MediaStreamAudioSourceNode | undefined;
-    let processor: ScriptProcessorNode | undefined;
+    let legacyProcessor: ScriptProcessorNode | undefined;
+    let workletNode: AudioWorkletNode | undefined;
     let silentGain: GainNode | undefined;
     let source: AudioBufferSourceNode | undefined, playbackGain: GainNode | undefined;
     try {
@@ -49,9 +50,6 @@ export default function TransferFunctionPanel({ selectedInput, running, calibrat
       audio = new AudioContext();
       await audio.resume();
       if (audio.state !== "running") throw new Error("Audio engine chưa chạy. Chạm đo lại và kiểm tra quyền micro.");
-      if (typeof audio.createScriptProcessor !== "function") {
-        throw new Error("Thiết bị không hỗ trợ thu PCM thô qua Web Audio. Cập nhật Android System WebView/Chrome rồi thử lại.");
-      }
 
       const reference = makeReferenceNoise(audio.sampleRate, 5);
       const buffer = audio.createBuffer(1, reference.length, audio.sampleRate);
@@ -60,38 +58,77 @@ export default function TransferFunctionPanel({ selectedInput, running, calibrat
       const blocks: Float32Array[] = [];
       let firstBlockPlaybackTime: number | null = null;
       let previousBlockPlaybackTime: number | null = null;
+      let previousFrameEnd: number | null = null;
       let missedBlocks = 0;
-      processor = audio.createScriptProcessor(blockSize, 1, 1);
-      silentGain = audio.createGain();
-      silentGain.gain.value = 0;
+      let captureEngine: "AudioWorklet" | "ScriptProcessor fallback" = "AudioWorklet";
       microphoneSource = audio.createMediaStreamSource(stream);
-      processor.onaudioprocess = (event) => {
-        const playbackTime = event.playbackTime;
-        if (!Number.isFinite(playbackTime)) {
-          missedBlocks++;
-          return;
+
+      if (audio.audioWorklet && typeof AudioWorkletNode !== "undefined") {
+        try {
+          await audio.audioWorklet.addModule("/audio/pcm-capture-worklet.js");
+          workletNode = new AudioWorkletNode(audio, "church-pcm-capture", {
+            numberOfInputs: 1, numberOfOutputs: 1, outputChannelCount: [1],
+            channelCountMode: "max", channelInterpretation: "speakers",
+          });
+          workletNode.port.onmessage = (event: MessageEvent<{ pcm: ArrayBuffer; frameStart: number; channelCount: number }>) => {
+            const { pcm, frameStart } = event.data;
+            if (!(pcm instanceof ArrayBuffer) || !Number.isInteger(frameStart)) {
+              missedBlocks++;
+              return;
+            }
+            if (previousFrameEnd !== null && frameStart !== previousFrameEnd) {
+              missedBlocks += Math.max(1, Math.round(Math.abs(frameStart - previousFrameEnd) / blockSize));
+            }
+            previousFrameEnd = frameStart + pcm.byteLength / Float32Array.BYTES_PER_ELEMENT;
+            if (firstBlockPlaybackTime === null) firstBlockPlaybackTime = frameStart / audio!.sampleRate;
+            blocks.push(new Float32Array(pcm));
+          };
+          microphoneSource.connect(workletNode);
+          silentGain = audio.createGain();
+          silentGain.gain.value = 0;
+          workletNode.connect(silentGain);
+          silentGain.connect(audio.destination);
+        } catch (workletError) {
+          workletNode?.disconnect();
+          workletNode = undefined;
+          captureEngine = "ScriptProcessor fallback";
+          setNotice("AudioWorklet chưa khởi tạo được trên WebView này; đang dùng ScriptProcessor dự phòng đã lỗi thời. Không coi đây là chế độ đo chuẩn cuối cùng.");
         }
-        if (firstBlockPlaybackTime === null) firstBlockPlaybackTime = playbackTime;
-        if (previousBlockPlaybackTime !== null) {
-          const expectedSeconds = blockSize / audio!.sampleRate;
-          const elapsed = playbackTime - previousBlockPlaybackTime;
-          if (elapsed > expectedSeconds * 1.5) {
-            missedBlocks += Math.max(1, Math.round(elapsed / expectedSeconds) - 1);
+      } else {
+        captureEngine = "ScriptProcessor fallback";
+        setNotice("WebView không hỗ trợ AudioWorklet; đang dùng ScriptProcessor dự phòng đã lỗi thời. Nên cập nhật Android System WebView.");
+      }
+
+      if (!workletNode) {
+        if (typeof audio.createScriptProcessor !== "function") {
+          throw new Error("Thiết bị không hỗ trợ AudioWorklet hoặc ScriptProcessor. Cập nhật Android System WebView/Chrome rồi thử lại.");
+        }
+        legacyProcessor = audio.createScriptProcessor(blockSize, 1, 1);
+        silentGain = audio.createGain();
+        silentGain.gain.value = 0;
+        legacyProcessor.onaudioprocess = (event) => {
+          const playbackTime = event.playbackTime;
+          if (!Number.isFinite(playbackTime)) { missedBlocks++; return; }
+          if (firstBlockPlaybackTime === null) firstBlockPlaybackTime = playbackTime;
+          if (previousBlockPlaybackTime !== null) {
+            const expectedSeconds = blockSize / audio!.sampleRate;
+            const elapsed = playbackTime - previousBlockPlaybackTime;
+            if (elapsed > expectedSeconds * 1.5) missedBlocks += Math.max(1, Math.round(elapsed / expectedSeconds) - 1);
           }
-        }
-        previousBlockPlaybackTime = playbackTime;
-        const input = event.inputBuffer;
-        if (!input.numberOfChannels) return;
-        const pcm = new Float32Array(input.length);
-        for (let channel = 0; channel < input.numberOfChannels; channel++) {
-          const samples = input.getChannelData(channel);
-          for (let i = 0; i < samples.length; i++) pcm[i] += samples[i] / input.numberOfChannels;
-        }
-        blocks.push(pcm);
-      };
-      microphoneSource.connect(processor);
-      processor.connect(silentGain);
-      silentGain.connect(audio.destination);
+          previousBlockPlaybackTime = playbackTime;
+          const input = event.inputBuffer;
+          if (!input.numberOfChannels) return;
+          const pcm = new Float32Array(input.length);
+          for (let channel = 0; channel < input.numberOfChannels; channel++) {
+            const samples = input.getChannelData(channel);
+            for (let i = 0; i < samples.length; i++) pcm[i] += samples[i] / input.numberOfChannels;
+          }
+          blocks.push(pcm);
+        };
+        microphoneSource.connect(legacyProcessor);
+        legacyProcessor.connect(silentGain);
+        silentGain.connect(audio.destination);
+      }
 
       source = audio.createBufferSource();
       playbackGain = audio.createGain();
@@ -101,21 +138,19 @@ export default function TransferFunctionPanel({ selectedInput, running, calibrat
       const playbackStartTime = audio.currentTime + 0.25;
       source.start(playbackStartTime);
       await new Promise<void>(resolve => window.setTimeout(resolve, 5600));
-      processor.onaudioprocess = null;
+      if (legacyProcessor) legacyProcessor.onaudioprocess = null;
+      if (workletNode) workletNode.port.postMessage({ command: "stop" });
 
       if (!blocks.length || firstBlockPlaybackTime === null) {
         throw new Error("Không nhận được khung PCM từ microphone. Kiểm tra quyền, input và kết nối USB/OTG.");
       }
       if (missedBlocks > 0) {
-        throw new Error("Luồng PCM bị gián đoạn trong lúc đo. Hãy đóng ứng dụng dùng micro, giảm tải thiết bị và đo lại; kết quả không được dùng cho Auto EQ.");
+        throw new Error("Luồng PCM bị mất hoặc sai thứ tự frame trong lúc đo. Hãy đóng ứng dụng dùng micro, giảm tải thiết bị và đo lại; kết quả không được dùng cho Auto EQ.");
       }
       const totalSamples = blocks.reduce((sum, block) => sum + block.length, 0);
       const captured = new Float32Array(totalSamples);
       let writeOffset = 0;
-      for (const block of blocks) {
-        captured.set(block, writeOffset);
-        writeOffset += block.length;
-      }
+      for (const block of blocks) { captured.set(block, writeOffset); writeOffset += block.length; }
       const playbackOffsetSeconds = playbackStartTime - firstBlockPlaybackTime;
       if (!Number.isFinite(playbackOffsetSeconds) || playbackOffsetSeconds < 0 || playbackOffsetSeconds > 1) {
         throw new Error("Không xác định được thời điểm bắt đầu phát so với PCM capture. Hãy đo lại.");
@@ -134,12 +169,15 @@ export default function TransferFunctionPanel({ selectedInput, running, calibrat
         setNotice("Đã thu PCM thô theo sample clock AudioContext; pre-roll đã được bù. Đây vẫn là phép đo đường loa–phòng–micro, chưa phải loopback hai kênh.");
       }
       setResult({ ...measured, captureQuality });
+      if (captureEngine === "AudioWorklet") setNotice("Đã thu PCM thô bằng AudioWorklet trên sample clock của AudioContext; pre-roll đã được bù. Đường đo vẫn là loa–phòng–micro, chưa phải loopback đồng bộ hai kênh.");
     } catch (cause) {
       setError(explainMicrophoneError(cause));
     } finally {
-      processor && (processor.onaudioprocess = null);
+      legacyProcessor && (legacyProcessor.onaudioprocess = null);
+      workletNode && (workletNode.port.onmessage = null);
       microphoneSource?.disconnect();
-      processor?.disconnect();
+      legacyProcessor?.disconnect();
+      workletNode?.disconnect();
       silentGain?.disconnect();
       source?.disconnect(); playbackGain?.disconnect();
       stream?.getTracks().forEach(track => track.stop());
