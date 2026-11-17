@@ -539,6 +539,24 @@ footer{padding-bottom:calc(26px + env(safe-area-inset-bottom))}
 .device-doc-link svg{width:14px;height:14px;flex:none}
 
 
+
+
+/* Explicitly confirmed, range-limited mixer writes */
+.osc-guarded-write{margin-top:14px;padding:13px;border:1px solid #775f3b;border-radius:9px;background:rgba(48,35,18,.22)}
+.osc-guarded-write .protection-subheading>span{color:#e6c78d}
+.osc-write-preview{display:grid;gap:9px;margin:12px 0;padding:12px;border:1px solid #5e684b;border-radius:8px;background:#111e1b}
+.osc-write-preview>b{font-size:11px;color:#e7d8b2}
+.osc-write-preview>div{display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:10px}
+.osc-write-preview>div span{color:#8da6a2}
+.osc-write-preview>div strong{color:#d6e8dd;text-align:right;overflow-wrap:anywhere}
+.osc-write-preview>code{padding:7px;border-radius:5px;background:#07120f;color:#a5dfc3;font-size:10px;overflow-wrap:anywhere}
+.osc-write-preview>.device-mute-toggle{align-items:flex-start;line-height:1.5}
+.osc-write-preview>.device-mute-toggle span{font-size:10px}
+.osc-write-preview>button{width:100%}
+.osc-guarded-write .protection-field small{display:block;margin-top:6px;font-size:9px}
+.success-note{padding:9px;border:1px solid #3e765f;border-radius:6px;background:rgba(29,92,66,.22);color:#a8e7c7;font-size:10px;line-height:1.6}
+@media(max-width:620px){.osc-guarded-write{padding:10px}.osc-write-preview>div{align-items:flex-start;flex-direction:column;gap:3px}.osc-write-preview>div strong{text-align:left}}
+
 /* Android native read-only OSC console */
 .osc-live-query{margin:16px 0;padding:13px;border:1px solid #3c5964;border-radius:9px;background:rgba(10,25,33,.75)}
 .osc-live-query .protection-subheading{margin-top:2px}
