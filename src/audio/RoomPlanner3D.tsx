@@ -9,7 +9,14 @@ const clamp=(v:number,min:number,max:number)=>Math.max(min,Math.min(max,v));
 export default function RoomPlanner3D(){
  const[length,setLength]=usePersistentState("church-audio-room-length",28),[width,setWidth]=usePersistentState("church-audio-room-width",16),[height,setHeight]=usePersistentState("church-audio-room-height",7);
  const[speakers,setSpeakers]=usePersistentState<SpeakerUnit[]>("church-audio-room-speakers",[{id:1,name:"Loa chính trái",model:"CBT 70J-1 (CBT 70)",zone:"Khu vực 1",x:3,y:3,z:5.5,azimuth:35,coverage:90,verticalCoverage:40,sensitivity:null,powerW:null,impedance:8},{id:2,name:"Loa chính phải",model:"CBT 70J-1 (CBT 70)",zone:"Khu vực 1",x:3,y:13,z:5.5,azimuth:-35,coverage:90,verticalCoverage:40,sensitivity:null,powerW:null,impedance:8},{id:3,name:"Loa delay",model:"Bose MA12",zone:"Khu vực 2",x:17,y:8,z:4,azimuth:180,coverage:100,verticalCoverage:40,sensitivity:null,powerW:null,impedance:8}]);
- const[selected,setSelected]=usePersistentState("church-audio-room-selected",1),[refX,setRefX]=usePersistentState("church-audio-room-ref-x",22),[refY,setRefY]=usePersistentState("church-audio-room-ref-y",8),[targetSpl,setTargetSpl]=usePersistentState("church-audio-room-target-spl",85),[view,setView]=usePersistentState<"perspective"|"top"|"webgl">("church-audio-room-view","webgl");
+ const[selected,setSelected]=usePersistentState("church-audio-room-selected",1),[refX,setRefX]=usePersistentState("church-audio-room-ref-x",22),[refY,setRefY]=usePersistentState("church-audio-room-ref-y",8),[targetSpl,setTargetSpl]=usePersistentState("church-audio-room-target-spl",85),[view,setView]=usePersistentState<"perspective"|"top"|"webgl">("church-audio-room-view-v2",()=>{
+  try {
+   const previous=typeof window!=="undefined"?window.localStorage.getItem("church-audio-room-view"):null;
+   return previous==="top"?"top":"webgl";
+  } catch {
+   return "webgl";
+  }
+ });
  const [cameraYaw,setCameraYaw]=usePersistentState("church-audio-room-camera-yaw",0),[cameraPitch,setCameraPitch]=usePersistentState("church-audio-room-camera-pitch",50),[analysisBandHz,setAnalysisBandHz]=usePersistentState("church-audio-room-analysis-band",1000);
  const [dragging,setDragging]=useState<{kind:"speaker"|"object";id:number}|null>(null);
  const [sceneObjects,setSceneObjects]=usePersistentState<SceneObject[]>("church-audio-room-scene-objects",[{id:101,kind:"altar",name:"Bàn thờ",x:23,y:6.2,w:2.8,d:1.5,h:1.05,rotation:0},{id:102,kind:"pulpit",name:"Tòa giảng",x:20.5,y:10,w:1.1,d:1.1,h:1.25,rotation:0},{id:103,kind:"stage",name:"Sân khấu / cung thánh",x:22,y:8,w:6,d:5,h:.35,rotation:0},...[4,8,12].flatMap((x)=>[3,8,13].map((y)=>({id:200+x*10+y,kind:"column" as const,name:"Cột",x,y,w:.55,d:.55,h:height,rotation:0}))),...[0,1,2,3,4].flatMap((row)=>[3,5,7,9,11,13].map((y,col)=>({id:500+row*20+col,kind:"pew" as const,name:"Hàng ghế "+(row+1),x:7+row*2.2,y,w:1.65,d:.42,h:.48,rotation:0}))) ]),[selectedObject,setSelectedObject]=usePersistentState("church-audio-room-selected-object",101);
