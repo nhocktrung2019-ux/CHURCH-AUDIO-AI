@@ -505,3 +505,27 @@ footer{padding-bottom:calc(26px + env(safe-area-inset-bottom))}
 .protection-warning{display:flex;align-items:flex-start;gap:9px;line-height:1.6}
 .protection-warning svg{width:17px;height:17px;flex:none;margin-top:2px}
 @media(max-width:620px){.protection-results{grid-template-columns:1fr}.protection-actions{flex-direction:column}.protection-actions button{width:100%;flex-basis:auto}.mic-channel-row{align-items:flex-start;flex-direction:column}.protection-field.full{grid-column:auto}}
+
+
+/* DSP and mixer integration profiles */
+.device-control-panel{border-color:#405a67;background:linear-gradient(145deg,#172833,#101a22)}
+.device-control-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:14px 0}
+.device-control-grid select,.device-control-grid input{width:100%;min-width:0;padding:10px;border:1px solid #36505b;border-radius:7px;background:#0d1921;color:#e3f0f5;font:12px ui-monospace,SFMono-Regular,Consolas,monospace}
+.device-mute-toggle{display:flex;align-items:center;gap:9px;padding:10px;border:1px solid #40515a;border-radius:7px;color:#c7d8df;font-size:11px}
+.device-mute-toggle input{width:17px;height:17px;accent-color:#75d5b2}
+.device-protocol-status{display:flex;align-items:flex-start;gap:11px;padding:13px;border:1px solid #365e51;border-radius:8px;background:rgba(25,76,58,.22)}
+.device-protocol-status.pending{border-color:#6a5838;background:rgba(92,67,29,.18)}
+.device-protocol-status>svg{width:19px;height:19px;flex:none;color:#82d7b6}
+.device-protocol-status.pending>svg{color:#e0bd7d}
+.device-protocol-status div{display:grid;gap:5px}
+.device-protocol-status b{font-size:11px;color:#d9eee5}
+.device-protocol-status span{font-size:10px;line-height:1.55;color:#a9bdc1}
+.osc-preview{margin-top:16px;padding:12px;border:1px solid #344c58;border-radius:9px;background:#0c1820}
+.osc-line{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:1px solid #263b45}
+.osc-line:last-of-type{border-bottom:0}
+.osc-line>div{display:grid;gap:4px;min-width:0}
+.osc-line b{font-size:10px;color:#d4e6e7}
+.osc-line code{font-size:11px;color:#8edec4;overflow-wrap:anywhere}
+.osc-line small{font-size:9px;color:#829da6}
+.osc-line .icon-button{flex:none}
+@media(max-width:620px){.device-control-grid{grid-template-columns:1fr}.device-control-grid .full{grid-column:auto}}
