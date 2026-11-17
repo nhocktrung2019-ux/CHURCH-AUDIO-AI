@@ -125,7 +125,7 @@ export function estimateSynchronousRelativeDelay(
 
   const coarseStep = 4;
   let coarseLag = 0, coarseScore = 0;
-  for (let lag = -limit; lag <= limit; lag += coarseStep) {
+  for (let lag = -limit; lag <= limit; lag++) {
     const score = Math.abs(correlationAtLag(reference, measurement, lag, coarseStep));
     if (score > coarseScore) { coarseScore = score; coarseLag = lag; }
   }
