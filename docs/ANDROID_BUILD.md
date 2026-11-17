@@ -28,10 +28,16 @@ APK output: `android/app/build/outputs/apk/debug/app-debug.apk`.
 Microphone capture requires Android microphone permission and a secure runtime. Bluetooth and USB audio routing depend on Android device support and are not guaranteed by browser device enumeration. Calibrated SPL, RT60, transfer-function phase, delay alignment and automatic feedback suppression require validated measurement procedures and suitable hardware; do not treat uncalibrated phone-microphone readings as certified measurements.
 
 
-## X32 / M32 network control (Android, read-only phase)
+## X32 / M32 network monitor (Android, read-only phase)
 
-The app includes a small Capacitor native UDP plugin for X32/M32 OSC read requests. The installer script copies the Java plugin into the generated Android app, registers it in `MainActivity`, and adds Android's `INTERNET` permission. The Android APK workflow runs this installer automatically after Capacitor sync.
+The Android Capacitor plugin sends OSC query packets over UDP to the configured console IP and port (default 10023). It accepts only private/link-local IPv4 destinations and an explicit allowlist of read-only OSC paths. Query packets contain no value arguments.
 
-Only the following read-only OSC requests are accepted by the native plugin: `/info`, `/xinfo`, `/status`, selected channel name/fader/on/pan/preamp trim, and selected channel EQ enable/band values. Requests contain no OSC arguments. The plugin restricts destinations to private/link-local IPv4 ranges and uses a response timeout. No mixer write commands, mute changes, fader changes, EQ changes, preset loads, subscriptions, or background polling are implemented.
+The monitor can read:
+- Console identity/status: `/info`, `/xinfo`, `/status`.
+- Input channels 01–32: name, fader, on/off, pan, preamp trim, EQ enable, dynamics enable; selected-channel detail includes supported preamp, gate, dynamics and four-band EQ parameters.
+- Mix buses 01–16, Main Stereo/Mono, Matrix 01–06, Aux inputs 01–08, FX returns 01–08 and DCA 01–08: supported name, fader/on state, pan where applicable, EQ/dynamics enable; selected-strip detail reads additional supported EQ/dynamics values.
+- Batch reads are limited to 64 allowlisted paths per native call; the UI sends smaller groups to reduce UDP packet loss. Live Monitor polls the selected strip at a two-second interval while the screen is active.
 
-For an X32/M32 test, connect the Android device and console to the same LAN, enter the console's IP address, keep the console's OSC port at UDP 10023, and use the in-app **Read mixer info** action. This phase has not been validated against physical hardware; CI success confirms compilation only, not mixer connectivity.
+The native receiver validates the source IP, not a fixed source port: OSC consoles may send replies to the phone's ephemeral UDP source port. Unrelated/malformed datagrams are ignored, and the receiver waits until the configured overall timeout.
+
+Snapshots save the values actually received on the device and can be exported as JSON. A snapshot is a measurement/state record only; there is no restore/write command yet. No fader, mute, gain, EQ, routing, preset, scene, or DSP parameter write is enabled. No physical X32/M32 console has yet been available for hardware validation; a successful CI build verifies compilation and packaging, not live console interoperability.
