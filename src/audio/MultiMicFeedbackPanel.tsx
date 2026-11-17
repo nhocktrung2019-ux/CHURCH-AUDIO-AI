@@ -34,7 +34,7 @@ export default function MultiMicFeedbackPanel() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
-  const [voiceAlertEnabled, setVoiceAlertEnabled] = useState(true);
+  const [feedbackAlertsEnabled, setFeedbackAlertsEnabled] = useState(true);
   const [alertMessage, setAlertMessage] = useState("");
   const audioRef = useRef<AudioContext | null>(null);
   const sessionsRef = useRef<Session[]>([]);
@@ -59,7 +59,6 @@ export default function MultiMicFeedbackPanel() {
 
   useEffect(() => () => {
     stop();
-    if ("speechSynthesis" in window) window.speechSynthesis.cancel();
   }, []);
 
   const refresh = async () => {
@@ -234,25 +233,16 @@ export default function MultiMicFeedbackPanel() {
       .join("; ");
     const message = `Cảnh báo, có đỉnh tần số nghi vấn hú rít tại ${details}. Hãy hạ mức âm thanh, kiểm tra lần lượt micro và loa monitor. Không tăng gain hoặc áp dụng EQ tự động.`;
     setAlertMessage(message);
-    if (!voiceAlertEnabled || !("speechSynthesis" in window) || typeof SpeechSynthesisUtterance === "undefined") return;
-    window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(message);
-    utterance.lang = "vi-VN";
-    const vietnameseVoice = window.speechSynthesis.getVoices().find((voice) => voice.lang.toLowerCase().startsWith("vi"));
-    if (vietnameseVoice) utterance.voice = vietnameseVoice;
-    utterance.rate = 0.96;
-    utterance.pitch = 1;
-    window.speechSynthesis.speak(utterance);
-  }, [channels, running, voiceAlertEnabled]);
+  }, [channels, running, feedbackAlertsEnabled]);
 
   return <section className="panel multi-mic-panel" id="multi-mic">
     <div className="heading"><Activity /><h2>Multi-Source Measurement · Đo đa nguồn</h2><span>{running ? "LIVE SESSION" : "STANDBY"}</span></div>
     <p className="muted">Chọn tối đa 4 đầu vào được hệ điều hành liệt kê riêng. Ứng dụng mở từng input thành luồng độc lập, hiển thị RTA riêng và phổ tổng hợp tham khảo; không giả định các luồng dùng chung hardware clock hoặc lấy mẫu đồng bộ.</p>
 
     <section className="multi-mic-alert-settings">
-      <label><input type="checkbox" checked={voiceAlertEnabled} onChange={(event) => setVoiceAlertEnabled(event.target.checked)} /><span>Đọc cảnh báo hú rít bằng tiếng Việt</span></label>
-      <p>Chỉ thông báo khi xuất hiện đỉnh tần số hẹp có độ bền và độ nổi đủ lớn; mỗi tần số được giới hạn nhắc lại để tránh cảnh báo liên tục. Đây là nghi vấn cần xác minh bằng tai nghe và kiểm tra hệ thống.</p>
-      {alertMessage && <p className="device-notice" role="status" aria-live="polite">{alertMessage}</p>}
+      <label><input type="checkbox" checked={feedbackAlertsEnabled} onChange={(event) => setFeedbackAlertsEnabled(event.target.checked)} /><span>Hiển thị cảnh báo hú rít bằng tiếng Việt</span></label>
+      <p>Cảnh báo xuất hiện khi phát hiện đỉnh tần số hẹp có độ bền và độ nổi đủ lớn; cùng một tần số được giới hạn nhắc lại để tránh cảnh báo liên tục. Đây là nghi vấn cần xác minh bằng tai nghe và kiểm tra hệ thống.</p>
+      {feedbackAlertsEnabled && alertMessage && <p className="device-notice" role="status" aria-live="polite">{alertMessage}</p>}
     </section>
 
     <div className="multi-mic-toolbar">
