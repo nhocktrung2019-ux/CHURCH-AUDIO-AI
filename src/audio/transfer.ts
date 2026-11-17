@@ -45,26 +45,44 @@ function normalizedCorrelation(reference: Float32Array, recorded: Float32Array, 
   }
   return count && xx > 1e-15 && yy > 1e-15 ? xy / Math.sqrt(xx * yy) : 0;
 }
+function decimateForLag(samples: Float32Array, factor: number): Float32Array {
+  const count = Math.floor(samples.length / factor);
+  const output = new Float32Array(count);
+  for (let index = 0; index < count; index++) {
+    let sum = 0;
+    const offset = index * factor;
+    for (let sample = 0; sample < factor; sample++) sum += samples[offset + sample];
+    output[index] = sum / factor;
+  }
+  return output;
+}
+
 function bestLag(reference: Float32Array, recorded: Float32Array, sampleRate: number): { lag: number; score: number } {
-  // Keep the coarse search bounded, but test every integer lag. A coarse lag
-  // stride of 32 can miss a sharp broadband correlation peak when the true
-  // playback offset is not a multiple of 32 samples.
-  const limit = Math.min(Math.floor(sampleRate * 0.75), Math.floor(recorded.length * 0.25));
-  const coarseLength = Math.min(reference.length, Math.floor(sampleRate * 0.25));
-  let best = 0;
-  let score = 0;
+  // Low-pass/decimate for a bounded coarse search. The fine search below still
+  // checks every full-rate sample, so offsets need not align to the decimation grid.
+  const factor = 16;
+  const coarseReference = decimateForLag(reference, factor);
+  const coarseRecorded = decimateForLag(recorded, factor);
+  const limitSamples = Math.min(Math.floor(sampleRate * 0.75), Math.floor(recorded.length * 0.25));
+  const limit = Math.floor(limitSamples / factor);
+  const coarseLength = Math.min(coarseReference.length, Math.floor(sampleRate * 0.25 / factor));
+
+  let coarseBest = 0;
+  let coarseScore = 0;
   for (let lag = -limit; lag <= limit; lag++) {
-    const value = Math.abs(normalizedCorrelation(reference, recorded, lag, 16, coarseLength));
-    if (value > score) {
-      score = value;
-      best = lag;
+    const value = Math.abs(normalizedCorrelation(coarseReference, coarseRecorded, lag, 1, coarseLength));
+    if (value > coarseScore) {
+      coarseScore = value;
+      coarseBest = lag;
     }
   }
 
-  // Refine the integer lag with full-rate samples around the coarse maximum.
+  // Refine around the nearest coarse delay using un-decimated samples.
   const fineLength = Math.min(reference.length, Math.floor(sampleRate * 1.5));
-  const coarse = best;
-  for (let lag = Math.max(-limit, coarse - 16); lag <= Math.min(limit, coarse + 16); lag++) {
+  const center = coarseBest * factor;
+  let best = center;
+  let score = 0;
+  for (let lag = Math.max(-limitSamples, center - factor); lag <= Math.min(limitSamples, center + factor); lag++) {
     const value = Math.abs(normalizedCorrelation(reference, recorded, lag, 1, fineLength));
     if (value > score) {
       score = value;
