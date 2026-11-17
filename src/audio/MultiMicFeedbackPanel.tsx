@@ -197,7 +197,6 @@ export default function MultiMicFeedbackPanel() {
         frameRef.current = requestAnimationFrame(tick);
       };
       frameRef.current = requestAnimationFrame(tick);
-      setNotice("Đã bắt đầu đo. Đang giám sát " + opened.length + " nguồn âm thanh độc lập.");
     } catch (e) {
       opened.forEach(s => s.stream.getTracks().forEach(t => t.stop()));
       if (audio && audio.state !== "closed") await audio.close().catch(() => undefined);
