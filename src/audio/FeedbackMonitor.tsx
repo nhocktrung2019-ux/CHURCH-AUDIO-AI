@@ -62,6 +62,7 @@ export default function FeedbackMonitor({ history }: { history: number[][] }) {
   const [notice, setNotice] = useState("");
   const recognitionRef = useRef<RecognitionLike | null>(null);
   const announcedRef = useRef<string[]>([]);
+  const lastAnnouncedAtRef = useRef(0);
 
   const peaks = useMemo(
     () => autoGuardEnabled
@@ -113,10 +114,11 @@ export default function FeedbackMonitor({ history }: { history: number[][] }) {
   useEffect(() => {
     if (!voiceEnabled || !autoGuardEnabled || !peaks.length) return;
     const fresh = peaks.filter((point) => !announcedRef.current.includes(String(point.frequencyHz)));
-    if (!fresh.length) return;
+    if (!fresh.length || Date.now() - lastAnnouncedAtRef.current < 8000) return;
     const point = fresh[0];
     const key = String(point.frequencyHz);
     announcedRef.current = [...announcedRef.current, key].slice(-24);
+    lastAnnouncedAtRef.current = Date.now();
     speakVietnamese(
       "Cảnh báo nghi hú tại " + point.frequencyHz + " héc. Độ ổn định " +
       point.stabilityPercent + " phần trăm. Hãy giảm gain và kiểm tra vị trí micro.",
@@ -138,6 +140,8 @@ export default function FeedbackMonitor({ history }: { history: number[][] }) {
     } else if (command.includes("bat doc") || command.includes("bat giong noi")) {
       setVoiceEnabled(true);
       speakVietnamese("Đã bật cảnh báo giọng nói.");
+    } else if (command.includes("doc canh bao") || command.includes("bao cao trang thai")) {
+      speakCurrentStatus();
     } else if (command.includes("luu tat ca") || command.includes("luu cac diem")) {
       saveCandidates(peaks);
       speakVietnamese("Đã lưu danh sách điểm nghi hú hiện tại.");
@@ -149,7 +153,7 @@ export default function FeedbackMonitor({ history }: { history: number[][] }) {
     } else {
       speakVietnamese("Lệnh chưa được nhận diện. Hãy nói: đọc cảnh báo, lưu điểm hú, lưu tất cả điểm, bật chống hú, tắt chống hú hoặc đọc hướng dẫn.");
     }
-  }, [peaks, saveCandidates, setAutoGuardEnabled, setVoiceEnabled]);
+  }, [peaks, saveCandidates, setAutoGuardEnabled, setVoiceEnabled, speakCurrentStatus]);
 
   const startVoiceCommand = () => {
     const voiceWindow = window as SpeechWindow;
