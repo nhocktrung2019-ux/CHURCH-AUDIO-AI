@@ -59,6 +59,7 @@ function errorMessage(code: string): string {
 
 export default function VoiceAssistantPanel({ measuring, onIntent }: Props) {
   const [supported, setSupported] = useState(false);
+  const [expanded, setExpanded] = useState(false);
   const [listening, setListening] = useState(false);
   const [command, setCommand] = useState("");
   const [transcript, setTranscript] = useState("");
@@ -156,8 +157,11 @@ export default function VoiceAssistantPanel({ measuring, onIntent }: Props) {
   };
 
   return <section className="panel voice-assistant-panel" aria-label="Trợ lý lệnh giọng nói">
-    <div className="heading"><AudioLines /><h2>Voice Control · Lệnh tiếng Việt</h2><span>{listening ? "LISTENING" : supported ? "READY" : "TEXT FALLBACK"}</span></div>
-    <p className="muted">Điều khiển cục bộ theo tập lệnh đã định nghĩa. Không gửi dữ liệu âm thanh lên AI cloud và không tự điều chỉnh DSP hay thay đổi cấu hình âm thanh nguy hiểm.</p>
+    <button type="button" className="voice-assistant-toggle" aria-expanded={expanded} onClick={() => setExpanded(value => !value)}>
+      <AudioLines /><b>Voice Control · Lệnh tiếng Việt</b><span>{listening ? "LISTENING" : supported ? "READY" : "TEXT FALLBACK"}</span>
+    </button>
+    {expanded && <>
+    <p className="muted">Lệnh được phân tích cục bộ theo tập từ khóa đã định nghĩa; đây chưa phải hội thoại AI. Dịch vụ nhận dạng Web Speech có thể xử lý âm thanh theo chính sách của Android/WebView hoặc trình duyệt. Ứng dụng không tự gửi âm thanh đến một máy chủ AI riêng và không tự ghi cấu hình DSP.</p>
     <div className="voice-assistant-actions">
       <button type="button" disabled={listening || measuring || !supported} onClick={startListening}>
         <Mic /> {listening ? "Đang nghe…" : "Ra lệnh bằng giọng nói"}
@@ -176,5 +180,6 @@ export default function VoiceAssistantPanel({ measuring, onIntent }: Props) {
     </form>
     {transcript && <p className="voice-transcript"><b>Đã nhận:</b> {transcript}</p>}
     <p className="device-notice" role="status">{response}</p>
+    </>}
   </section>;
 }
