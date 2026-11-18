@@ -314,7 +314,7 @@ export default function ChurchSceneWebGL(props: Props) {
     groups: Map<string, THREE.Group>;
     raycaster: THREE.Raycaster;
     pointer: THREE.Vector2;
-    drag: { kind: "speaker" | "object"; id: number; group: THREE.Group } | null;
+    drag: { kind: "speaker" | "object"; id: number; group: THREE.Group; originX: number; originZ: number } | null;
     floorPlane: THREE.Plane;
   } | null>(null);
   const [webglError, setWebglError] = useState(false);
@@ -377,7 +377,7 @@ export default function ChurchSceneWebGL(props: Props) {
       groups,
       raycaster: new THREE.Raycaster(),
       pointer: new THREE.Vector2(),
-      drag: null as { kind: "speaker" | "object"; id: number; group: THREE.Group } | null,
+      drag: null as { kind: "speaker" | "object"; id: number; group: THREE.Group; originX: number; originZ: number } | null,
       floorPlane: new THREE.Plane(new THREE.Vector3(0, 1, 0), 0),
     };
     api.current = state;
@@ -411,7 +411,11 @@ export default function ChurchSceneWebGL(props: Props) {
       const id = node.userData.id as number;
       const group = groups.get((kind === "speaker" ? "s:" : "o:") + id);
       if (!group) return;
-      state.drag = { kind, id, group };
+      state.drag = {
+        kind, id, group,
+        originX: group.position.x,
+        originZ: group.position.z,
+      };
       controls.enabled = false;
       renderer.domElement.setPointerCapture(event.pointerId);
       if (kind === "speaker") latest.current.onSelectSpeaker(id);
@@ -431,6 +435,12 @@ export default function ChurchSceneWebGL(props: Props) {
       }
     };
 
+    const releasePointer = (event: PointerEvent) => {
+      if (renderer.domElement.hasPointerCapture(event.pointerId)) {
+        renderer.domElement.releasePointerCapture(event.pointerId);
+      }
+    };
+
     const pointerUp = (event: PointerEvent) => {
       if (!state.drag) return;
       const dragged = state.drag;
@@ -441,20 +451,42 @@ export default function ChurchSceneWebGL(props: Props) {
       }
       state.drag = null;
       controls.enabled = true;
-      if (renderer.domElement.hasPointerCapture(event.pointerId)) {
-        renderer.domElement.releasePointerCapture(event.pointerId);
-      }
+      releasePointer(event);
+    };
+
+    // A cancelled touch/gesture must not commit a partially dragged object.
+    const pointerCancel = (event: PointerEvent) => {
+      if (!state.drag) return;
+      state.drag.group.position.set(state.drag.originX, state.drag.group.position.y, state.drag.originZ);
+      state.drag = null;
+      controls.enabled = true;
+      releasePointer(event);
     };
 
     renderer.domElement.addEventListener("pointerdown", pointerDown);
     renderer.domElement.addEventListener("pointermove", pointerMove);
     renderer.domElement.addEventListener("pointerup", pointerUp);
-    renderer.domElement.addEventListener("pointercancel", pointerUp);
+    renderer.domElement.addEventListener("pointercancel", pointerCancel);
 
     let frameId = 0;
     let lastFrameTime = 0;
+    let contextLost = false;
+    const handleContextLost = (event: Event) => {
+      event.preventDefault();
+      contextLost = true;
+      cancelAnimationFrame(frameId);
+      frameId = 0;
+      setWebglError(true);
+    };
+    const handleContextRestored = () => {
+      // Rebuild the renderer/scene from the latest React props after context recovery.
+      setWebglError(false);
+      setWebglError(true);
+    };
+    renderer.domElement.addEventListener("webglcontextlost", handleContextLost, false);
+    renderer.domElement.addEventListener("webglcontextrestored", handleContextRestored, false);
     const render = (time: number) => {
-      if (document.hidden) return;
+      if (document.hidden || contextLost) return;
       frameId = requestAnimationFrame(render);
       if (time - lastFrameTime < 1000 / 30) return;
       lastFrameTime = time;
@@ -481,7 +513,9 @@ export default function ChurchSceneWebGL(props: Props) {
       renderer.domElement.removeEventListener("pointerdown", pointerDown);
       renderer.domElement.removeEventListener("pointermove", pointerMove);
       renderer.domElement.removeEventListener("pointerup", pointerUp);
-      renderer.domElement.removeEventListener("pointercancel", pointerUp);
+      renderer.domElement.removeEventListener("pointercancel", pointerCancel);
+      renderer.domElement.removeEventListener("webglcontextlost", handleContextLost);
+      renderer.domElement.removeEventListener("webglcontextrestored", handleContextRestored);
       controls.dispose();
       for (const group of groups.values()) disposeObject(group);
       groups.clear();
