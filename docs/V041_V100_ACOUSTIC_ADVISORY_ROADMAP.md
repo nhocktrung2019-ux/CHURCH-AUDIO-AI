@@ -15,7 +15,7 @@ This branch adds the read-only acoustic advisory engine for the v0.41–v0.47 fo
 | v0.45 | Ideal rectangular-room axial mode estimates | Implemented in \`estimateAxialRoomModes\`; explicitly theoretical |
 | v0.46 | Auditable DSP change proposal envelope | Implemented in \`createDspAdvisoryProposal\`; \`writeEnabled: false\` is a literal type and runtime value |
 | v0.47 | Focused regression coverage | Added \`tests/acousticAdvisoryEngine.test.mjs\` |
-| v0.48 | Android advisory panel, review queue and technician acknowledgement | Planned; engine is not yet wired into the UI |
+| v0.48 | Android advisory panel, review queue and technician acknowledgement | Implemented as an inline responsive quality/advisory panel in the zone SPL workspace; no DSP action buttons |
 | v0.49 | Survey-quality and outlier annotations in JSON/CSV report | Planned; existing report format is not silently changed |
 | v0.50 | Field validation, calibration traceability and UX acceptance | Pending CI and physical-device validation |
 
