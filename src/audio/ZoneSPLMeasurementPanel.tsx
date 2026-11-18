@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Activity, Download, Gauge, Trash2 } from "lucide-react";
 import { usePersistentState } from "./usePersistentState";
-import { energyAverageDb, summarizeUniformity, type ZoneSplRecord, type ZoneSplUnit } from "./zoneSplUniformity";
+import { compareZoneLevels, energyAverageDb, summarizeUniformity, type ZoneSplRecord, type ZoneSplUnit } from "./zoneSplUniformity";
 
 type Props = {
   running: boolean;
@@ -35,6 +35,7 @@ export default function ZoneSPLMeasurementPanel({
   const [remaining, setRemaining] = useState(0);
   const [notice, setNotice] = useState("");
   const [uniformityLimitDb, setUniformityLimitDb] = useState(6);
+  const [zoneBalanceToleranceDb, setZoneBalanceToleranceDb] = useState(2);
   const samplesRef = useRef<number[]>([]);
   const captureMetaRef = useRef<CaptureMeta | null>(null);
   const latestRef = useRef({ liveAWeightedDbfs, offsetDb });
@@ -43,6 +44,8 @@ export default function ZoneSPLMeasurementPanel({
   const currentUnit: ZoneSplUnit = calibrationProfileReady && confirmCalibration ? "dB SPL" : "dBFS";
   const validRecords = records.filter((record) => record.unit === currentUnit);
   const overall = summarizeUniformity(validRecords);
+  const zoneBalance = compareZoneLevels(validRecords, zoneBalanceToleranceDb);
+  const comparisonInputs = [...new Set(validRecords.map((record) => record.inputLabel))];
   const zoneNames = [...new Set(validRecords.map((record) => record.zone))].sort((a, b) => a.localeCompare(b, "vi"));
   const zoneSummaries = zoneNames.map((name) => ({
     zone: name,
@@ -155,6 +158,11 @@ export default function ZoneSPLMeasurementPanel({
     <div className="zone-spl-threshold"><label>NGƯỠNG ĐỘ TRẢI THAM KHẢO <b>{uniformityLimitDb} dB</b><input type="range" min="2" max="12" step="1" value={uniformityLimitDb} onChange={(event) => setUniformityLimitDb(Number(event.target.value))}/></label>
       {overall && <span className={overall.spreadDb <= uniformityLimitDb ? "uniformity-good" : "uniformity-warn"}>{overall.spreadDb <= uniformityLimitDb ? "Trong ngưỡng do người dùng đặt" : "Chênh lệch vượt ngưỡng · cần kiểm tra"}</span>}
     </div>
+    <div className="zone-spl-threshold"><label>NGƯỠNG CÂN BẰNG GIỮA CÁC VÙNG <b>±{zoneBalanceToleranceDb} dB</b><input type="range" min="1" max="6" step="0.5" value={zoneBalanceToleranceDb} onChange={(event) => setZoneBalanceToleranceDb(Number(event.target.value))}/></label></div>
+    {comparisonInputs.length > 1 && <p className="warning">Không thể so sánh công bằng: dữ liệu đang có nhiều đầu vào microphone khác nhau. Hãy lọc/xóa các lượt đo không cùng đầu vào trước khi kết luận.</p>}
+    {zoneBalance && <div className="table-wrap"><table><thead><tr><th>So sánh vùng</th><th>Vị trí</th><th>TB vùng</th><th>Lệch TB chung</th><th>Đánh giá</th></tr></thead><tbody>
+      {zoneBalance.map((row) => <tr key={row.zone}><td>{row.zone}</td><td>{row.positionCount} / {row.pointCount} điểm</td><td>{row.meanDb.toFixed(1)} {currentUnit}</td><td>{row.deltaFromMeanDb > 0 ? "+" : ""}{row.deltaFromMeanDb.toFixed(1)} dB</td><td>{row.status === "balanced" ? "Cân bằng" : row.status === "low" ? "Thấp hơn" : row.status === "high" ? "Cao hơn" : "Cần đo thêm ≥2 vị trí"}</td></tr>)}
+    </tbody></table><p className="muted">Mỗi vị trí nghe được tính trọng số như nhau; các lần đo lặp tại cùng vị trí được gộp theo trung bình năng lượng. Mốc tham chiếu là trung bình các vùng, không phải chuẩn âm học bắt buộc.</p></div>}
     <div className="table-wrap"><table><thead><tr><th>Vùng</th><th>Điểm</th><th>Trung bình</th><th>Min–Max</th><th>Độ trải</th><th>σ</th></tr></thead><tbody>
       {zoneSummaries.map(({zone: zoneName, summary}) => summary && <tr key={zoneName}><td>{zoneName}</td><td>{summary.count}</td><td>{summary.meanDb.toFixed(1)} {summary.unit}</td><td>{summary.minDb.toFixed(1)}–{summary.maxDb.toFixed(1)}</td><td>{summary.spreadDb.toFixed(1)} dB</td><td>{summary.standardDeviationDb.toFixed(1)}</td></tr>)}
       {!zoneSummaries.length && <tr><td colSpan={6}>Chưa có điểm đo cùng đơn vị. Hãy chọn vùng, đặt micro tại vị trí ghế và bắt đầu đo.</td></tr>}
