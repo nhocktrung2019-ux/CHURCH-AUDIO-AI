@@ -95,12 +95,12 @@ export function compareZoneLevels(
     if (Math.max(...offsets) - Math.min(...offsets) > 0.01) return null;
   }
 
-  const zones = new Map<string, Map<string, number[]>>();
+  const zones = new Map<string, Map<string, ZoneSplRecord[]>>();
   for (const record of records) {
     if (!zones.has(record.zone)) zones.set(record.zone, new Map());
     const positions = zones.get(record.zone)!;
     if (!positions.has(record.position)) positions.set(record.position, []);
-    positions.get(record.position)!.push(record.levelDb);
+    positions.get(record.position)!.push(record);
   }
 
   const preliminary = [...zones.entries()].map(([zone, positions]) => {
