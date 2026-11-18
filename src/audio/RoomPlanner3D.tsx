@@ -1,12 +1,17 @@
 import { usePersistentState } from "./usePersistentState";
-import { useState, type PointerEvent } from "react";
+import { useEffect, useState, type PointerEvent } from "react";
 import{Plus,Speaker,Trash2,Move3d,Ruler}from"lucide-react";
 import{SPEAKER_MODELS,SPEAKER_SPECS}from"../data/speakerModels";
 import ChurchSceneWebGL from "./ChurchSceneWebGL";
 type SpeakerUnit={id:number;name:string;model:string;zone:string;x:number;y:number;z:number;azimuth:number;coverage:number;verticalCoverage:number;sensitivity:number|null;powerW:number|null;impedance:number};
 type SceneObject={id:number;kind:"altar"|"pulpit"|"column"|"pew"|"chair"|"stage";name:string;x:number;y:number;w:number;d:number;h:number;rotation:number};
 const clamp=(v:number,min:number,max:number)=>Math.max(min,Math.min(max,v));
-export default function RoomPlanner3D(){
+type RoomPlanner3DProps = {
+ onZoneOptionsChange?: (zones: string[]) => void;
+ selectedZoneName?: string;
+ onSelectedZoneChange?: (zone: string) => void;
+};
+export default function RoomPlanner3D({ onZoneOptionsChange, selectedZoneName, onSelectedZoneChange }: RoomPlanner3DProps = {}){
  const[length,setLength]=usePersistentState("church-audio-room-length",28),[width,setWidth]=usePersistentState("church-audio-room-width",16),[height,setHeight]=usePersistentState("church-audio-room-height",7);
  const[speakers,setSpeakers]=usePersistentState<SpeakerUnit[]>("church-audio-room-speakers",[{id:1,name:"Loa chính trái",model:"CBT 70J-1 (CBT 70)",zone:"Khu vực 1",x:3,y:3,z:5.5,azimuth:35,coverage:90,verticalCoverage:40,sensitivity:null,powerW:null,impedance:8},{id:2,name:"Loa chính phải",model:"CBT 70J-1 (CBT 70)",zone:"Khu vực 1",x:3,y:13,z:5.5,azimuth:-35,coverage:90,verticalCoverage:40,sensitivity:null,powerW:null,impedance:8},{id:3,name:"Loa delay",model:"Bose MA12",zone:"Khu vực 2",x:17,y:8,z:4,azimuth:180,coverage:100,verticalCoverage:40,sensitivity:null,powerW:null,impedance:8}]);
  const[selected,setSelected]=usePersistentState("church-audio-room-selected",1),[refX,setRefX]=usePersistentState("church-audio-room-ref-x",22),[refY,setRefY]=usePersistentState("church-audio-room-ref-y",8),[targetSpl,setTargetSpl]=usePersistentState("church-audio-room-target-spl",85),[view,setView]=usePersistentState<"perspective"|"top"|"webgl">("church-audio-room-view-v2",()=>{
@@ -21,6 +26,17 @@ export default function RoomPlanner3D(){
  const [dragging,setDragging]=useState<{kind:"speaker"|"object";id:number}|null>(null);
  const [sceneObjects,setSceneObjects]=usePersistentState<SceneObject[]>("church-audio-room-scene-objects",[{id:101,kind:"altar",name:"Bàn thờ",x:23,y:6.2,w:2.8,d:1.5,h:1.05,rotation:0},{id:102,kind:"pulpit",name:"Tòa giảng",x:20.5,y:10,w:1.1,d:1.1,h:1.25,rotation:0},{id:103,kind:"stage",name:"Sân khấu / cung thánh",x:22,y:8,w:6,d:5,h:.35,rotation:0},...[4,8,12].flatMap((x)=>[3,8,13].map((y)=>({id:200+x*10+y,kind:"column" as const,name:"Cột",x,y,w:.55,d:.55,h:height,rotation:0}))),...[0,1,2,3,4].flatMap((row)=>[3,5,7,9,11,13].map((y,col)=>({id:500+row*20+col,kind:"pew" as const,name:"Hàng ghế "+(row+1),x:7+row*2.2,y,w:1.65,d:.42,h:.48,rotation:0}))) ]),[selectedObject,setSelectedObject]=usePersistentState("church-audio-room-selected-object",101);
  const current=speakers.find(s=>s.id===selected)??speakers[0];
+ useEffect(()=>{
+  const zones=[...new Set(speakers.map(s=>s.zone.trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"vi"));
+  onZoneOptionsChange?.(zones);
+  const active=speakers.find(s=>s.id===selected);
+  if(active) onSelectedZoneChange?.(active.zone);
+ },[speakers,selected,onZoneOptionsChange,onSelectedZoneChange]);
+ useEffect(()=>{
+  if(!selectedZoneName) return;
+  const match=speakers.find(s=>s.zone===selectedZoneName);
+  if(match && match.id!==selected) setSelected(match.id);
+ },[selectedZoneName,speakers,selected]);
  const coverageFor=(sp:SpeakerUnit)=>{const bands=SPEAKER_SPECS[sp.model]?.coverageByFrequency;const data=bands?.find(b=>b.frequencyHz===analysisBandHz);return data?.horizontalDeg??sp.coverage;};
  const verticalCoverageFor=(sp:SpeakerUnit)=>{const bands=SPEAKER_SPECS[sp.model]?.coverageByFrequency;const data=bands?.find(b=>b.frequencyHz===analysisBandHz);return data?.verticalDeg??sp.verticalCoverage;};
  const currentObject=sceneObjects.find(o=>o.id===selectedObject)??sceneObjects[0];
