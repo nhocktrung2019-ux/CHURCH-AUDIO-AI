@@ -4,7 +4,7 @@ import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 
 export type WebGLSpeaker = {
   id: number; name: string; model: string; x: number; y: number; z: number;
-  azimuth: number; coverage: number;
+  azimuth: number; coverage: number; verticalCoverage: number;
 };
 export type WebGLObject = {
   id: number; kind: "altar" | "pulpit" | "column" | "pew" | "chair" | "stage";
@@ -113,7 +113,37 @@ function createFurnitureGroup(item: WebGLObject): THREE.Group {
   return group;
 }
 
-function createSpeakerGroup(speaker: WebGLSpeaker, index: number): THREE.Group {
+function createBeamGeometry(horizontalDeg: number, verticalDeg: number, radius: number): THREE.BufferGeometry {
+  const positions: number[] = [];
+  const halfH = THREE.MathUtils.degToRad(THREE.MathUtils.clamp(horizontalDeg, 5, 180) / 2);
+  const halfV = THREE.MathUtils.degToRad(THREE.MathUtils.clamp(verticalDeg, 5, 160) / 2);
+  const steps = 32;
+  const point = (h: number, v: number): [number, number, number] => [
+    radius * Math.cos(v) * Math.cos(h),
+    radius * Math.sin(v),
+    radius * Math.cos(v) * Math.sin(h),
+  ];
+  const origin: [number, number, number] = [0, 0, 0];
+  const triangle = (a: number[], b: number[], c: number[]) => positions.push(...a, ...b, ...c);
+  for (let i = 0; i < steps; i++) {
+    const h0 = -halfH + (i / steps) * halfH * 2;
+    const h1 = -halfH + ((i + 1) / steps) * halfH * 2;
+    const top0 = point(h0, halfV), top1 = point(h1, halfV);
+    const bottom0 = point(h0, -halfV), bottom1 = point(h1, -halfV);
+    triangle(origin, top0, top1);
+    triangle(origin, bottom1, bottom0);
+    triangle(top0, bottom0, bottom1);
+    triangle(top0, bottom1, top1);
+    if (i === 0) triangle(origin, top0, bottom0);
+    if (i === steps - 1) triangle(origin, bottom1, top1);
+  }
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+  geometry.computeVertexNormals();
+  return geometry;
+}
+
+function createSpeakerGroup(speaker: WebGLSpeaker, index: number, roomLength: number, roomWidth: number): THREE.Group {
   const group = new THREE.Group();
   const isColumn = /CBT|MA12|column/i.test(speaker.model);
   const isSub = /sub|subwoofer|SRX/i.test(speaker.model);
@@ -124,7 +154,10 @@ function createSpeakerGroup(speaker: WebGLSpeaker, index: number): THREE.Group {
   group.userData = {
     kind: "speaker",
     id: speaker.id,
-    signature: [speaker.model, speaker.coverage].join("|"),
+    // Keep the creation signature identical to the reconciliation signature below.
+    // Including room dimensions rebuilds the beam when the room is resized; index
+    // keeps the speaker tint correct if the speaker list is reordered.
+    signature: [speaker.model, speaker.coverage, speaker.verticalCoverage, roomLength, roomWidth, index].join("|"),
   };
   group.position.set(speaker.x, speaker.z, speaker.y);
 
@@ -143,7 +176,16 @@ function createSpeakerGroup(speaker: WebGLSpeaker, index: number): THREE.Group {
     group.add(driver);
   }
 
-  const radius = Math.max(speaker.coverage > 120 ? 5 : 3, Math.max(18, width * 1.7));
+  const radius = Math.max(3, Math.hypot(roomLength, roomWidth) * 0.65);
+  const beam = new THREE.Mesh(
+    createBeamGeometry(speaker.coverage, speaker.verticalCoverage, radius),
+    new THREE.MeshBasicMaterial({
+      color: tint, transparent: true, opacity: 0.075,
+      side: THREE.DoubleSide, depthWrite: false,
+    }),
+  );
+  beam.userData.noDrag = true;
+  group.add(beam);
   const halfAngle = THREE.MathUtils.degToRad(Math.max(5, Math.min(180, speaker.coverage)) / 2);
   const shape = new THREE.Shape();
   shape.moveTo(0, 0);
@@ -272,7 +314,7 @@ export default function ChurchSceneWebGL(props: Props) {
     groups: Map<string, THREE.Group>;
     raycaster: THREE.Raycaster;
     pointer: THREE.Vector2;
-    drag: { kind: "speaker" | "object"; id: number; group: THREE.Group } | null;
+    drag: { kind: "speaker" | "object"; id: number; group: THREE.Group; originX: number; originZ: number } | null;
     floorPlane: THREE.Plane;
   } | null>(null);
   const [webglError, setWebglError] = useState(false);
@@ -335,7 +377,7 @@ export default function ChurchSceneWebGL(props: Props) {
       groups,
       raycaster: new THREE.Raycaster(),
       pointer: new THREE.Vector2(),
-      drag: null as { kind: "speaker" | "object"; id: number; group: THREE.Group } | null,
+      drag: null as { kind: "speaker" | "object"; id: number; group: THREE.Group; originX: number; originZ: number } | null,
       floorPlane: new THREE.Plane(new THREE.Vector3(0, 1, 0), 0),
     };
     api.current = state;
@@ -369,7 +411,11 @@ export default function ChurchSceneWebGL(props: Props) {
       const id = node.userData.id as number;
       const group = groups.get((kind === "speaker" ? "s:" : "o:") + id);
       if (!group) return;
-      state.drag = { kind, id, group };
+      state.drag = {
+        kind, id, group,
+        originX: group.position.x,
+        originZ: group.position.z,
+      };
       controls.enabled = false;
       renderer.domElement.setPointerCapture(event.pointerId);
       if (kind === "speaker") latest.current.onSelectSpeaker(id);
@@ -389,6 +435,12 @@ export default function ChurchSceneWebGL(props: Props) {
       }
     };
 
+    const releasePointer = (event: PointerEvent) => {
+      if (renderer.domElement.hasPointerCapture(event.pointerId)) {
+        renderer.domElement.releasePointerCapture(event.pointerId);
+      }
+    };
+
     const pointerUp = (event: PointerEvent) => {
       if (!state.drag) return;
       const dragged = state.drag;
@@ -399,32 +451,72 @@ export default function ChurchSceneWebGL(props: Props) {
       }
       state.drag = null;
       controls.enabled = true;
-      if (renderer.domElement.hasPointerCapture(event.pointerId)) {
-        renderer.domElement.releasePointerCapture(event.pointerId);
-      }
+      releasePointer(event);
+    };
+
+    // A cancelled touch/gesture must not commit a partially dragged object.
+    const pointerCancel = (event: PointerEvent) => {
+      if (!state.drag) return;
+      state.drag.group.position.set(state.drag.originX, state.drag.group.position.y, state.drag.originZ);
+      state.drag = null;
+      controls.enabled = true;
+      releasePointer(event);
     };
 
     renderer.domElement.addEventListener("pointerdown", pointerDown);
     renderer.domElement.addEventListener("pointermove", pointerMove);
     renderer.domElement.addEventListener("pointerup", pointerUp);
-    renderer.domElement.addEventListener("pointercancel", pointerUp);
+    renderer.domElement.addEventListener("pointercancel", pointerCancel);
 
     let frameId = 0;
-    const render = () => {
+    let lastFrameTime = 0;
+    let contextLost = false;
+    const handleContextLost = (event: Event) => {
+      event.preventDefault();
+      contextLost = true;
+      cancelAnimationFrame(frameId);
+      frameId = 0;
+      setWebglError(true);
+    };
+    const render = (time: number) => {
+      if (document.hidden || contextLost) return;
       frameId = requestAnimationFrame(render);
+      if (time - lastFrameTime < 1000 / 30) return;
+      lastFrameTime = time;
       controls.update();
       renderer.render(scene, camera);
     };
+    const handleContextRestored = () => {
+      contextLost = false;
+      lastFrameTime = 0;
+      setWebglError(false);
+      if (!document.hidden && !frameId) frameId = requestAnimationFrame(render);
+    };
+    renderer.domElement.addEventListener("webglcontextlost", handleContextLost, false);
+    renderer.domElement.addEventListener("webglcontextrestored", handleContextRestored, false);
+    const handleVisibility = () => {
+      if (document.hidden) {
+        cancelAnimationFrame(frameId);
+        frameId = 0;
+      } else if (!frameId) {
+        lastFrameTime = 0;
+        frameId = requestAnimationFrame(render);
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
     frameId = requestAnimationFrame(render);
 
     return () => {
       cancelAnimationFrame(frameId);
       observer?.disconnect();
       window.removeEventListener("resize", resize);
+      document.removeEventListener("visibilitychange", handleVisibility);
       renderer.domElement.removeEventListener("pointerdown", pointerDown);
       renderer.domElement.removeEventListener("pointermove", pointerMove);
       renderer.domElement.removeEventListener("pointerup", pointerUp);
-      renderer.domElement.removeEventListener("pointercancel", pointerUp);
+      renderer.domElement.removeEventListener("pointercancel", pointerCancel);
+      renderer.domElement.removeEventListener("webglcontextlost", handleContextLost);
+      renderer.domElement.removeEventListener("webglcontextrestored", handleContextRestored);
       controls.dispose();
       for (const group of groups.values()) disposeObject(group);
       groups.clear();
@@ -467,7 +559,7 @@ export default function ChurchSceneWebGL(props: Props) {
       const key = "s:" + speaker.id;
       liveKeys.add(key);
       let group = state.groups.get(key);
-      const signature = [speaker.model, speaker.coverage].join("|");
+      const signature = [speaker.model, speaker.coverage, speaker.verticalCoverage, props.length, props.width, index].join("|");
       if (group && group.userData.signature !== signature) {
         state.scene.remove(group);
         disposeObject(group);
@@ -475,7 +567,7 @@ export default function ChurchSceneWebGL(props: Props) {
         group = undefined;
       }
       if (!group) {
-        group = createSpeakerGroup(speaker, index);
+        group = createSpeakerGroup(speaker, index, props.length, props.width);
         state.scene.add(group);
         state.groups.set(key, group);
       }
