@@ -91,6 +91,7 @@ export default function ZoneSPLMeasurementPanel({
         sampleCount: samples,
         inputLabel: meta.inputLabel,
         timestamp: Date.now(),
+        calibrationOffsetDb: meta.calibrated ? meta.offsetDb : undefined,
       };
       setRecords((previous) => [record, ...previous].slice(0, 500));
       setNotice(`Đã lưu ${record.zone} · ${record.position}: ${record.levelDb.toFixed(1)} ${record.unit}.`);
@@ -159,7 +160,7 @@ export default function ZoneSPLMeasurementPanel({
       {overall && <span className={overall.spreadDb <= uniformityLimitDb ? "uniformity-good" : "uniformity-warn"}>{overall.spreadDb <= uniformityLimitDb ? "Trong ngưỡng do người dùng đặt" : "Chênh lệch vượt ngưỡng · cần kiểm tra"}</span>}
     </div>
     <div className="zone-spl-threshold"><label>NGƯỠNG CÂN BẰNG GIỮA CÁC VÙNG <b>±{zoneBalanceToleranceDb} dB</b><input type="range" min="1" max="6" step="0.5" value={zoneBalanceToleranceDb} onChange={(event) => setZoneBalanceToleranceDb(Number(event.target.value))}/></label></div>
-    {comparisonInputs.length > 1 && <p className="warning">Không thể so sánh công bằng: dữ liệu đang có nhiều đầu vào microphone khác nhau. Hãy lọc/xóa các lượt đo không cùng đầu vào trước khi kết luận.</p>}
+    {validRecords.length > 0 && !zoneBalance && <p className="warning">Không thể so sánh công bằng: dữ liệu có thể khác đầu vào microphone, đơn vị hoặc offset hiệu chuẩn. Hãy dùng cùng microphone, cùng đơn vị và cùng cấu hình hiệu chuẩn cho mọi vùng.</p>}
     {zoneBalance && <div className="table-wrap"><table><thead><tr><th>So sánh vùng</th><th>Vị trí</th><th>TB vùng</th><th>Lệch TB chung</th><th>Đánh giá</th></tr></thead><tbody>
       {zoneBalance.map((row) => <tr key={row.zone}><td>{row.zone}</td><td>{row.positionCount} / {row.pointCount} điểm</td><td>{row.meanDb.toFixed(1)} {currentUnit}</td><td>{row.deltaFromMeanDb > 0 ? "+" : ""}{row.deltaFromMeanDb.toFixed(1)} dB</td><td>{row.status === "balanced" ? "Cân bằng" : row.status === "low" ? "Thấp hơn" : row.status === "high" ? "Cao hơn" : "Cần đo thêm ≥2 vị trí"}</td></tr>)}
     </tbody></table><p className="muted">Mỗi vị trí nghe được tính trọng số như nhau; các lần đo lặp tại cùng vị trí được gộp theo trung bình năng lượng. Mốc tham chiếu là trung bình các vùng, không phải chuẩn âm học bắt buộc.</p></div>}
