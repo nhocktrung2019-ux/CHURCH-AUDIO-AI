@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import { parseMicCalibration } from "./micCalibration";
+import { applyInputSplOffset, createInputSplCalibration, estimateOneKilohertzDbfs, normalizeInputSplCalibrationRegistry } from "./perInputSplCalibration";
 import { applyInputMicCalibration, normalizeMultiInputCalibrationRegistry, removeInputCalibration, setInputCalibration as storeInputCalibration } from "./multiInputCalibration";
 import { Activity, Mic2, ShieldCheck, Square, VolumeX } from "lucide-react";
 import { detectNarrowPeaks, formatVietnameseFeedbackAlert } from "./feedback";
 import { assessMultiSourceInput, multiSourceSynchronizationWarning, type MultiSourceInputAssessment } from "./multiSourceDiagnostics";
 
 type InputDevice = { deviceId: string; label: string };
-type ChannelState = { id: string; label: string; history: number[][]; diagnostics: MultiSourceInputAssessment; trackState: "live" | "muted" | "ended" };
+type ChannelState = { id: string; label: string; history: number[][]; diagnostics: MultiSourceInputAssessment; trackState: "live" | "muted" | "ended"; toneDbfs: number | null };
 type Session = { id: string; label: string; stream: MediaStream; track: MediaStreamTrack; diagnostics: MultiSourceInputAssessment; analyser: AnalyserNode; data: Float32Array };
 function toLogBands(data: Float32Array, sampleRate: number): number[] {
   const nyquist = sampleRate / 2, minHz = 20, maxHz = Math.min(20000, nyquist);
@@ -38,6 +39,17 @@ export default function MultiMicFeedbackPanel() {
   const [notice, setNotice] = useState("");
   const [feedbackAlertsEnabled, setFeedbackAlertsEnabled] = useState(true);
   const [alertMessage, setAlertMessage] = useState("");
+  const [calibratorReference, setCalibratorReference] = useState<94 | 114>(94);
+  const [inputSplCalibrations, setInputSplCalibrations] = useState(() => {
+    try {
+      const stored = typeof window !== "undefined" ? window.localStorage.getItem("church-audio-input-spl-calibration-v1") : null;
+      return normalizeInputSplCalibrationRegistry(stored ? JSON.parse(stored) : {});
+    } catch { return {}; }
+  });
+  useEffect(() => {
+    try { window.localStorage.setItem("church-audio-input-spl-calibration-v1", JSON.stringify(inputSplCalibrations)); }
+    catch { /* Storage failure must not interrupt live capture. */ }
+  }, [inputSplCalibrations]);
   const [inputCalibrations, setInputCalibrations] = useState(() => {
     try {
       const stored = typeof window !== "undefined"
@@ -198,7 +210,7 @@ export default function MultiMicFeedbackPanel() {
       }
       if (!opened.length) throw new Error("Không mở được nguồn nào. Android/WebView hoặc driver có thể giới hạn luồng thu đồng thời.");
       sessionsRef.current = opened;
-      setChannels(opened.map(s => ({ id: s.id, label: s.label, history: [], diagnostics: s.diagnostics, trackState: s.track.muted ? ("muted" as const) : ("live" as const) })));
+      setChannels(opened.map(s => ({ id: s.id, label: s.label, history: [], diagnostics: s.diagnostics, trackState: s.track.muted ? ("muted" as const) : ("live" as const), toneDbfs: null })));
       setCombinedSpectrum([]);
       setRunning(true);
       setNotice(
@@ -213,11 +225,12 @@ export default function MultiMicFeedbackPanel() {
           const next: ChannelState[] = sessionsRef.current.map(s => {
             s.analyser.getFloatFrequencyData(s.data);
             const rawBands = toLogBands(s.data, activeAudio.sampleRate);
+            const toneDbfs = estimateOneKilohertzDbfs(s.data, activeAudio.sampleRate, s.analyser.fftSize);
             const bands = applyInputMicCalibration(rawBands, inputCalibrations[s.id]?.points ?? [], 20, Math.min(20000, activeAudio.sampleRate / 2));
             const history = [...(historiesRef.current.get(s.id) ?? []), bands].slice(-24);
             historiesRef.current.set(s.id, history);
             const trackState = s.track.readyState === "ended" ? "ended" : s.track.muted ? "muted" : "live";
-            return { id: s.id, label: s.label, history, diagnostics: s.diagnostics, trackState };
+            return { id: s.id, label: s.label, history, diagnostics: s.diagnostics, trackState, toneDbfs };
           });
           setChannels(next);
 
@@ -303,6 +316,28 @@ export default function MultiMicFeedbackPanel() {
         <div className="multi-mic-channel-head"><b><Mic2 /> {channel.label}</b><span>{channel.trackState.toUpperCase()} · {level.toFixed(1)} dBFS</span></div>
         <div className="permission-help"><b>{channel.diagnostics.routeState === "verified" ? "Đã xác nhận input" : channel.diagnostics.routeState === "mismatch" ? "Input không khớp" : "Chưa xác nhận chính xác input"}</b><span>{channel.diagnostics.summary}</span></div>
         {channel.diagnostics.warnings.length > 0 && <p className="warning">{channel.diagnostics.warnings.join(" ")}</p>}
+        <div className="input-spl-calibration">
+          <b>Hiệu chuẩn SPL riêng · 1 kHz</b>
+          <span>RMS dải 1 kHz hiện tại: {channel.toneDbfs === null ? "—" : channel.toneDbfs.toFixed(2) + " dBFS"}</span>
+          <span>Mức sau hiệu chuẩn: {applyInputSplOffset(channel.toneDbfs ?? NaN, inputSplCalibrations[channel.id])?.toFixed(2) ?? "Chưa hiệu chuẩn"} {inputSplCalibrations[channel.id] ? "dB SPL" : ""}</span>
+          <label>Mức calibrator thực tế
+            <select value={calibratorReference} onChange={event => setCalibratorReference(Number(event.target.value) as 94 | 114)}>
+              <option value={94}>94 dB SPL · 1 kHz</option>
+              <option value={114}>114 dB SPL · 1 kHz</option>
+            </select>
+          </label>
+          <button className="secondary" disabled={!running || channel.toneDbfs === null} onClick={() => {
+            const profile = createInputSplCalibration(channel.id, audioRef.current?.sampleRate ?? 0, channel.toneDbfs!, calibratorReference);
+            if (!profile) { setError("Không thể lưu hiệu chuẩn: kiểm tra input, sample rate và mức tín hiệu 1 kHz."); return; }
+            setInputSplCalibrations(current => ({ ...current, [channel.id]: profile }));
+            setNotice("Đã lưu offset SPL riêng cho " + channel.label + ". Hãy xác minh lại bằng calibrator sau khi đổi gain hoặc đường tín hiệu.");
+            setError("");
+          }}>Lưu hiệu chuẩn cho input này</button>
+          <button className="secondary" disabled={!inputSplCalibrations[channel.id]} onClick={() => setInputSplCalibrations(current => {
+            const next = { ...current }; delete next[channel.id]; return next;
+          })}>Xóa hiệu chuẩn</button>
+          <small>{inputSplCalibrations[channel.id] ? "Offset gắn với ID input và sample rate " + inputSplCalibrations[channel.id].sampleRate + " Hz · " + inputSplCalibrations[channel.id].referenceLevelDbSpl + " dB SPL" : "Chưa có offset tuyệt đối cho input này."}</small>
+        </div>
         <div className="mini-spectrum">{latest.map((v, i) => <i key={i} style={{ height: Math.max(3, Math.min(100, (v + 100) * 1.05)) + "%" }} />)}</div>
         {peaks.length ? <div className="feedback-alert"><VolumeX /><b>{peaks.length} đỉnh nghi vấn:</b><span>{peaks.slice(0, 3).map(p => p.frequencyHz + " Hz").join(" · ")}</span></div> : <div className="feedback-clear"><ShieldCheck /><span>Chưa phát hiện đỉnh hẹp ổn định theo ngưỡng.</span></div>}
         {peaks.length > 0 && <div className="table-wrap"><table><thead><tr><th>Hz</th><th>Prominence</th><th>Persistence</th><th>Notch gợi ý</th><th>Q</th></tr></thead><tbody>{peaks.slice(0, 4).map(p => <tr key={p.index}><td>{p.frequencyHz}</td><td>{p.prominenceDb.toFixed(1)} dB</td><td>{p.persistence}%</td><td>{p.recommendedCutDb.toFixed(1)} dB</td><td>{p.q.toFixed(1)}</td></tr>)}</tbody></table></div>}
