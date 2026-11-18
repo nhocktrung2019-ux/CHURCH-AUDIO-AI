@@ -329,3 +329,50 @@ export function createDspAdvisoryProposal(input: {
     ],
   };
 }
+
+
+export type SurveyRecordAnnotation = {
+  recordId: number;
+  qualityStatus: QualityStatus;
+  outlierFlag: boolean;
+  outlierDeviationDb?: number;
+  outlierMedianDb?: number;
+  reviewReason?: string;
+};
+
+/** Adds export annotations without changing or filtering the original measurement records. */
+export function annotateSurveyRecords(
+  records: ZoneSplRecord[],
+  room?: RoomBounds,
+): SurveyRecordAnnotation[] {
+  const groups = new Map<string, ZoneSplRecord[]>();
+  for (const record of records) {
+    const key = record.unit + "|" + normalized(record.inputLabel);
+    const group = groups.get(key) ?? [];
+    group.push(record);
+    groups.set(key, group);
+  }
+  const annotations = new Map<number, SurveyRecordAnnotation>();
+  for (const group of groups.values()) {
+    const quality = assessSurveyQuality(group, room);
+    const outliers = detectSurveyOutliers(group);
+    const outlierById = new Map(outliers.map((item) => [item.recordIds[0], item]));
+    for (const record of group) {
+      const outlier = outlierById.get(record.id);
+      annotations.set(record.id, {
+        recordId: record.id,
+        qualityStatus: quality.status,
+        outlierFlag: Boolean(outlier),
+        ...(outlier ? {
+          outlierDeviationDb: outlier.deviationDb,
+          outlierMedianDb: outlier.medianDb,
+          reviewReason: outlier.reason,
+        } : {}),
+      });
+    }
+  }
+  return records.map((record) => annotations.get(record.id) ?? {
+    recordId: record.id, qualityStatus: "blocked", outlierFlag: false,
+    reviewReason: "Không thể tạo đánh giá cho bản ghi này.",
+  });
+}
