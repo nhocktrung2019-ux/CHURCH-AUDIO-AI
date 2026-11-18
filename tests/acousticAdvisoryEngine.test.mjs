@@ -7,6 +7,7 @@ import {
   compareSurveySessions,
   estimateAxialRoomModes,
   createDspAdvisoryProposal,
+  annotateSurveyRecords,
 } from "../src/audio/acousticAdvisoryEngine.ts";
 
 const record = (id, zone, position, levelDb, extra = {}) => ({
@@ -118,4 +119,23 @@ test("DSP proposal is explicitly non-executable and refuses invalid evidence", (
   assert.equal(createDspAdvisoryProposal({
     parameter: "eq", target: "", proposedValue: 2, basisMeasurementIds: [1],
   }), null);
+});
+
+
+test("export annotations preserve every record and assess each unit/input chain separately", () => {
+  const records = [
+    record(1, "Front", "Seat A", 80),
+    record(2, "Front", "Seat A", 80.1),
+    record(3, "Front", "Seat A", 79.9),
+    record(4, "Front", "Seat A", 91),
+    record(5, "Front", "Seat B", 81),
+    record(6, "Front", "Seat B", 82, {
+      unit: "dB SPL", rawDbfs: -8, levelDb: 82, calibrationOffsetDb: 90,
+    }),
+  ];
+  const result = annotateSurveyRecords(records, { lengthM: 20, widthM: 12 });
+  assert.equal(result.length, records.length);
+  assert.equal(result.find((item) => item.recordId === 4).outlierFlag, true);
+  assert.equal(result.find((item) => item.recordId === 1).outlierFlag, false);
+  assert.equal(result.find((item) => item.recordId === 6).qualityStatus, "review");
 });
