@@ -34,3 +34,43 @@ test("uniformity refuses to mix dBFS and dB SPL records", () => {
 test("empty point sets have no uniformity result", () => {
   assert.equal(summarizeUniformity([]), null);
 });
+
+
+test("zone comparison equal-weights listening positions and energy-averages repeats", async () => {
+  const { compareZoneLevels } = await import("../src/audio/zoneSplUniformity.ts");
+  const rows = compareZoneLevels([
+    {...record(1, 80), zone: "Khu 1", position: "Ghế A"},
+    {...record(2, 80), zone: "Khu 1", position: "Ghế A"},
+    {...record(3, 80), zone: "Khu 1", position: "Ghế B"},
+    {...record(4, 86), zone: "Khu 2", position: "Ghế A"},
+    {...record(5, 86), zone: "Khu 2", position: "Ghế B"},
+  ], 2);
+  assert.equal(rows.length, 2);
+  assert.equal(rows[0].zone, "Khu 1");
+  assert.equal(rows[0].positionCount, 2);
+  assert.equal(rows[0].status, "low");
+  assert.equal(rows[1].status, "high");
+  assert.ok(Math.abs(rows[0].deltaFromMeanDb + 3) < 0.001);
+});
+
+test("zone comparison refuses mixed input labels or units", async () => {
+  const { compareZoneLevels } = await import("../src/audio/zoneSplUniformity.ts");
+  assert.equal(compareZoneLevels([
+    {...record(1, 80), zone: "Khu 1"},
+    {...record(2, 82), zone: "Khu 2", inputLabel: "Other mic"},
+  ]), null);
+  assert.equal(compareZoneLevels([
+    {...record(1, 80), zone: "Khu 1"},
+    {...record(2, 82, "dB SPL"), zone: "Khu 2"},
+  ]), null);
+});
+
+test("zone comparison marks a zone with fewer than two positions insufficient", async () => {
+  const { compareZoneLevels } = await import("../src/audio/zoneSplUniformity.ts");
+  const rows = compareZoneLevels([
+    {...record(1, 80), zone: "Khu 1", position: "Only seat"},
+    {...record(2, 82), zone: "Khu 2", position: "Seat A"},
+    {...record(3, 82), zone: "Khu 2", position: "Seat B"},
+  ]);
+  assert.equal(rows.find((row) => row.zone === "Khu 1").status, "insufficient");
+});
