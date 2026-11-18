@@ -30,6 +30,8 @@ export default function ZoneSPLMeasurementPanel({
   zoneOptions, selectedZoneName, onSelectedZoneChange,
 }: Props) {
   const [records, setRecords] = usePersistentState<ZoneSplRecord[]>("church-audio-zone-spl-records-v1", []);
+  const [roomLengthM] = usePersistentState("church-audio-room-length", 28);
+  const [roomWidthM] = usePersistentState("church-audio-room-width", 16);
   const [position, setPosition] = useState("Hàng ghế 1 · Giữa");
   const [coordinateX, setCoordinateX] = useState("");
   const [coordinateY, setCoordinateY] = useState("");
@@ -109,8 +111,8 @@ export default function ZoneSPLMeasurementPanel({
 
   const startCapture = () => {
     if (!running || capturing) return;
-    if ((coordinateX.trim() !== "" || coordinateY.trim() !== "") && (!Number.isFinite(Number(coordinateX)) || !Number.isFinite(Number(coordinateY)) || Number(coordinateX) < 0 || Number(coordinateY) < 0)) {
-      setNotice("Tọa độ X/Y phải là số mét không âm; hoặc để trống cả hai nếu chưa khảo sát tọa độ.");
+    if ((coordinateX.trim() !== "" || coordinateY.trim() !== "") && (!Number.isFinite(Number(coordinateX)) || !Number.isFinite(Number(coordinateY)) || Number(coordinateX) < 0 || Number(coordinateY) < 0 || Number(coordinateX) > roomLengthM || Number(coordinateY) > roomWidthM)) {
+      setNotice("Tọa độ X/Y phải nằm trong phòng (X 0–${roomLengthM} m, Y 0–${roomWidthM} m); hoặc để trống cả hai nếu chưa khảo sát tọa độ.");
       return;
     }
     samplesRef.current = [];
@@ -153,8 +155,8 @@ export default function ZoneSPLMeasurementPanel({
     <div className="zone-spl-form">
       <label>KHU VỰC LOA{zoneOptions.length > 0 ? <select value={selectedZoneName} onChange={(event) => onSelectedZoneChange(event.target.value)} disabled={capturing}>{zoneOptions.map((name) => <option key={name} value={name}>{name}</option>)}</select> : <input value={selectedZoneName} onChange={(event) => onSelectedZoneChange(event.target.value)} disabled={capturing} placeholder="Chọn vùng trong mô hình 3D"/>}</label>
       <label>VỊ TRÍ / HÀNG GHẾ<input value={position} onChange={(event) => setPosition(event.target.value)} disabled={capturing} placeholder="Ví dụ: Hàng ghế 3 · Trái"/></label>
-      <label>TỌA ĐỘ X (m)<input inputMode="decimal" type="number" min="0" step="0.1" value={coordinateX} onChange={(event) => setCoordinateX(event.target.value)} disabled={capturing} placeholder="Theo mặt bằng phòng"/></label>
-      <label>TỌA ĐỘ Y (m)<input inputMode="decimal" type="number" min="0" step="0.1" value={coordinateY} onChange={(event) => setCoordinateY(event.target.value)} disabled={capturing} placeholder="Theo mặt bằng phòng"/></label>
+      <label>TỌA ĐỘ X (m)<input inputMode="decimal" type="number" min="0" max={roomLengthM} step="0.1" value={coordinateX} onChange={(event) => setCoordinateX(event.target.value)} disabled={capturing} placeholder={`0–${roomLengthM} m`}/></label>
+      <label>TỌA ĐỘ Y (m)<input inputMode="decimal" type="number" min="0" max={roomWidthM} step="0.1" value={coordinateY} onChange={(event) => setCoordinateY(event.target.value)} disabled={capturing} placeholder={`0–${roomWidthM} m`}/></label>
       <label>THỜI GIAN ĐO<select value={durationSeconds} onChange={(event) => setDurationSeconds(Number(event.target.value))} disabled={capturing}><option value={5}>5 giây</option><option value={10}>10 giây</option><option value={15}>15 giây</option><option value={30}>30 giây</option></select></label>
     </div>
     <label className="zone-spl-confirm"><input type="checkbox" checked={confirmCalibration} disabled={!calibrationProfileReady || capturing} onChange={(event) => setConfirmCalibration(event.target.checked)}/><span>Tôi xác nhận microphone/input đang dùng đã có file hiệu chỉnh đáp tuyến phù hợp và offset đã được đặt bằng acoustic calibrator thực.</span></label>
