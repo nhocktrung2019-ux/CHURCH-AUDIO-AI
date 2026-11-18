@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Download, FileJson, Ruler } from "lucide-react";
+import { FileJson, Ruler } from "lucide-react";
 import { usePersistentState } from "./usePersistentState";
 import { buildSurveyReport, calculateGeometricDelayRecommendations, type SpeakerGeometry, type SurveyPoint } from "./zoneSPLWorkflow";
 import type { ZoneSplRecord } from "./zoneSplUniformity";
