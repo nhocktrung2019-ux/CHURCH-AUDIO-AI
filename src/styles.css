@@ -598,3 +598,23 @@ footer{padding-bottom:calc(26px + env(safe-area-inset-bottom))}
  .zone-spl-advisory .table-wrap{overflow-x:auto}
  .zone-spl-advisory table{min-width:480px}
 }
+
+
+/* RT60 multi-position session review and export. */
+.rt60-session-capture{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:12px 0}
+.rt60-session-capture label{display:grid;gap:7px;color:#91a8b0;font-size:9px;font-weight:800;letter-spacing:.55px}
+.rt60-session-capture input,.rt60-session-capture select{width:100%;min-width:0;min-height:42px;padding:9px 10px;border:1px solid #3a5662;border-radius:7px;background:#101e27;color:#e1efeb;font-size:12px}
+.rt60-session-actions{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}
+.rt60-session-actions button{width:auto}
+.rt60-session-summary{display:grid;gap:10px;margin:15px 0;padding:13px;border:1px solid #3b5b61;border-radius:10px;background:rgba(8,18,25,.72)}
+.rt60-session-summary>.heading{margin:0}
+.rt60-session-summary>.heading h3{flex:1;margin:0;color:#dceee7;font-size:13px}
+.rt60-session-summary .muted{margin:0;font-size:10px;line-height:1.6}
+.rt60-session-summary .table-wrap{overflow-x:auto}
+.rt60-session-summary table{min-width:540px}
+@media(max-width:600px){
+ .rt60-session-capture{grid-template-columns:1fr}
+ .rt60-session-actions{display:grid;grid-template-columns:1fr}
+ .rt60-session-actions button{width:100%}
+ .rt60-session-summary{padding:10px}
+}
