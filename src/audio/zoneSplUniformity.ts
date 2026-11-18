@@ -50,3 +50,78 @@ export function summarizeUniformity(records: ZoneSplRecord[]): UniformitySummary
     unit,
   };
 }
+
+
+export type ZoneBalanceRow = {
+  zone: string;
+  pointCount: number;
+  positionCount: number;
+  meanDb: number;
+  minDb: number;
+  maxDb: number;
+  spreadDb: number;
+  standardDeviationDb: number;
+  deltaFromMeanDb: number;
+  status: "balanced" | "low" | "high" | "insufficient";
+};
+
+/**
+ * Compare zones only when unit and input label match. Repeated captures at a
+ * seat are energy-averaged first, then each distinct seat receives equal weight.
+ * The zone-to-zone reference is the arithmetic mean of zone means.
+ */
+export function compareZoneLevels(
+  records: ZoneSplRecord[],
+  toleranceDb = 2,
+): ZoneBalanceRow[] | null {
+  if (!records.length || !Number.isFinite(toleranceDb) || toleranceDb < 0) return null;
+  const unit = records[0].unit;
+  const input = records[0].inputLabel;
+  if (records.some((record) =>
+    record.unit !== unit ||
+    record.inputLabel !== input ||
+    !Number.isFinite(record.levelDb) ||
+    !record.position.trim() ||
+    !record.zone.trim()
+  )) return null;
+
+  const zones = new Map<string, Map<string, number[]>>();
+  for (const record of records) {
+    if (!zones.has(record.zone)) zones.set(record.zone, new Map());
+    const positions = zones.get(record.zone)!;
+    if (!positions.has(record.position)) positions.set(record.position, []);
+    positions.get(record.position)!.push(record.levelDb);
+  }
+
+  const preliminary = [...zones.entries()].map(([zone, positions]) => {
+    const positionLevels = [...positions.values()]
+      .map((levels) => energyAverageDb(levels))
+      .filter((value): value is number => value !== null);
+    const meanDb = positionLevels.reduce((sum, value) => sum + value, 0) / positionLevels.length;
+    const minDb = Math.min(...positionLevels);
+    const maxDb = Math.max(...positionLevels);
+    const variance = positionLevels.reduce((sum, value) => sum + (value - meanDb) ** 2, 0) / positionLevels.length;
+    return {
+      zone,
+      pointCount: [...positions.values()].reduce((sum, levels) => sum + levels.length, 0),
+      positionCount: positionLevels.length,
+      meanDb,
+      minDb,
+      maxDb,
+      spreadDb: maxDb - minDb,
+      standardDeviationDb: Math.sqrt(variance),
+    };
+  });
+  const referenceMean = preliminary.reduce((sum, row) => sum + row.meanDb, 0) / preliminary.length;
+  return preliminary.map((row) => {
+    const deltaFromMeanDb = row.meanDb - referenceMean;
+    const status = row.positionCount < 2
+      ? "insufficient"
+      : deltaFromMeanDb < -toleranceDb
+        ? "low"
+        : deltaFromMeanDb > toleranceDb
+          ? "high"
+          : "balanced";
+    return { ...row, deltaFromMeanDb, status };
+  }).sort((a, b) => a.zone.localeCompare(b.zone, "vi"));
+}
