@@ -3,7 +3,7 @@ name: Android APK
 on:
   workflow_dispatch:
   pull_request:
-    branches: [main, feature/full-phase-integration, feature/v0.17-auto-eq-phase, feature/v0.18-audioworklet-pcm, feature/v0.19-pcm-metadata-integrity, feature/v0.20-dual-channel-foundation, feature/v0.21-multichannel-pcm-preservation, feature/v0.22-synchronous-transfer-live, feature/v0.23-channel-calibration-foundation, feature/v4-audio-system-health]
+    branches: [main, feature/full-phase-integration, feature/v0.17-auto-eq-phase, feature/v0.18-audioworklet-pcm, feature/v0.19-pcm-metadata-integrity, feature/v0.20-dual-channel-foundation, feature/v0.21-multichannel-pcm-preservation, feature/v0.22-synchronous-transfer-live, feature/v0.23-channel-calibration-foundation, feature/v4-audio-system-health, feature/rta-multicolor-dsp-catalogue-023, feature/v4-feedback-alert-quality, feature/v4-per-input-mic-calibration]
     paths:
       - "src/**"
       - "tests/**"
@@ -13,7 +13,7 @@ on:
       - "capacitor.config.ts"
       - ".github/workflows/android-apk.yml"
   push:
-    branches: [main, feature/v0.17-auto-eq-phase, feature/v0.18-audioworklet-pcm, feature/v0.19-pcm-metadata-integrity, feature/v0.20-dual-channel-foundation, feature/v0.21-multichannel-pcm-preservation, feature/v0.22-synchronous-transfer-live, feature/v4-audio-system-health]
+    branches: [main, feature/v0.17-auto-eq-phase, feature/v0.18-audioworklet-pcm, feature/v0.19-pcm-metadata-integrity, feature/v0.20-dual-channel-foundation, feature/v0.21-multichannel-pcm-preservation, feature/v0.22-synchronous-transfer-live, feature/v4-audio-system-health, feature/v4-feedback-alert-quality]
     paths:
       - "src/**"
       - "tests/**"
