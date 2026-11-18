@@ -70,3 +70,13 @@ Status labels distinguish code availability from hardware verification. Beta cod
 
 
 See docs/DSP_INTEGRATION_MATRIX.md for the model families, documented transport references and the safety gates required before any direct control adapter is enabled.
+
+
+## v0.30 measured zone SPL and spatial uniformity
+
+- Added a timed capture workspace in the RTA tab. Operators label the loudspeaker zone and listening position, then collect A-weighted microphone level samples for 5, 10, 15 or 30 seconds.
+- Each capture stores the input label, duration, sample count, raw A-weighted dBFS energy average and timestamp in local project storage.
+- A dB SPL label is only enabled after the operator confirms that the selected input has the matching microphone frequency-correction profile and a one-point acoustic-calibrator offset. Otherwise the record remains dBFS. This operator confirmation is not independent verification or instrument certification.
+- Spatial summaries report point count, arithmetic mean of point levels, minimum, maximum, max-minus-min spread and population standard deviation per zone. Comparisons never mix dBFS and dB SPL records.
+- CSV export is available for the saved measurement log. The 6 dB uniformity threshold is an editable project guideline, not a regulatory acceptance criterion.
+- The timed A-weighted sampling path is a field-survey aid. It is not IEC 61672 validated and does not replace a calibrated sound level meter or a documented measurement protocol.
