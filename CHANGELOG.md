@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.29.0-beta.1 — Capture-chain and level consistency gate
+
+- Require repeated captures at one position to retain matching PCM engine, analysis mode, input/PCM channel counts, channel-mix policy and track settings.
+- Reject a repeat set when input RMS level drifts by more than 3 dB; surface RMS spread and PCM metadata consistency in the measurement workspace.
+- Keep frequency-bin spread diagnostics separate from capture-chain checks, so a stable-looking curve cannot hide a changed input route or gain level.
+- Add regression tests for changed channel layout/mix policy, RMS drift and valid consistent captures.
+
+**Validation status:** regression tests and Android debug packaging pending CI. Hardware identity is not exposed consistently by browser capture metadata; the operator must still confirm the physical interface, routing, gain and loudspeaker chain.
+ 
 ## 0.28.0-beta.1 — Repeatability-gated multi-position Auto EQ
 
 - Require 3–5 repeated AudioWorklet mono captures at each fixed microphone position before saving it for multi-position Auto EQ.

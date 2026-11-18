@@ -717,7 +717,7 @@ export default function TransferFunctionPanel({ selectedInput, selectedOutput, r
         {positionRepeatCaptures.length>0&&positionRepeatLabel!==positionLabel.trim()&&<p className="warning">Tên vị trí đã thay đổi. Hãy khôi phục tên “{positionRepeatLabel}” hoặc xóa bộ lần đo lặp trước khi tiếp tục.</p>}
         {positionRepeatCaptures.length>0&&<div className={repeatabilityAnalysis.ready?"feedback-clear":"device-notice"}>
           <b>{repeatabilityAnalysis.ready?"Độ lặp đạt yêu cầu":"Đang kiểm tra độ lặp"}</b><span>{repeatabilityAnalysis.reason}</span>
-          <small>{repeatabilityAnalysis.summary.includedBinCount} bin ổn định · {repeatabilityAnalysis.summary.unstableBinCount} bin không ổn định · spread trung vị {repeatabilityAnalysis.summary.medianSpreadDb.toFixed(1)} dB</small>
+          <small>{repeatabilityAnalysis.summary.includedBinCount} bin ổn định · {repeatabilityAnalysis.summary.unstableBinCount} bin không ổn định · spread trung vị {repeatabilityAnalysis.summary.medianSpreadDb.toFixed(1)} dB · RMS lệch {repeatabilityAnalysis.summary.rmsLevelSpreadDb.toFixed(1)} dB · metadata PCM {repeatabilityAnalysis.summary.captureChainConsistent?"đồng nhất":"không đồng nhất"}</small>
         </div>}
         {positionRepeatCaptures.length>0&&positionRepeatCaptures.length<3&&<p className="warning">Cần thêm {3-positionRepeatCaptures.length} lần đo tại đúng vị trí hiện tại. Sau mỗi lần thêm, hãy bấm ĐO lại.</p>}
         <div className="multi-position-list">{multiPositionSamples.map((s,i)=><div className="multi-position-item" key={s.id}>

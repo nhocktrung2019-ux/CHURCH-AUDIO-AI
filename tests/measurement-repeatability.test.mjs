@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { analyzeMeasurementRepeatability } from "../src/audio/measurementRepeatability.ts";
 function points(offset=0,unstable=false,omit=false){const out=[];for(let f=100;f<=8000;f+=20){if(omit&&f>=900&&f<=1200)continue;const o=Math.log2(f/1000),peak=8*Math.exp(-0.5*(o/0.11)**2);out.push({frequencyHz:f,magnitudeDb:peak+offset+(unstable&&f===1000?6:0),phaseDeg:f/20,coherence:0.96});}return out;}
-function capture(offset=0,options={}){return {points:points(offset,options.unstable??false,options.omit??false),estimatedDelayMs:12,confidence:0.95,averageCoherence:0.96,reliableBandPercent:100,sampleRate:options.sampleRate??48000,framesAveraged:16,analysisMode:"mono-acoustic",captureQuality:{peakDbfs:-8,rmsDbfs:-25,clippedSamplePercent:0,invalidSamplePercent:0,sampleCount:240000},captureMetadata:{captureEngine:"AudioWorklet",inputChannelCount:1,pcmChannelCount:1,channelMix:"direct-mono",trackChannelCount:1,trackSampleRate:48000,analysisMode:"mono-acoustic"}};}
+function capture(offset=0,options={}){return {points:points(offset,options.unstable??false,options.omit??false),estimatedDelayMs:12,confidence:0.95,averageCoherence:0.96,reliableBandPercent:100,sampleRate:options.sampleRate??48000,framesAveraged:16,analysisMode:"mono-acoustic",captureQuality:{peakDbfs:-8,rmsDbfs:options.rmsDbfs??-25,clippedSamplePercent:0,invalidSamplePercent:0,sampleCount:240000},captureMetadata:{captureEngine:"AudioWorklet",inputChannelCount:options.inputChannelCount??1,pcmChannelCount:options.pcmChannelCount??1,channelMix:options.channelMix??"direct-mono",trackChannelCount:options.trackChannelCount??1,trackSampleRate:48000,analysisMode:"mono-acoustic"}};}
 test("requires at least three repeat captures",()=>{const r=analyzeMeasurementRepeatability([capture(),capture(0.5)]);assert.equal(r.ready,false);assert.match(r.reason,/tối thiểu 3 lần đo lặp/);});
 test("aggregates stable repeats using median magnitude",()=>{const r=analyzeMeasurementRepeatability([capture(0),capture(0.5),capture(1)]);assert.equal(r.ready,true);assert.ok(r.result);assert.equal(r.summary.captureCount,3);assert.ok(r.summary.includedBinCount>=24);assert.ok(r.summary.medianSpreadDb<=1.1);const p=r.result.points.find(x=>Math.abs(x.frequencyHz-1000)<1);assert.ok(p);assert.ok(p.magnitudeDb>8&&p.magnitudeDb<10);});
 test("excludes unstable bins while retaining stable bands",()=>{const r=analyzeMeasurementRepeatability([capture(),capture(0.5),capture(0,{unstable:true})]);assert.ok(r.summary.unstableBinCount>0);assert.ok(r.diagnostics.some(d=>d.status==="unstable"&&d.frequencyHz===1000));assert.ok(r.result?.points.every(p=>p.frequencyHz!==1000));});
@@ -14,4 +14,22 @@ test("accepts the app capture metadata when the optional top-level mode is omitt
  delete measured.analysisMode;
  const result=analyzeMeasurementRepeatability([measured,capture(0.3),capture(0.6)]);
  assert.equal(result.ready,true);
+});
+
+test("rejects a changed PCM channel layout or mixing policy between repeats",()=>{
+ const result=analyzeMeasurementRepeatability([capture(),capture(0.2),capture(0.4,{channelMix:"arithmetic-mean"})]);
+ assert.equal(result.ready,false);
+ assert.match(result.reason,/luồng PCM.*không đồng nhất/);
+ assert.equal(result.summary.captureChainConsistent,false);
+});
+test("rejects repeat captures with excessive input RMS drift",()=>{
+ const result=analyzeMeasurementRepeatability([capture(),capture(0.2,{rmsDbfs:-25}),capture(0.4,{rmsDbfs:-20})]);
+ assert.equal(result.ready,false);
+ assert.match(result.reason,/RMS.*lệch/);
+ assert.ok(result.summary.rmsLevelSpreadDb>3);
+});
+test("reports consistent capture metadata and RMS level spread",()=>{
+ const result=analyzeMeasurementRepeatability([capture(),capture(0.2,{rmsDbfs:-25.5}),capture(0.4,{rmsDbfs:-26})]);
+ assert.equal(result.summary.captureChainConsistent,true);
+ assert.ok(result.summary.rmsLevelSpreadDb<=3);
 });
