@@ -4,7 +4,7 @@ import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 
 export type WebGLSpeaker = {
   id: number; name: string; model: string; x: number; y: number; z: number;
-  azimuth: number; coverage: number;
+  azimuth: number; coverage: number; verticalCoverage: number;
 };
 export type WebGLObject = {
   id: number; kind: "altar" | "pulpit" | "column" | "pew" | "chair" | "stage";
@@ -113,7 +113,37 @@ function createFurnitureGroup(item: WebGLObject): THREE.Group {
   return group;
 }
 
-function createSpeakerGroup(speaker: WebGLSpeaker, index: number): THREE.Group {
+function createBeamGeometry(horizontalDeg: number, verticalDeg: number, radius: number): THREE.BufferGeometry {
+  const positions: number[] = [];
+  const halfH = THREE.MathUtils.degToRad(THREE.MathUtils.clamp(horizontalDeg, 5, 180) / 2);
+  const halfV = THREE.MathUtils.degToRad(THREE.MathUtils.clamp(verticalDeg, 5, 160) / 2);
+  const steps = 32;
+  const point = (h: number, v: number): [number, number, number] => [
+    radius * Math.cos(v) * Math.cos(h),
+    radius * Math.sin(v),
+    radius * Math.cos(v) * Math.sin(h),
+  ];
+  const origin: [number, number, number] = [0, 0, 0];
+  const triangle = (a: number[], b: number[], c: number[]) => positions.push(...a, ...b, ...c);
+  for (let i = 0; i < steps; i++) {
+    const h0 = -halfH + (i / steps) * halfH * 2;
+    const h1 = -halfH + ((i + 1) / steps) * halfH * 2;
+    const top0 = point(h0, halfV), top1 = point(h1, halfV);
+    const bottom0 = point(h0, -halfV), bottom1 = point(h1, -halfV);
+    triangle(origin, top0, top1);
+    triangle(origin, bottom1, bottom0);
+    triangle(top0, bottom0, bottom1);
+    triangle(top0, bottom1, top1);
+    if (i === 0) triangle(origin, top0, bottom0);
+    if (i === steps - 1) triangle(origin, bottom1, top1);
+  }
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+  geometry.computeVertexNormals();
+  return geometry;
+}
+
+function createSpeakerGroup(speaker: WebGLSpeaker, index: number, roomLength: number, roomWidth: number): THREE.Group {
   const group = new THREE.Group();
   const isColumn = /CBT|MA12|column/i.test(speaker.model);
   const isSub = /sub|subwoofer|SRX/i.test(speaker.model);
@@ -143,7 +173,16 @@ function createSpeakerGroup(speaker: WebGLSpeaker, index: number): THREE.Group {
     group.add(driver);
   }
 
-  const radius = Math.max(speaker.coverage > 120 ? 5 : 3, Math.max(18, width * 1.7));
+  const radius = Math.max(3, Math.hypot(roomLength, roomWidth) * 0.65);
+  const beam = new THREE.Mesh(
+    createBeamGeometry(speaker.coverage, speaker.verticalCoverage, radius),
+    new THREE.MeshBasicMaterial({
+      color: tint, transparent: true, opacity: 0.075,
+      side: THREE.DoubleSide, depthWrite: false,
+    }),
+  );
+  beam.userData.noDrag = true;
+  group.add(beam);
   const halfAngle = THREE.MathUtils.degToRad(Math.max(5, Math.min(180, speaker.coverage)) / 2);
   const shape = new THREE.Shape();
   shape.moveTo(0, 0);
@@ -410,17 +449,32 @@ export default function ChurchSceneWebGL(props: Props) {
     renderer.domElement.addEventListener("pointercancel", pointerUp);
 
     let frameId = 0;
-    const render = () => {
+    let lastFrameTime = 0;
+    const render = (time: number) => {
+      if (document.hidden) return;
       frameId = requestAnimationFrame(render);
+      if (time - lastFrameTime < 1000 / 30) return;
+      lastFrameTime = time;
       controls.update();
       renderer.render(scene, camera);
     };
+    const handleVisibility = () => {
+      if (document.hidden) {
+        cancelAnimationFrame(frameId);
+        frameId = 0;
+      } else if (!frameId) {
+        lastFrameTime = 0;
+        frameId = requestAnimationFrame(render);
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
     frameId = requestAnimationFrame(render);
 
     return () => {
       cancelAnimationFrame(frameId);
       observer?.disconnect();
       window.removeEventListener("resize", resize);
+      document.removeEventListener("visibilitychange", handleVisibility);
       renderer.domElement.removeEventListener("pointerdown", pointerDown);
       renderer.domElement.removeEventListener("pointermove", pointerMove);
       renderer.domElement.removeEventListener("pointerup", pointerUp);
@@ -467,7 +521,7 @@ export default function ChurchSceneWebGL(props: Props) {
       const key = "s:" + speaker.id;
       liveKeys.add(key);
       let group = state.groups.get(key);
-      const signature = [speaker.model, speaker.coverage].join("|");
+      const signature = [speaker.model, speaker.coverage, speaker.verticalCoverage].join("|");
       if (group && group.userData.signature !== signature) {
         state.scene.remove(group);
         disposeObject(group);
@@ -475,7 +529,7 @@ export default function ChurchSceneWebGL(props: Props) {
         group = undefined;
       }
       if (!group) {
-        group = createSpeakerGroup(speaker, index);
+        group = createSpeakerGroup(speaker, index, props.length, props.width);
         state.scene.add(group);
         state.groups.set(key, group);
       }
