@@ -45,7 +45,6 @@ export default function ZoneSPLMeasurementPanel({
   const validRecords = records.filter((record) => record.unit === currentUnit);
   const overall = summarizeUniformity(validRecords);
   const zoneBalance = compareZoneLevels(validRecords, zoneBalanceToleranceDb);
-  const comparisonInputs = [...new Set(validRecords.map((record) => record.inputLabel))];
   const zoneNames = [...new Set(validRecords.map((record) => record.zone))].sort((a, b) => a.localeCompare(b, "vi"));
   const zoneSummaries = zoneNames.map((name) => ({
     zone: name,
