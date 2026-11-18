@@ -45,6 +45,10 @@ export default function ZoneSPLMeasurementPanel({
   const latestRef = useRef({ liveAWeightedDbfs, offsetDb });
   latestRef.current = { liveAWeightedDbfs, offsetDb };
 
+  useEffect(() => {
+    window.dispatchEvent(new Event("church-audio-zone-spl-records-updated"));
+  }, [records]);
+
   const currentUnit: ZoneSplUnit = calibrationProfileReady && confirmCalibration ? "dB SPL" : "dBFS";
   const validRecords = records.filter((record) => record.unit === currentUnit);
   const overall = summarizeUniformity(validRecords);
