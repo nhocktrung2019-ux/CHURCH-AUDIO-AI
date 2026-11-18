@@ -24,14 +24,16 @@ import MultiMicFeedbackPanel from "./audio/MultiMicFeedbackPanel";
 import VersionSupportPanel from "./audio/VersionSupportPanel";
 import DSPIntegrationPanel from "./audio/DSPIntegrationPanel";
 import { APP_VERSION } from "./appVersion";
-import { LifeBuoy } from "lucide-react";
+import { LifeBuoy, MapPin } from "lucide-react";
+import ZoneSPLAnalyzer from "./audio/ZoneSPLAnalyzer";
 import SystemHealthPanel from "./audio/SystemHealthPanel";
 
-type TabId = "overview" | "rta" | "room" | "align" | "system" | "design" | "tools" | "dsp" | "support";
+type TabId = "overview" | "rta" | "zones" | "room" | "align" | "system" | "design" | "tools" | "dsp" | "support";
 const EMPTY_MIC_CALIBRATION_POINTS: MicCalibrationPoint[] = [];
 const tabs: { id: TabId; label: string; short: string; icon: typeof Activity }[] = [
   { id: "overview", label: "Tổng quan", short: "HOME", icon: LayoutDashboard },
   { id: "rta", label: "Phân tích tín hiệu", short: "RTA", icon: Activity },
+  { id: "zones", label: "Đo SPL từng vùng", short: "ZONES", icon: MapPin },
   { id: "room", label: "Đo âm học phòng", short: "ROOM", icon: Ruler },
   { id: "align", label: "Căn chỉnh hệ thống", short: "ALIGN", icon: SlidersHorizontal },
   { id: "system", label: "Chống hú & tối ưu", short: "SYSTEM", icon: ShieldCheck },
@@ -219,6 +221,7 @@ export default function App() {
     </>}
     {activeTab === "rta" && <section className="tab-stack"><section className="grid"><RtaPanel /><SpectrogramPanel /><DevicePanel /></section><SPLMeterPanel weighted={a.weightedLevels} leq={a.leqLevels} timeWeighted={a.timeWeightedLevels} peakDbfs={a.level} offsetDb={calibrationOffsetDb} durationSeconds={a.measurementSeconds} running={a.running} /><MeasurementCalibrationPanel inputDbfs={a.rmsDbfs + micCorrectionAt(calibrationPoints,1000)} offsetDb={calibrationOffsetDb} onOffsetChange={setCalibrationOffsetDb} /><MicCalibrationPanel value={micCalibration} onChange={setMicCalibration} />
     <MicrophoneSensitivityPanel value={micSensitivityProfile} onChange={setMicSensitivityProfile} activeDeviceLabel={inputs.find((device) => device.deviceId === a.selectedInput)?.label || "Micro mặc định hệ thống"} /></section>}
+    {activeTab === "zones" && <section className="tab-stack"><ZoneSPLAnalyzer liveLevelDb={a.weightedLevels.a} offsetDb={calibrationOffsetDb} running={a.running} /><DevicePanel /></section>}
     {activeTab === "room" && <section className="tab-stack"><RT60MeasurementPanel selectedInput={a.selectedInput} running={a.running} /><MeasurementPlanner running={a.running} spectrum={a.spectrum} /><SpectrogramPanel /></section>}
     {activeTab === "align" && <section className="tab-stack"><TransferFunctionPanel selectedInput={a.selectedInput} selectedOutput={t.outputDevice} running={a.running} calibrationPoints={calibrationPoints} /><MeasurementPlanner running={a.running} spectrum={a.spectrum} /></section>}
     {activeTab === "system" && <section className="tab-stack"><MultiMicFeedbackPanel /><FeedbackMonitor history={a.history} selectedFrequencyHz={selectedRtaFrequency} selectedLevelDbfs={selectedRtaLevel} /><TuningAdvisor history={a.history} /></section>}
