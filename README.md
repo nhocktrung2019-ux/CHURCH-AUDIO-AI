@@ -2,19 +2,20 @@
 
 A Vietnamese-first measurement and system-tuning workspace for church sound systems. Targets Android through Capacitor and laptop/desktop browsers.
 
-**Integrated beta branch version:** `0.15.0-beta.1`.
+**Integrated beta branch version:** `0.29.0-beta.1`.
 
 ## Workspaces
 
 - **Audio input/output and generator:** Web Audio microphone capture, available-device enumeration, sine/white/pink/log-sweep generator and digital level monitoring.
-- **RTA and spectrum:** log-frequency RTA, selectable frequency cursor, spectrum history, spectrogram/waterfall and frequency checkpoints.
+- **RTA and spectrum:** multicolour 64-band log-frequency RTA, selectable frequency cursor, adjustable display sensitivity (high/medium/low) and refresh response (fast/medium/slow), spectrum history, spectrogram/waterfall and saved frequency checkpoints.
 - **Level and calibration:** Z/A/C-weighted estimates, elapsed-time Leq integration, microphone correction profiles and one-point SPL calibration workflow.
 - **Room acoustics:** sweep-based impulse response and Schroeder decay analysis with RT20/RT30/RT60 estimates and fit/noise indicators.
-- **Transfer and alignment:** transfer-response/coherence and phase-shape diagnostics, relative delay estimates and cut-only PEQ suggestions.
-- **Feedback watch:** persistent narrow-peak candidates, saved suspected feedback points and advisory notch recommendations.
-- **Multi-source and voice:** attempt independent capture of up to four separately enumerated inputs, per-source RTA histories, Vietnamese voice intents and typed-command fallback.
+- **Transfer and alignment:** transfer-response/coherence and phase-shape diagnostics, relative delay estimates and target-aware PEQ cut suggestions. Select Flat, Spoken-word or Worship-music contours; multi-position mode combines up to eight listening positions (minimum three), each requiring 3–5 repeat captures at a fixed microphone position; unstable repeat bins (spread >3 dB) are excluded, and capture sets are rejected if PCM channel/mix metadata changes or input RMS drifts by more than 3 dB. Per-frequency repeatability and spatial diagnostics are shown. PEQ remains cut-only and requires high coherence plus clean raw PCM.
+- **Feedback watch:** persistent narrow-peak candidates, Vietnamese on-screen warnings, saved suspected feedback points and advisory notch recommendations.
+- **Multi-source:** attempt independent capture of up to four separately enumerated inputs, per-source RTA histories and a relative linear-power overview; only Vietnamese on-screen feedback warnings are included; speech recognition and speech synthesis are removed, with no general voice-command assistant.
 - **Church 3D and loudspeaker planning:** Three.js room layout, speaker placement, approximate coverage visualisation, CBT planning and polar-data inspection.
-- **DSP and mixer worksheet:** manual project records for X32/M32, Soundcraft, dbx DriveRack and db Acoustics CD48.
+- **DSP dynamics advisor:** offline Gate soft-expander, Compressor and Limiter starting points for dynamic handheld and gooseneck microphones, based on measured noise floor and speech peak; exportable JSON with safety notes. Values are dBFS references and require manual validation on each device. Gate/expander should be bypassed or reduced for sustained ambient sound and never used as a feedback suppressor.
+- **DSP and mixer catalogue:** selectable named models across Behringer X32/WING/X AIR, Midas M32/HD96, Yamaha digital mixers and installation DSP, Soundcraft Ui/Si/Vi, dbx DriveRack and db Acoustics CD48. The worksheet remains manual/offline; no generic model compatibility or live parameter writes are claimed.
 - **Backup, update and support:** local project backup/restore, update links, device diagnostics and technical-support guidance.
 
 ## Build locally

@@ -1,27 +1,11 @@
 import { useEffect, useRef, useState } from "react";
-import { Activity, Mic2, ShieldCheck, Square, VolumeX, Radio, Brain, Volume2, MessageSquareText } from "lucide-react";
+import { Activity, Mic2, ShieldCheck, Square, VolumeX } from "lucide-react";
 import { detectNarrowPeaks } from "./feedback";
 import { assessMultiSourceInput, multiSourceSynchronizationWarning, type MultiSourceInputAssessment } from "./multiSourceDiagnostics";
 
 type InputDevice = { deviceId: string; label: string };
 type ChannelState = { id: string; label: string; history: number[][]; diagnostics: MultiSourceInputAssessment; trackState: "live" | "muted" | "ended" };
 type Session = { id: string; label: string; stream: MediaStream; track: MediaStreamTrack; diagnostics: MultiSourceInputAssessment; analyser: AnalyserNode; data: Float32Array };
-type SpeechResultEvent = { results: ArrayLike<ArrayLike<{ transcript: string }>> };
-type SpeechRecognitionLike = {
-  lang: string;
-  continuous: boolean;
-  interimResults: boolean;
-  onresult: ((event: SpeechResultEvent) => void) | null;
-  onerror: ((event: { error?: string }) => void) | null;
-  onend: (() => void) | null;
-  start: () => void;
-  stop: () => void;
-};
-type SpeechWindow = Window & {
-  SpeechRecognition?: new () => SpeechRecognitionLike;
-  webkitSpeechRecognition?: new () => SpeechRecognitionLike;
-};
-
 function toLogBands(data: Float32Array, sampleRate: number): number[] {
   const nyquist = sampleRate / 2, minHz = 20, maxHz = Math.min(20000, nyquist);
   const result: number[] = [];
@@ -41,14 +25,6 @@ function toLogBands(data: Float32Array, sampleRate: number): number[] {
   return result;
 }
 
-function normalizeCommand(value: string): string {
-  return value.toLocaleLowerCase("vi")
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/đ/g, "d")
-    .trim();
-}
-
 export default function MultiMicFeedbackPanel() {
   const [devices, setDevices] = useState<InputDevice[]>([]);
   const [selected, setSelected] = useState<string[]>([]);
@@ -58,31 +34,13 @@ export default function MultiMicFeedbackPanel() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
-  const [voiceText, setVoiceText] = useState("");
-  const [voiceStatus, setVoiceStatus] = useState("Trợ lý sẵn sàng. Có thể dùng giọng nói hoặc nhập lệnh.");
-  const [listening, setListening] = useState(false);
+  const [feedbackAlertsEnabled, setFeedbackAlertsEnabled] = useState(true);
+  const [alertMessage, setAlertMessage] = useState("");
   const audioRef = useRef<AudioContext | null>(null);
   const sessionsRef = useRef<Session[]>([]);
   const frameRef = useRef<number>(0);
   const historiesRef = useRef<Map<string, number[][]>>(new Map());
-  const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
-
-  const speechWindow = window as SpeechWindow;
-  const SpeechRecognitionCtor = speechWindow.SpeechRecognition || speechWindow.webkitSpeechRecognition;
-  const speechSupported = Boolean(SpeechRecognitionCtor);
-
-  const speak = (message: string) => {
-    setVoiceStatus(message);
-    if (!("speechSynthesis" in window)) return;
-    window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(message);
-    utterance.lang = "vi-VN";
-    const vietnameseVoice = window.speechSynthesis.getVoices().find(v => v.lang.toLowerCase().startsWith("vi"));
-    if (vietnameseVoice) utterance.voice = vietnameseVoice;
-    utterance.rate = 0.96;
-    utterance.pitch = 1;
-    window.speechSynthesis.speak(utterance);
-  };
+  const announcedPeakAtRef = useRef<Map<string, number>>(new Map());
 
   const stop = () => {
     if (frameRef.current) cancelAnimationFrame(frameRef.current);
@@ -100,9 +58,7 @@ export default function MultiMicFeedbackPanel() {
   };
 
   useEffect(() => () => {
-    recognitionRef.current?.stop();
     stop();
-    if ("speechSynthesis" in window) window.speechSynthesis.cancel();
   }, []);
 
   const refresh = async () => {
@@ -127,21 +83,18 @@ export default function MultiMicFeedbackPanel() {
 
   const start = async () => {
     if (running || busy) {
-      speak("Phép đo đa nguồn đã hoạt động hoặc đang khởi tạo. Hãy dừng phiên hiện tại trước khi bắt đầu phiên mới.");
+      setError("Phép đo đa nguồn đang hoạt động hoặc đang khởi tạo. Hãy dừng phiên hiện tại trước khi bắt đầu phiên mới.");
       return;
     }
-    // Stop speech recognition before opening measurement streams to avoid competing microphone capture.
-    recognitionRef.current?.stop();
-    recognitionRef.current = null;
-    setListening(false);
     if (!selected.length) {
       setError("Hãy chọn ít nhất một đầu vào micro.");
-      speak("Bạn hãy chọn ít nhất một nguồn micro trước khi bắt đầu đo.");
       return;
     }
     setBusy(true);
     setError("");
     setNotice("");
+    setAlertMessage("");
+    announcedPeakAtRef.current.clear();
     let audio: AudioContext | null = null;
     const opened: Session[] = [];
     const failed: string[] = [];
@@ -249,116 +202,49 @@ export default function MultiMicFeedbackPanel() {
         frameRef.current = requestAnimationFrame(tick);
       };
       frameRef.current = requestAnimationFrame(tick);
-      speak("Bắt đầu đo thành công. Có " + opened.length + " nguồn âm thanh đang hoạt động.");
     } catch (e) {
       opened.forEach(s => s.stream.getTracks().forEach(t => t.stop()));
       if (audio && audio.state !== "closed") await audio.close().catch(() => undefined);
       if (audioRef.current === audio) audioRef.current = null;
       setError(e instanceof Error ? e.message : "Không thể khởi động giám sát.");
-      speak("Không thể bắt đầu phép đo. Hãy kiểm tra quyền micro và thiết bị đầu vào.");
     } finally {
       setBusy(false);
     }
   };
 
-  const readReport = () => {
-    if (!channels.length) {
-      speak("Chưa có dữ liệu đo. Hãy quét thiết bị, chọn các nguồn và bắt đầu đo.");
-      return;
+  useEffect(() => {
+    if (!running || !feedbackAlertsEnabled || channels.length === 0) return;
+    const now = Date.now();
+    const candidates: Array<{ key: string; label: string; frequencyHz: number }> = [];
+    for (const channel of channels) {
+      const stablePeaks = detectNarrowPeaks(channel.history)
+        .filter((peak) => peak.persistence >= 60 && peak.prominenceDb >= 5)
+        .slice(0, 2);
+      for (const peak of stablePeaks) {
+        const key = `${channel.id}:${Math.round(peak.frequencyHz / 5) * 5}`;
+        const lastAnnounced = announcedPeakAtRef.current.get(key) ?? 0;
+        if (now - lastAnnounced >= 30000) {
+          announcedPeakAtRef.current.set(key, now);
+          candidates.push({ key, label: channel.label, frequencyHz: peak.frequencyHz });
+        }
+      }
     }
-    const lines = channels.map(channel => {
-      const latest = channel.history[channel.history.length - 1] ?? [];
-      const level = latest.length ? Math.max(...latest) : -100;
-      const peaks = detectNarrowPeaks(channel.history);
-      const peakText = peaks.length
-        ? peaks.slice(0, 2).map(p => Math.round(p.frequencyHz) + " héc").join(" và ")
-        : "chưa có đỉnh hẹp ổn định";
-      return channel.label + ": mức phổ lớn nhất " + level.toFixed(1) + " đề bê ép ét, " + peakText + ".";
-    });
-    speak("Báo cáo phép đo đa nguồn. Đang có " + channels.length + " nguồn. " + lines.join(" "));
-  };
-
-  const executeCommand = async (rawCommand: string) => {
-    const command = normalizeCommand(rawCommand);
-    if (!command) return;
-    setVoiceText(rawCommand);
-    if (/(dung do|dung phep do|stop|ket thuc do)/.test(command)) {
-      stop();
-      speak("Đã dừng phép đo.");
-    } else if (/(quet micro|quet thiet bi|tim micro|tim thiet bi|refresh)/.test(command)) {
-      await refresh();
-      speak("Đã quét xong thiết bị. Chọn các nguồn cần đo trên màn hình.");
-    } else if (/(bat dau do|do da nguon|do nhieu nguon|start measurement|bat dau phep do)/.test(command)) {
-      await start();
-    } else if (/(doc ket qua|bao cao|phan tich ket qua|tong quan phep do|doc so do)/.test(command)) {
-      readReport();
-    } else if (/(tro giup|huong dan|lenh nao)/.test(command)) {
-      speak("Bạn có thể nói: quét micro, bắt đầu đo đa nguồn, dừng đo, hoặc đọc kết quả.");
-    } else {
-      speak("Tôi chưa nhận diện lệnh này. Hãy nói: quét micro, bắt đầu đo đa nguồn, dừng đo, hoặc đọc kết quả.");
-    }
-  };
-
-  const toggleListening = () => {
-    if (running || busy) {
-      speak("Hãy dừng phép đo trước khi bật nhận dạng giọng nói để tránh hai phiên cùng tranh quyền microphone.");
-      return;
-    }
-    if (listening) {
-      recognitionRef.current?.stop();
-      setListening(false);
-      return;
-    }
-    if (!SpeechRecognitionCtor) {
-      speak("Thiết bị này chưa hỗ trợ nhận dạng giọng nói trong ứng dụng. Bạn có thể nhập lệnh ở ô bên dưới.");
-      return;
-    }
-    try {
-      const recognition = new SpeechRecognitionCtor();
-      recognition.lang = "vi-VN";
-      recognition.continuous = false;
-      recognition.interimResults = false;
-      recognition.onresult = event => {
-        const transcript = event.results?.[0]?.[0]?.transcript ?? "";
-        setVoiceText(transcript);
-        void executeCommand(transcript);
-      };
-      recognition.onerror = event => {
-        setVoiceStatus("Nhận dạng giọng nói lỗi: " + (event.error || "không xác định") + ". Có thể dùng ô nhập lệnh.");
-      };
-      recognition.onend = () => {
-        setListening(false);
-        recognitionRef.current = null;
-      };
-      recognitionRef.current = recognition;
-      recognition.start();
-      setListening(true);
-      setVoiceStatus("Đang nghe tiếng Việt…");
-    } catch (e) {
-      setListening(false);
-      setVoiceStatus(e instanceof Error ? e.message : "Không khởi động được micro giọng nói.");
-    }
-  };
+    if (!candidates.length) return;
+    const details = candidates.slice(0, 3)
+      .map((item) => `${item.label}, khoảng ${Math.round(item.frequencyHz)} héc`)
+      .join("; ");
+    const message = `Cảnh báo, có đỉnh tần số nghi vấn hú rít tại ${details}. Hãy hạ mức âm thanh, kiểm tra lần lượt micro và loa monitor. Không tăng gain hoặc áp dụng EQ tự động.`;
+    setAlertMessage(message);
+  }, [channels, running, feedbackAlertsEnabled]);
 
   return <section className="panel multi-mic-panel" id="multi-mic">
     <div className="heading"><Activity /><h2>Multi-Source Measurement · Đo đa nguồn</h2><span>{running ? "LIVE SESSION" : "STANDBY"}</span></div>
     <p className="muted">Chọn tối đa 4 đầu vào được hệ điều hành liệt kê riêng. Ứng dụng mở từng input thành luồng độc lập, hiển thị RTA riêng và phổ tổng hợp tham khảo; không giả định các luồng dùng chung hardware clock hoặc lấy mẫu đồng bộ.</p>
 
-    <section className="multi-source-assistant">
-      <div className="heading"><Brain /><h3>AI Voice Assistant · Trợ lý giọng nói</h3><span>VIETNAMESE</span></div>
-      <p>Điều khiển bằng giọng nói: “Quét micro”, “Bắt đầu đo đa nguồn”, “Dừng đo”, “Đọc kết quả”. Trợ lý có thể đọc mức phổ và cảnh báo đỉnh nghi vấn theo dữ liệu đang đo. {speechSupported ? "Nhận dạng tiếng Việt được trình duyệt hỗ trợ." : "WebView này chưa hỗ trợ nhận dạng giọng nói; dùng ô nhập lệnh thay thế."}</p>
-      <div className="voice-command-actions">
-        <button className={listening ? "voice-listening" : "secondary"} onClick={toggleListening}>
-          <Radio />{listening ? "Đang nghe · Dừng nghe" : "Nói lệnh tiếng Việt"}
-        </button>
-        <button className="secondary" onClick={readReport}><Volume2 />Đọc báo cáo đo</button>
-      </div>
-      <div className="voice-command-row">
-        <input value={voiceText} onChange={event => setVoiceText(event.target.value)} onKeyDown={event => { if (event.key === "Enter") void executeCommand(voiceText); }} placeholder="Nhập lệnh: bắt đầu đo đa nguồn…" aria-label="Lệnh trợ lý giọng nói" />
-        <button onClick={() => void executeCommand(voiceText)}><MessageSquareText />Gửi lệnh</button>
-      </div>
-      <div className="voice-assistant-status">{voiceStatus}</div>
-      <p className="warning">Nhận dạng giọng nói phụ thuộc WebView/trình duyệt và dịch vụ speech trên thiết bị. Phần trợ lý xử lý lệnh và tóm tắt tín hiệu tại máy, không gửi tín hiệu đo sang mô hình AI. Nhận dạng giọng nói có thể dùng dịch vụ speech do Android/WebView cấu hình; chức năng nghe lệnh bị khóa khi phiên đo đang chạy.</p>
+    <section className="multi-mic-alert-settings">
+      <label><input type="checkbox" checked={feedbackAlertsEnabled} onChange={(event) => setFeedbackAlertsEnabled(event.target.checked)} /><span>Hiển thị cảnh báo hú rít bằng tiếng Việt</span></label>
+      <p>Cảnh báo xuất hiện khi phát hiện đỉnh tần số hẹp có độ bền và độ nổi đủ lớn; cùng một tần số được giới hạn nhắc lại để tránh cảnh báo liên tục. Đây là nghi vấn cần xác minh bằng tai nghe và kiểm tra hệ thống.</p>
+      {feedbackAlertsEnabled && alertMessage && <p className="device-notice" role="status" aria-live="polite">{alertMessage}</p>}
     </section>
 
     <div className="multi-mic-toolbar">

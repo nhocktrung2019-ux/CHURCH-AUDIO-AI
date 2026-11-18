@@ -4,9 +4,9 @@
 |---|---|---|---|
 | 1 | Audio Engine, input/output, USB/OTG, generator | Browser/WebView beta implemented | Android hardware and long-run routing tests |
 | 2 | RTA, FFT, RT60, transfer, phase, Leq, calibration | v0.23 adds guided per-input USB loopback capture, exact-route profile storage, repeatability gating and differential Reference/Measurement correction; CI and physical USB routing remain unverified | successful CI, verified channel/output mapping, hardware clock/skew proof, acoustic validation and reference-analyser comparison |
-| 3 | Feedback detection, multi-mic, voice assistant | v0.16 beta feedback/multi-mic plus v0.23 local Vietnamese voice-command routing (navigation, measurement start/stop, RTA frequency); hardware and recognition-provider support remain unverified | Multi-device attribution, real-time feedback action verification, Android Web Speech availability/privacy testing and voice UX acceptance |
+| 3 | Feedback detection and multi-mic | Persistent narrow-peak candidates, saved feedback points, Vietnamese on-screen warnings for persistent candidates; speech recognition and speech synthesis removed | Verify feedback candidates by listening and physical channel isolation; validate visual feedback warnings and multi-source capture |
 | 4 | Church 3D, CBT, polar data, coverage | Planning/approximation tools implemented | Surveyed geometry and verified manufacturer polar data |
-| 5 | X32/M32, Soundcraft, dbx, CD48 DSP | v0.23 separates seven model/family profiles with documented transport/evidence and manual worksheets; no live control adapter | Exact model/firmware protocol, read-only discovery, safe write/read-back/rollback and physical tests |
+| 5 | Behringer, Midas, Yamaha, Soundcraft, dbx and CD48 DSP | v0.23 provides selectable named model profiles and manual worksheets; no live control adapter | Exact model/firmware protocol, read-only discovery, safe write/read-back/rollback and physical tests |
 | 6 | Version update, diagnostics, support, signed APK | Support workspace and tag workflow integrated | Permanent signing secrets and signed APK device test |
 
 ## v0.20 dual-channel foundation
@@ -21,7 +21,7 @@ The delay estimator uses broadband correlation, bounds its search range, refines
 2. Stabilize Android audio routing on physical hardware.
 3. Wire the validated dual-channel primitives into a single USB multichannel capture path.
 4. Validate acoustic algorithms against reference instruments.
-5. Integrate voice and independent sources without claiming shared-clock synchronization.
+5. Validate independent sources without claiming shared-clock synchronization; retain visual Vietnamese feedback warnings without speech synthesis.
 6. Expand room and loudspeaker data only from verified sources.
 7. Enable DSP control only after exact device adapters pass read/write/rollback tests.
 8. Publish stable APKs only with the permanent signing certificate.

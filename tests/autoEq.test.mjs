@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { assessAutoEqReadiness, suggestParametricEq } from "../src/audio/autoEq.ts";
+import { assessAutoEqReadiness, autoEqTargetOffsetDb, suggestParametricEq } from "../src/audio/autoEq.ts";
 
 function smoothResponse() {
   const points = [];
@@ -59,4 +59,22 @@ test("invalid and out-of-band values cannot qualify as measurement bins", () => 
     coherence: 1.2,
   }));
   assert.equal(assessAutoEqReadiness(points).ready, false);
+});
+
+
+test("target contours interpolate on a log-frequency axis", () => {
+  assert.equal(autoEqTargetOffsetDb(1000, "flat"), 0);
+  assert.ok(autoEqTargetOffsetDb(80, "spoken-word") < autoEqTargetOffsetDb(1000, "spoken-word"));
+  assert.ok(autoEqTargetOffsetDb(3150, "spoken-word") > autoEqTargetOffsetDb(1000, "spoken-word"));
+  assert.ok(autoEqTargetOffsetDb(10000, "worship-music") < autoEqTargetOffsetDb(1000, "worship-music"));
+});
+
+test("flat profile stays backwards compatible and target profiles remain cut-only", () => {
+  const points = smoothResponse();
+  assert.deepEqual(suggestParametricEq(points, "flat"), suggestParametricEq(points));
+  for (const profile of ["flat", "spoken-word", "worship-music"]) {
+    const filters = suggestParametricEq(points, profile);
+    assert.ok(filters.every(filter => filter.gainDb <= 0 && filter.gainDb >= -4));
+    assert.ok(filters.length <= 6);
+  }
 });

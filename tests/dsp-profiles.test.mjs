@@ -8,7 +8,11 @@ test("DSP library contains requested model families as separate capability profi
   for (const id of [
     "behringer-x32-midas-m32",
     "soundcraft-ui",
-    "soundcraft-si-vi",
+    "soundcraft-si",
+    "soundcraft-vi",
+    "yamaha-digital-consoles",
+    "yamaha-installation-dsp",
+    "behringer-wing",
     "dbx-driverack-pa2",
     "dbx-driverack-venu360",
     "dbx-driverack-4800-4820",

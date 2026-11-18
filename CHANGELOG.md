@@ -1,5 +1,79 @@
 # Changelog
 
+## 0.29.0-beta.1 — Capture-chain and level consistency gate
+
+- Require repeated captures at one position to retain matching PCM engine, analysis mode, input/PCM channel counts, channel-mix policy and track settings.
+- Reject a repeat set when input RMS level drifts by more than 3 dB; surface RMS spread and PCM metadata consistency in the measurement workspace.
+- Keep frequency-bin spread diagnostics separate from capture-chain checks, so a stable-looking curve cannot hide a changed input route or gain level.
+- Add regression tests for changed channel layout/mix policy, RMS drift and valid consistent captures.
+
+**Validation status:** regression tests and Android debug packaging pending CI. Hardware identity is not exposed consistently by browser capture metadata; the operator must still confirm the physical interface, routing, gain and loudspeaker chain.
+ 
+## 0.28.0-beta.1 — Repeatability-gated multi-position Auto EQ
+
+- Require 3–5 repeated AudioWorklet mono captures at each fixed microphone position before saving it for multi-position Auto EQ.
+- Compare repeated responses per frequency in log-frequency space; accept only bins with at least 80% repeat coverage and spread no greater than 3 dB.
+- Exclude unstable and under-covered bins from the per-position median response and report included/unstable/under-covered counts and spread statistics.
+- Store repeatability summaries and rejected-frequency diagnostics in each position and exported PEQ worksheet.
+- Keep within-position repeatability separate from between-position spatial variation. PEQ remains advisory and cut-only; no DSP/mixer writes.
+
+**Validation status:** regression tests and Android debug packaging are pending CI. Real-room comparison against a calibrated reference analyser remains required.
+
+## 0.27.0-beta.1 — Spatial consistency diagnostics
+
+- Add per-frequency multi-position diagnostics with position coverage, spatial spread and an explicit included / insufficient-coverage / spatial-variance status.
+- Surface the highest-variance and under-covered bins in the Auto EQ workspace instead of only reporting a total rejected-bin count.
+- Add insufficient-coverage and spatial-variance counts to the summary and exported PEQ worksheet.
+- Preserve the existing safeguards: minimum three positions, clean AudioWorklet mono captures, unchanged signal-chain confirmation, high coherence, and cut-only PEQ. No automatic DSP writes.
+
+**Validation status:** regression tests and Android debug packaging await CI. Real-room multi-position validation is still required.
+
+
+## 0.26.0-beta.1 — Multi-position weighted Auto EQ
+
+- Save up to eight named church listening positions with operator weights from 0.5 to 2.0; at least three positions are required.
+- Require operator confirmation that the microphone, input/interface, gain, routing, loudspeaker system, processing and playback level are unchanged between positions.
+- Accept only clean AudioWorklet mono-acoustic captures with valid PCM quality, coherent bins and matching sample rates. Reject synchronous loopback and legacy ScriptProcessor sessions.
+- Interpolate in log-frequency space without extrapolating across gaps; require at least 80% position coverage per bin.
+- Aggregate using operator weights after limiting outliers to median ±4 dB; omit bins with spatial spread above 8 dB rather than equalizing an inconsistent region.
+- Feed the aggregate to the existing target-aware cut-only PEQ advisor. Export position names, weights and spatial spread summary. No automatic DSP/mixer writes are enabled.
+
+**Validation status:** new regression tests and Android packaging await CI; physical multi-position validation is still required.
+
+
+## 0.25.0-beta.1 — Target-aware Auto EQ
+
+- Add selectable Flat / Spoken-word / Worship-music target contours for PEQ analysis.
+- Interpolate contours on a logarithmic frequency axis and compare the measured response against the chosen operator reference.
+- Keep strict readiness gates for coherent bins and raw PCM quality; synchronous dual-channel captures remain locked until per-channel ADC/DAC calibration is verified.
+- Continue to generate cut-only PEQ suggestions (maximum 4 dB per filter, maximum six filters, frequency separation guard); never create boosts or write to connected DSP/mixer hardware.
+- Include the target profile and its description in exported JSON worksheets.
+- Label the profiles as mild starting references, not acoustic standards or universal room targets. Repeat measurements at multiple listening positions and verify by listening before manual use.
+
+**Validation status:** this code change awaits its own CI run and Android debug packaging. Earlier v0.24.0-beta.1 CI passed and produced a debug APK artifact; no physical-device or hardware DSP tests are claimed.
+
+
+## 0.24.0-beta.1 — Microphone dynamics advisor
+
+- Add an offline starting-point calculator for soft-expander Gate, Compressor and Limiter settings for dynamic handheld and gooseneck microphones.
+- Calculate thresholds from the operator-measured noise floor and speech peak, with conservative attack/hold/release, ratio, knee and limiter ceiling values.
+- Warn when signal-to-noise margin is poor, speech peaks approach digital full scale, or background noise is high.
+- Export the worksheet as JSON. No settings are sent to DSP or mixer hardware; dBFS references must be mapped to the exact device meter scale and confirmed by listening.
+- Keep the v0.23 multicolour RTA, selectable speed/sensitivity, visual Vietnamese feedback alerts and model catalogue.
+
+**Validation status:** regression tests, TypeScript/Vite build, Capacitor sync and Android debug APK packaging passed in CI run #368. No physical mixer/DSP or microphone test is claimed.
+
+## 0.23.0-beta.1 — Multicolour RTA, Vietnamese feedback warnings and expanded DSP catalogue
+
+- Add selectable RTA display sensitivity: High (-100 dBFS floor), Medium (-85 dBFS) and Low (-70 dBFS). These are display floors only; the captured PCM and underlying analysis values are unchanged.
+- Add selectable RTA update response: Fast (~30 updates/s), Medium (~20 updates/s) and Slow (~10 updates/s), with matching analyser smoothing. Values depend on the device display refresh rate.
+- Render 64-band RTA bars with a blue-to-red colour scale, peak emphasis, frequency/level tooltips and responsive controls that persist between sessions.
+- Expand the manual DSP/mixer catalogue to named Behringer, Midas, Yamaha, Soundcraft, dbx and db Acoustics model families. Add exact model selection to the configuration worksheet/export.
+- Remove both speech recognition and speech synthesis. Keep an operator-controlled Vietnamese on-screen feedback warning for persistent, prominent narrow peaks; each frequency warning is rate-limited.
+- Keep all DSP/mixer profiles in manual/offline worksheet mode. No guessed network scan, direct mixer control, automatic EQ, gain, mute or routing writes are enabled.
+
+**Validation status:** code and regression tests are added, but this beta has not yet been verified on physical Android devices, calibrated microphones, external reference analysers, or the listed DSP/mixer hardware. RTA sensitivity does not calibrate microphone sensitivity or SPL.
+
 ## 0.22.0-beta.1 — Synchronous dual-channel Transfer Function
 
 - Add a dedicated synchronous loopback mode with Reference and Measurement input-channel selectors.

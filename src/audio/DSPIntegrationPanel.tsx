@@ -4,6 +4,7 @@ import { assessCD48NetworkConfig, type CD48HardwareRevision, type CD48NetworkLin
 import { Download, Network, ShieldCheck, ClipboardCheck, ExternalLink } from "lucide-react";
 import { dspProfiles } from "../data/dspProfiles";
 import CD48PresetEditor from "./CD48PresetEditor";
+import DSPDynamicsAdvisor from "./DSPDynamicsAdvisor";
 import { assessMeasurementReadiness, type MeasurementEvidence } from "./measurementReadiness";
 const initialEvidence: MeasurementEvidence = {
   knownInputChain: false, measurementMicCalibrated: false, acousticCalibratorVerified: false,
@@ -19,6 +20,7 @@ function downloadJson(fileName: string, value: unknown): void {
 }
 export default function DSPIntegrationPanel() {
   const [profileId, setProfileId] = useState(dspProfiles[0].id);
+  const [modelName, setModelName] = useState(dspProfiles[0].models[0] ?? "");
   const [systemName, setSystemName] = useState("");
   const [channelMap, setChannelMap] = useState("Mic 1 → Main L/R");
   const [hpfHz, setHpfHz] = useState(100);
@@ -38,7 +40,7 @@ export default function DSPIntegrationPanel() {
   const readiness = useMemo(() => assessMeasurementReadiness(evidence), [evidence]);
   const exportWorksheet = () => downloadJson("church-audio-dsp-worksheet.json", {
     schema: "church-audio-dsp-worksheet/v1", exportedAt: new Date().toISOString(),
-    systemName: systemName.trim() || "Chưa đặt tên hệ thống", device: profile,
+    systemName: systemName.trim() || "Chưa đặt tên hệ thống", device: profile, selectedModel: modelName,
     proposedSettings: {
       channelMap, highPassFilterHz: hpfHz, relativeDelayMs: delayMs, technicianNotes: notes,
       ...(profile.id === "db-acoustics-cd48" ? {
@@ -70,7 +72,8 @@ export default function DSPIntegrationPanel() {
       <div className="heading"><Network /><h2>DSP & Mixer Integration · Thư viện thiết bị</h2><span>MANUAL WORKSHEET</span></div>
       <p className="muted">Quản lý cấu hình dự kiến cho mixer/DSP. Tất cả adapter hiện ở chế độ thủ công; ứng dụng chưa kết nối mạng hoặc ghi tham số vào phần cứng.</p>
       <div className="form-grid">
-        <div><label htmlFor="dsp-profile">THIẾT BỊ</label><select id="dsp-profile" value={profileId} onChange={(event) => setProfileId(event.target.value)}>{dspProfiles.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></div>
+        <div><label htmlFor="dsp-profile">HÃNG / NHÓM THIẾT BỊ</label><select id="dsp-profile" value={profileId} onChange={(event) => { const next = dspProfiles.find((item) => item.id === event.target.value) ?? dspProfiles[0]; setProfileId(next.id); setModelName(next.models[0] ?? ""); }}>{dspProfiles.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></div>
+        <div><label htmlFor="dsp-model">MODEL CỤ THỂ</label><select id="dsp-model" value={modelName} onChange={(event) => setModelName(event.target.value)}>{profile.models.map((model) => <option key={model} value={model}>{model}</option>)}</select></div>
         <div><label htmlFor="dsp-system-name">TÊN HỆ THỐNG / NHÀ THỜ</label><input id="dsp-system-name" value={systemName} onChange={(event) => setSystemName(event.target.value)} placeholder="Ví dụ: Main Hall" /></div>
         <div><label htmlFor="dsp-channel-map">CHANNEL / BUS MAPPING</label><input id="dsp-channel-map" value={channelMap} onChange={(event) => setChannelMap(event.target.value)} /></div>
         <div><label htmlFor="dsp-hpf">HPF ĐỀ XUẤT (Hz)</label><input id="dsp-hpf" type="number" min="20" max="1000" step="1" value={hpfHz} onChange={(event) => setHpfHz(Math.max(20, Math.min(1000, Number(event.target.value) || 20)))} /></div>
@@ -79,7 +82,7 @@ export default function DSPIntegrationPanel() {
       </div>
       <div className="dsp-device-summary">
         <div><small>NHÓM THIẾT BỊ</small><b>{profile.family}</b></div>
-        <div><small>MODEL ĐƯỢC LIỆT KÊ</small><b>{profile.models.join(" · ")}</b></div>
+        <div><small>MODEL ĐANG CHỌN</small><b>{modelName || "Chưa chọn model"}</b></div>
         <div><small>ĐƯỜNG KẾT NỐI ĐƯỢC TÀI LIỆU HÓA</small><b>{profile.transport}</b></div>
         <div><small>TRẠNG THÁI ĐIỀU KHIỂN</small><b>Chỉ phiếu thủ công · Chưa ghi phần cứng</b></div>
       </div>
@@ -127,6 +130,7 @@ export default function DSPIntegrationPanel() {
       <button onClick={exportWorksheet}><Download /> Xuất phiếu cấu hình JSON</button>
       <p className="muted">Kỹ thuật viên phải kiểm tra đúng model, firmware, routing, limiter và mức đầu ra trước khi nhập thông số. Không áp dụng trực tiếp các giá trị đề xuất trong buổi lễ đang diễn ra.</p>
     </article>
+    <DSPDynamicsAdvisor />
     <article className="panel">
       <div className="heading"><ClipboardCheck /><h2>Measurement Readiness · Kiểm định chuỗi đo</h2><span>OPERATOR CHECKLIST</span></div>
       <p className="muted">Đánh dấu chỉ khi đã xác minh bằng thiết bị/thử nghiệm thực tế. Đây là checklist do kỹ thuật viên khai báo, không phải chức năng tự chứng nhận hay đo tự động.</p>

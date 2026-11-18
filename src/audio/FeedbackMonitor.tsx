@@ -104,7 +104,10 @@ export default function FeedbackMonitor({
         <div className="feedback-clear"><ShieldCheck /><span>Chưa phát hiện đỉnh hẹp ổn định theo ngưỡng hiện tại.</span></div>
       ) : (
         <>
-          <div className="feedback-alert"><VolumeX /><b>Phát hiện {peaks.length} đỉnh phổ cần kiểm tra</b></div>
+          <div className="feedback-alert" role="alert" aria-live="assertive">
+            <VolumeX />
+            <div><b>CẢNH BÁO: NGHI VẤN HÚ RÍT</b><span>Phát hiện {peaks.length} đỉnh tần số hẹp cần kiểm tra. Hãy kiểm tra lần lượt micro, loa monitor và vị trí đặt loa.</span></div>
+          </div>
           <div className="table-wrap">
             <table>
               <thead><tr><th>Tần số</th><th>Độ nổi</th><th>Bền vững / tin cậy</th><th>Filter tham khảo</th><th>Q</th><th>Lưu</th></tr></thead>

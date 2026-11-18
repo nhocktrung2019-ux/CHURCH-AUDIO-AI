@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { micCorrectionAt, type MicCalibrationPoint } from "./micCalibration";
+import { rtaFrameInterval, rtaSmoothingConstant, type RtaSpeed } from "./rtaDisplay";
 import { createLeqIntegrationState, getLeqLevels, integrateLeqSample } from "./leqIntegration";
 import {
   explainMicrophoneError,
@@ -71,7 +72,7 @@ function stopTracks(stream: MediaStream | null): void {
   stream?.getTracks().forEach((track) => track.stop());
 }
 
-export function useAudioAnalyzer(calibrationPoints: MicCalibrationPoint[] = []) {
+export function useAudioAnalyzer(calibrationPoints: MicCalibrationPoint[] = [], rtaSpeed: RtaSpeed = "medium") {
   const contextRef = useRef<AudioContext | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const sourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
@@ -180,7 +181,7 @@ export function useAudioAnalyzer(calibrationPoints: MicCalibrationPoint[] = []) 
       source = audio.createMediaStreamSource(stream);
       const analyser = audio.createAnalyser();
       analyser.fftSize = 8192;
-      analyser.smoothingTimeConstant = 0.72;
+      analyser.smoothingTimeConstant = rtaSmoothingConstant(rtaSpeed);
       source.connect(analyser);
 
       if (session !== sessionRef.current) {
@@ -247,7 +248,7 @@ export function useAudioAnalyzer(calibrationPoints: MicCalibrationPoint[] = []) 
     } finally {
       if (session === sessionRef.current) setConnecting(false);
     }
-  }, [refreshDevices, selectedInput, stop]);
+  }, [refreshDevices, selectedInput, stop, rtaSpeed]);
 
   const captureRt60 = useCallback(async () => {
     const stream = streamRef.current;
@@ -320,8 +321,9 @@ export function useAudioAnalyzer(calibrationPoints: MicCalibrationPoint[] = []) 
       const tick = () => {
         const analyser = analyserRef.current;
         if (analyser) {
-          // 30 Hz is sufficient for a live spectrum and reduces Android WebView CPU use.
-          if (frame % 2 === 0) {
+          // Follow the selected display speed immediately without restarting capture.
+          analyser.smoothingTimeConstant = rtaSmoothingConstant(rtaSpeed);
+          if (frame % rtaFrameInterval(rtaSpeed) === 0) {
             const data = new Float32Array(analyser.frequencyBinCount);
             analyser.getFloatFrequencyData(data);
 
@@ -431,7 +433,7 @@ export function useAudioAnalyzer(calibrationPoints: MicCalibrationPoint[] = []) 
     }
 
     return () => cancelAnimationFrame(frameId);
-  }, [running, calibrationPoints]);
+  }, [running, calibrationPoints, rtaSpeed]);
 
   useEffect(() => {
     void refreshDevices();

@@ -1,11 +1,13 @@
 import { useMemo, useState } from "react";
 import { usePersistentState } from "./usePersistentState";
-import { Activity, Play, Square, AlertTriangle, Download, Waves } from "lucide-react";
+import { Activity, Play, Square, AlertTriangle, Download, Waves, MapPin, Trash2 } from "lucide-react";
 import { analyzeSynchronousTransfer, analyzeTransfer, makeReferenceNoise, measurePcmCaptureQuality, type TransferResult } from "./transfer";
 import { deinterleaveInterleavedPcm, mixInterleavedPcmToMono } from "./pcmCapture.ts";
 import { PcmCaptureIntegrityMonitor } from "./pcmCaptureIntegrity";
-import { assessAutoEqReadiness, suggestParametricEq } from "./autoEq";
+import { AUTO_EQ_TARGETS, assessAutoEqReadiness, suggestParametricEq, type AutoEqTargetProfile } from "./autoEq.ts";
 import { comparePhaseInBand } from "./phaseAlignment";
+import { aggregateMultiPositionAutoEq, assessMultiPositionAutoEq, type MultiPositionAutoEqSample } from "./multiPositionAutoEq";
+import { analyzeMeasurementRepeatability } from "./measurementRepeatability.ts";
 import { explainMicrophoneError, requestMicrophoneStream } from "./microphone";
 import type { MicCalibrationPoint } from "./micCalibration";
 import {
@@ -25,6 +27,15 @@ export default function TransferFunctionPanel({ selectedInput, selectedOutput, r
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [eqCopied, setEqCopied] = useState(false);
+  const [eqTargetProfile, setEqTargetProfile] = usePersistentState<AutoEqTargetProfile>("church-audio-auto-eq-target-profile", "flat");
+  const [eqSource,setEqSource]=usePersistentState<"single"|"multi-position">("church-audio-auto-eq-source","single");
+  const [multiPositionSamples,setMultiPositionSamples]=usePersistentState<MultiPositionAutoEqSample[]>("church-audio-auto-eq-positions",[]);
+  const [positionLabel,setPositionLabel]=useState("Khu vực 1");
+  const [positionWeight,setPositionWeight]=useState(1);
+  const [sameChainConfirmed,setSameChainConfirmed]=useState(false);
+  const [positionRepeatCaptures,setPositionRepeatCaptures]=usePersistentState<TransferResult[]>("church-audio-position-repeat-captures",[]);
+  const [positionRepeatLabel,setPositionRepeatLabel]=usePersistentState<string>("church-audio-position-repeat-label","");
+  const repeatabilityAnalysis=useMemo(()=>analyzeMeasurementRepeatability(positionRepeatCaptures),[positionRepeatCaptures]);
   const [referenceA, setReferenceA] = usePersistentState<TransferResult | null>("church-audio-transfer-reference-a",null);
   const [referenceB, setReferenceB] = usePersistentState<TransferResult | null>("church-audio-transfer-reference-b",null);
   const [crossoverHz, setCrossoverHz] = usePersistentState("church-audio-transfer-crossover",1000);
@@ -53,10 +64,27 @@ export default function TransferFunctionPanel({ selectedInput, selectedOutput, r
     }
     return base;
   }, [result]);
-  const eq = useMemo(
-    () => result && eqReadiness?.ready ? suggestParametricEq(result.points) : [],
-    [result, eqReadiness],
+  const multiPositionGate=useMemo(()=>assessMultiPositionAutoEq(multiPositionSamples),[multiPositionSamples]);
+  const multiPositionAnalysis=useMemo(()=>aggregateMultiPositionAutoEq(multiPositionSamples),[multiPositionSamples]);
+  const activeEqPoints=eqSource==="multi-position"?multiPositionAnalysis.points:(result?.points??[]);
+  const activeEqReadiness=eqSource==="multi-position"
+    ? {...multiPositionAnalysis.readiness,ready:multiPositionAnalysis.ready,reason:multiPositionAnalysis.reason}
+    : eqReadiness;
+  const eq=useMemo(
+    ()=>activeEqReadiness?.ready?suggestParametricEq(activeEqPoints,eqTargetProfile):[],
+    [activeEqReadiness,activeEqPoints,eqTargetProfile],
   );
+  const canAddPositionRepeat=Boolean(result&&eqReadiness?.ready
+    &&result.captureMetadata?.analysisMode==="mono-acoustic"
+    &&result.captureMetadata?.captureEngine==="AudioWorklet"
+    &&sameChainConfirmed&&positionLabel.trim()&&positionRepeatCaptures.length<5
+    &&(!positionRepeatCaptures.length||positionRepeatLabel===positionLabel.trim())
+    &&multiPositionSamples.length<8
+    &&!multiPositionSamples.some(s=>s.label.trim().toLocaleLowerCase()===positionLabel.trim().toLocaleLowerCase()));
+  const canSavePosition=Boolean(repeatabilityAnalysis.ready&&repeatabilityAnalysis.result
+    &&positionRepeatCaptures.length>=3&&positionRepeatLabel===positionLabel.trim()
+    &&sameChainConfirmed&&positionLabel.trim()&&multiPositionSamples.length<8
+    &&!multiPositionSamples.some(s=>s.label.trim().toLocaleLowerCase()===positionLabel.trim().toLocaleLowerCase()));
 
   const measure = async () => {
     setBusy(true); setError(""); setNotice(""); setResult(null); setEqCopied(false);
@@ -494,14 +522,48 @@ export default function TransferFunctionPanel({ selectedInput, selectedOutput, r
     }
   };
 
+  const addCurrentPositionRepeat=()=>{
+    if(!result||!canAddPositionRepeat)return;
+    const points=result.points.filter(point=>point.frequencyHz>=80&&point.frequencyHz<=10000);
+    const stride=Math.max(1,Math.ceil(points.length/512));
+    const capture:TransferResult={...result,points:points.filter((_,index)=>index%stride===0)};
+    setPositionRepeatLabel(positionLabel.trim());
+    setPositionRepeatCaptures(current=>[...current,capture].slice(0,5));
+    setResult(null);
+    setNotice("Đã thêm lần đo lặp "+(positionRepeatCaptures.length+1)+". Giữ nguyên vị trí micro và đo lại; cần ít nhất 3 lần.");
+  };
+  const clearPositionRepeats=()=>{setPositionRepeatCaptures([]);setPositionRepeatLabel("");};
+  const saveCurrentPosition=()=>{
+    if(!canSavePosition||!repeatabilityAnalysis.result)return;
+    const sample:MultiPositionAutoEqSample={
+      id:String(Date.now()),label:positionLabel.trim(),weight:Math.max(0.5,Math.min(2,positionWeight)),
+      savedAt:new Date().toISOString(),sameChainConfirmed,result:repeatabilityAnalysis.result,
+      repeatability:repeatabilityAnalysis.summary,repeatabilityDiagnostics:repeatabilityAnalysis.diagnostics,
+    };
+    setMultiPositionSamples(current=>[...current,sample].slice(0,8));
+    clearPositionRepeats();setResult(null);
+    setPositionLabel("Khu vực "+(multiPositionSamples.length+2));setSameChainConfirmed(false);
+    setEqSource("multi-position");
+    setNotice("Đã lưu "+sample.label+" sau "+sample.repeatability?.captureCount+" lần đo lặp. Di chuyển micro đến khu vực tiếp theo.");
+  };
+  const removeMultiPosition=(id:string)=>setMultiPositionSamples(current=>current.filter(s=>s.id!==id));
+
   const exportEq = () => {
     if (!eq.length) return;
+    const multiPositionWorksheet=eqSource==="multi-position"?{
+      source:"multi-position-aggregate",
+      positions:multiPositionSamples.map(s=>({id:s.id,label:s.label,weight:s.weight,savedAt:s.savedAt,sampleRate:s.result.sampleRate,
+        repeatability:s.repeatability??null,repeatabilityDiagnostics:(s.repeatabilityDiagnostics??[]).filter(d=>d.status!=="included").slice(0,100)})),
+      spatialSummary:multiPositionAnalysis.summary,
+      spatialDiagnostics:multiPositionAnalysis.diagnostics.filter(d=>d.status!=="included").slice(0,100),
+    }:null;
     const payload = {
       format: "Church Audio Parametric EQ Suggestion",
       status: "advisory-not-applied",
       generatedAt: new Date().toISOString(),
+      targetProfile: { id: eqTargetProfile, ...AUTO_EQ_TARGETS[eqTargetProfile] },
       requirements: "Verify by listening and repeat measurement before manual DSP entry. No parameters are written to hardware.",
-      measurement: { sampleRate: result?.sampleRate, averageCoherence: result?.averageCoherence, captureQuality: result?.captureQuality, captureMetadata: result?.captureMetadata },
+      measurement: eqSource==="multi-position"?multiPositionWorksheet:{ sampleRate: result?.sampleRate, averageCoherence: result?.averageCoherence, captureQuality: result?.captureQuality, captureMetadata: result?.captureMetadata },
       filters: eq.map((filter, index) => ({
         band: index + 1, type: "PEQ", frequencyHz: filter.frequencyHz,
         gainDb: filter.gainDb, q: filter.q, coherence: Number(filter.coherence.toFixed(3)),
@@ -635,12 +697,75 @@ export default function TransferFunctionPanel({ selectedInput, selectedOutput, r
         {phaseComparison&&<div className="phase-ab-result"><article><small>MEAN PHASE B − A</small><b>{phaseComparison.meanPhaseDeg===null?"—":phaseComparison.meanPhaseDeg.toFixed(1)+"°"}</b></article><article><small>MAGNITUDE DELTA B − A</small><b>{phaseComparison.magnitudeDeltaDb===null?"—":phaseComparison.magnitudeDeltaDb.toFixed(1)+" dB"}</b></article><article><small>PHASE CONCENTRATION</small><b>{(phaseComparison.phaseConcentration*100).toFixed(0)}%</b></article><article><small>AVG COHERENCE</small><b>{(phaseComparison.averageCoherence*100).toFixed(0)}%</b></article><p>{phaseComparison.interpretation}</p></div>}
         <p className="warning">Important: each capture is independently time-aligned to its own correlation peak, so this tool does not retain the absolute A-to-B arrival-time difference. Use it only as a phase-shape/polarity diagnostic. True relative speaker delay requires a synchronous dual-channel reference/measurement chain, common clock and simultaneous capture.</p>
       </div>
+      <section className="multi-position-eq">
+        <div className="heading"><MapPin/><h3>Auto EQ đa vị trí · Khu vực nhà thờ</h3><span>{multiPositionSamples.length}/8 VỊ TRÍ · {positionRepeatCaptures.length}/3 LẦN LẶP</span></div>
+        <p className="muted">Tại mỗi khu vực, đo lặp 3–5 lần khi micro đứng yên. Chỉ giữ bin có spread giữa các lần đo không quá 3 dB; sau đó mới tổng hợp khác biệt âm học giữa các khu vực.</p>
+        <label className="multi-position-confirm"><input type="checkbox" checked={sameChainConfirmed} onChange={event=>setSameChainConfirmed(event.target.checked)}/><span>Xác nhận giữ nguyên chuỗi đo và hệ thống loa; chỉ thay đổi vị trí micro.</span></label>
+        <div className="form-grid">
+          <div><label htmlFor="multi-position-label">TÊN VỊ TRÍ ĐO</label><input id="multi-position-label" value={positionLabel} maxLength={48} onChange={event=>setPositionLabel(event.target.value)} placeholder="Giữa nhà thờ / hàng ghế 5"/></div>
+          <div><label htmlFor="multi-position-weight">TRỌNG SỐ KHU VỰC</label><select id="multi-position-weight" value={String(positionWeight)} onChange={event=>setPositionWeight(Number(event.target.value))}>
+            <option value="0.5">0,5 · ít ưu tiên</option><option value="0.75">0,75</option><option value="1">1,0 · bình thường</option><option value="1.25">1,25</option><option value="1.5">1,5 · ưu tiên</option><option value="2">2,0 · ưu tiên cao</option>
+          </select></div>
+        </div>
+        <div className="form-grid">
+          <button className="secondary" disabled={!canAddPositionRepeat} onClick={addCurrentPositionRepeat}><Activity/>Thêm lần đo lặp ({positionRepeatCaptures.length}/3)</button>
+          <button className="secondary" disabled={!canSavePosition} onClick={saveCurrentPosition}><MapPin/>Hoàn tất vị trí ({positionRepeatCaptures.length} lần)</button>
+          <button className="icon-button" disabled={!positionRepeatCaptures.length} onClick={clearPositionRepeats}>Xóa lần đo lặp</button>
+        </div>
+        {!sameChainConfirmed&&<p className="warning">Cần xác nhận giữ nguyên chuỗi đo. Với các lần lặp, không di chuyển micro cho đến khi hoàn tất vị trí.</p>}
+        {result&&!eqReadiness?.ready&&<p className="warning">Phép đo hiện tại chưa đủ điều kiện thêm vào bộ lặp: {eqReadiness?.reason??"Chưa có kết quả."}</p>}
+        {positionRepeatCaptures.length>0&&positionRepeatLabel!==positionLabel.trim()&&<p className="warning">Tên vị trí đã thay đổi. Hãy khôi phục tên “{positionRepeatLabel}” hoặc xóa bộ lần đo lặp trước khi tiếp tục.</p>}
+        {positionRepeatCaptures.length>0&&<div className={repeatabilityAnalysis.ready?"feedback-clear":"device-notice"}>
+          <b>{repeatabilityAnalysis.ready?"Độ lặp đạt yêu cầu":"Đang kiểm tra độ lặp"}</b><span>{repeatabilityAnalysis.reason}</span>
+          <small>{repeatabilityAnalysis.summary.includedBinCount} bin ổn định · {repeatabilityAnalysis.summary.unstableBinCount} bin không ổn định · spread trung vị {repeatabilityAnalysis.summary.medianSpreadDb.toFixed(1)} dB · RMS lệch {repeatabilityAnalysis.summary.rmsLevelSpreadDb.toFixed(1)} dB · metadata PCM {repeatabilityAnalysis.summary.captureChainConsistent?"đồng nhất":"không đồng nhất"}</small>
+        </div>}
+        {positionRepeatCaptures.length>0&&positionRepeatCaptures.length<3&&<p className="warning">Cần thêm {3-positionRepeatCaptures.length} lần đo tại đúng vị trí hiện tại. Sau mỗi lần thêm, hãy bấm ĐO lại.</p>}
+        <div className="multi-position-list">{multiPositionSamples.map((s,i)=><div className="multi-position-item" key={s.id}>
+          <div><b>{i+1}. {s.label}</b><span>Trọng số {s.weight.toFixed(2)} · {s.result.points.length} bins · {s.result.sampleRate.toLocaleString("vi-VN")} Hz · {s.repeatability?.captureCount??0} lần lặp · spread {s.repeatability?.medianSpreadDb.toFixed(1)??"—"} dB · loại {s.repeatability?.unstableBinCount??0} bin</span></div>
+          <button className="icon-button" aria-label={"Xóa "+s.label} onClick={()=>removeMultiPosition(s.id)}><Trash2/></button>
+        </div>)}</div>
+        <div className={multiPositionGate.ready?"feedback-clear":"device-notice"}><b>{multiPositionGate.ready?"Đủ điều kiện đầu vào":"Chưa đủ điều kiện tổng hợp"}</b><span>{multiPositionGate.reason}</span>
+          {multiPositionGate.issues.slice(1).map((issue,i)=><small key={i}>{issue}</small>)}
+        </div>
+        {multiPositionAnalysis.ready&&<div className="phase-ab-result">
+          <article><small>BIN ĐƯỢC DÙNG</small><b>{multiPositionAnalysis.summary.contributingBinCount}</b></article>
+          <article><small>BIN ĐÃ LOẠI</small><b>{multiPositionAnalysis.summary.suppressedVariableBinCount}</b></article>
+          <article><small>SPREAD TRUNG VỊ</small><b>{multiPositionAnalysis.summary.medianSpatialSpreadDb.toFixed(1)} dB</b></article>
+          <article><small>BIN BIẾN THIÊN</small><b>{multiPositionAnalysis.summary.suppressedVariableBinCount}</b></article>
+          <article><small>BIN THIẾU PHỦ</small><b>{multiPositionAnalysis.summary.insufficientCoverageBinCount}</b></article>
+          <p>{multiPositionAnalysis.reason}</p>
+          {multiPositionAnalysis.diagnostics.some(d=>d.status!=="included")&&<div className="table-wrap">
+            <table><thead><tr><th>Tần số</th><th>Phủ vị trí</th><th>Spread</th><th>Đánh giá</th></tr></thead>
+              <tbody>{multiPositionAnalysis.diagnostics.filter(d=>d.status!=="included")
+                .sort((a,b)=>(b.spreadDb??-1)-(a.spreadDb??-1)).slice(0,12).map(d=><tr key={d.frequencyHz}>
+                  <td>{d.frequencyHz.toFixed(0)} Hz</td><td>{d.coverageCount}/{multiPositionAnalysis.summary.positionCount}</td>
+                  <td>{d.spreadDb===null?"—":d.spreadDb.toFixed(1)+" dB"}</td>
+                  <td>{d.status==="spatial-variance"?"Biến thiên không gian":"Thiếu dữ liệu"}</td>
+                </tr>)}</tbody>
+            </table>
+          </div>}
+        </div>}
+        <div className="phase-ab-controls"><label>NGUỒN DỮ LIỆU AUTO EQ<select value={eqSource} onChange={event=>setEqSource(event.target.value as "single"|"multi-position")}>
+          <option value="single">Phép đo đơn hiện tại</option><option value="multi-position">Tổng hợp đa vị trí ({multiPositionSamples.length})</option>
+        </select></label><button className="icon-button" disabled={!multiPositionSamples.length} onClick={()=>setMultiPositionSamples([])}>Xóa toàn bộ vị trí</button></div>
+      </section>
       <div className="auto-eq-results">
         <div className="heading"><Waves /><h3>Auto EQ · PEQ cut suggestions</h3><span>{eq.length} FILTERS</span></div>
-        {eqReadiness && <div className={eqReadiness.ready ? "feedback-clear" : "device-notice"}>
-          <b>{eqReadiness.ready ? "Đủ điều kiện tạo PEQ tư vấn" : "Auto EQ đang bị khóa an toàn"}</b>
-          <span>{eqReadiness.reason}</span>
-          <small>{eqReadiness.coherentBins}/{eqReadiness.totalBins} bin coherence ≥0.80 · {eqReadiness.coherentPercent.toFixed(1)}% · trung bình {(eqReadiness.averageCoherence*100).toFixed(1)}%</small>
+        <div className="form-grid auto-eq-target-control">
+          <div>
+            <label htmlFor="auto-eq-target-profile">ĐƯỜNG CONG MỤC TIÊU</label>
+            <select id="auto-eq-target-profile" value={eqTargetProfile} onChange={(event) => setEqTargetProfile(event.target.value as AutoEqTargetProfile)}>
+              <option value="flat">Phẳng / trung tính</option>
+              <option value="spoken-word">Lời nói / giảng lễ</option>
+              <option value="worship-music">Nhạc thờ phượng / ban nhạc</option>
+            </select>
+          </div>
+        </div>
+        <p className="muted">{AUTO_EQ_TARGETS[eqTargetProfile].description} Đường cong chỉ ảnh hưởng cách đánh giá đỉnh; không tạo filter boost và không thay thế căn chỉnh theo nhiều vị trí nghe.</p>
+        {activeEqReadiness && <div className={activeEqReadiness.ready ? "feedback-clear" : "device-notice"}>
+          <b>{activeEqReadiness.ready ? "Đủ điều kiện tạo PEQ tư vấn" : "Auto EQ đang bị khóa an toàn"}</b>
+          <span>{activeEqReadiness.reason}</span>
+          <small>{activeEqReadiness.coherentBins}/{activeEqReadiness.totalBins} bin coherence ≥0.80 · {activeEqReadiness.coherentPercent.toFixed(1)}% · trung bình {(activeEqReadiness.averageCoherence*100).toFixed(1)}%</small>
         </div>}
         {eq.length ? <>
           <div className="table-wrap"><table><thead><tr><th>Band</th><th>Frequency</th><th>Gain</th><th>Q</th><th>Coherence</th></tr></thead>

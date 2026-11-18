@@ -1,19 +1,34 @@
 # DSP integration matrix — v0.23
 
-This matrix separates manufacturer-documented connection methods from protocol assumptions. The application currently provides reference notes and manual configuration worksheets only. It does not connect to, read from, or write parameters to any DSP or mixer.
+This matrix separates manufacturer-documented product/control ecosystems from protocol assumptions. Church Audio AI currently provides a selectable model catalogue and manual configuration worksheets only. It does not connect to, read from, or write parameters to any DSP or mixer.
 
-| Profile | Model scope | Documented connection/control surface | Integration state |
+| Profile | Model scope represented in the app | Documented control surface / transport | Integration state |
 |---|---|---|---|
-| Behringer X32 / Midas M32 | X32 and M32 families; verify exact model/firmware | OSC-compatible UDP protocol described by a community protocol reference; commonly documented on UDP 10023 | Community reference only; no network adapter |
-| Soundcraft Ui | Ui12, Ui16, Ui24R | Built-in Wi-Fi/Ethernet and HTML5 browser control surface | Manufacturer-documented surface; no generic API adapter |
-| Soundcraft Si / Vi | Si Compact, Si Expression, Si Performer, Vi Series, Vi3000 | HiQnet network and ViSi Remote ecosystem | Manufacturer-documented ecosystem; not interchangeable with Ui browser control |
-| dbx DriveRack PA2 | PA2 | Dedicated dbx PA2 Control App and owner documentation | Vendor app reference; no public third-party protocol verified |
-| dbx DriveRack VENU360 | VENU360 | Ethernet connection and dedicated VENU360 Control App | Manufacturer-documented transport; proprietary command channel not implemented |
-| dbx DriveRack 4800 / 4820 | 4800, 4820 | Ethernet HiQnet networking control | Manufacturer-documented transport; HiQnet adapter not implemented |
-| db Acoustics CD48 | Pictured CD48 revision (LCD Ver 2215) | Supplied rear image shows RJ45 labelled 100M Ethernet; front LCD shows 192.168.20.20; front USB COM2 and rear RTG terminal are visible | User-image evidence for the physical port; network protocol not verified |
+| Behringer X32 / Midas M32 | X32, Compact, Producer, Rack, Core; M32 Live, M32R Live, M32C | Ethernet; community OSC-compatible UDP reference | Manual worksheet; no network adapter |
+| Behringer WING | WING, WING-BK | Model-specific Ethernet/control ecosystem | Separate profile; X32 mapping is not assumed compatible |
+| Behringer X AIR / Midas MR | XR12, XR16, XR18, X18, MR12, MR18 | Built-in Wi-Fi/Ethernet/USB varies by model; vendor apps | Manual worksheet; no shared protocol asserted |
+| Midas HD96 | HD96-24-CC-IP, HD96-AIR-CC-TP | HD96-specific control ecosystem | Separate from M32; no live adapter |
+| Yamaha digital consoles | DM7/DM7 Compact, DM3/DM3 Standard, CL1/3/5, QL1/5, TF1/3/5, TF-RACK, RIVAGE PM engines/control surfaces | ProVisionaire/vendor software; Dante or TWINLANe varies by model | Manufacturer ecosystem reference; no direct app adapter |
+| Yamaha installation DSP | DME7/5/3, MRX7-D, MTX5-D, MTX3 | Ethernet; ProVisionaire Control PLUS / Kiosk support varies by model | Manual worksheet; no generic parameter API |
+| Soundcraft Ui | Ui12, Ui16, Ui24R | Built-in Wi-Fi/Ethernet; HTML5 browser control | Vendor browser workflow; no generic API adapter |
+| Soundcraft Si | Si Expression 1/2/3, Si Impact, Si Performer 1/2/3 | Model/software-specific remote-control ecosystem | Separate from Ui/Vi; no generic OSC adapter |
+| Soundcraft Vi | Vi1000/2000/3000/5000/7000, Vi4, Vi6 | ViSi Remote / HiQnet ecosystem, model/version dependent | Vendor ecosystem reference; no direct app adapter |
+| dbx DriveRack PA2 | PA2 | Wi-Fi; dedicated PA2 Control App | No public third-party packet API verified |
+| dbx DriveRack VENU360 | VENU360, VENU360-B, VENU360-D | Ethernet; dedicated VENU360 Control App | Vendor transport documented; command adapter not implemented |
+| dbx DriveRack 260 | 260 | USB / RS-232; model-specific vendor utility | Separate from PA2/VENU360 |
+| dbx DriveRack 4800 / 4820 | 4800, 4820 | Ethernet; HiQnet networking control | HiQnet adapter not implemented |
+| dbx legacy DriveRack | 220i, PA, PA+, PX, Studio, goRack | Transport/software varies by exact model and revision | Project records only; verify each unit |
+| db Acoustics CD48 | CD48, CD48RTS, CD48 Premium worksheet variants | RJ45/USB COM2/serial options vary by revision; Android OTG path unverified | Local 4×8 draft editor only; no live adapter |
+
+The catalogue is designed to let a technician select a named model rather than imply that every product in one brand shares a protocol. It is a curated set for the requested manufacturers and common model families, not a claim of compatibility with every mixer or DSP on the market. A model appearing here means only that a manual reference profile exists.
 
 ## Source references
 
+- Behringer product catalogue for X32/WING model listings: https://www.behringer.com/en/products?collection_id=x32-series
+- Midas official M32-series catalogue: https://www.midasconsoles.com/en/products?collection_id=m32-series
+- Yamaha ProVisionaire Control PLUS support matrix (DM/CL/QL/TF/RIVAGE PM and DME/MRX/MTX model families): https://vn.yamaha.com/vi/business/audio/products/provisionaire/provisionaire/provisionaire-control-plus/
+- Soundcraft official downloads and model catalogue (Ui, Si and Vi series): https://www.soundcraft.com/en-US/support_downloads/download_types/english-cutsheet
+- dbx official DriveRack product family (PA2, VENU360 and 260): https://dbxpro.com/en-US/product_families/driverack
 - Behringer X32 / Midas M32 OSC compatibility and UDP port reference: https://static.makemusic.tn/manuals/Consoles/Behringer/Behringer%20-%20X32%20OSC%20Unofficial.pdf
   - This is a community protocol document, not a manufacturer-issued integration contract. Use it only as a research starting point.
 - Soundcraft Ui Series browser control: https://www.soundcraft.com/en-US/get-started/ui-series
