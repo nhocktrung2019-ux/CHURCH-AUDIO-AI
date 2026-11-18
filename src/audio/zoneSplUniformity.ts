@@ -10,6 +10,7 @@ export type ZoneSplRecord = {
   sampleCount: number;
   inputLabel: string;
   timestamp: number;
+  calibrationOffsetDb?: number;
 };
 export type UniformitySummary = {
   count: number;
@@ -81,9 +82,18 @@ export function compareZoneLevels(
     record.unit !== unit ||
     record.inputLabel !== input ||
     !Number.isFinite(record.levelDb) ||
+    record.levelDb <= -99 ||
+    record.levelDb > 200 ||
+    !Number.isFinite(record.durationSeconds) ||
+    record.durationSeconds <= 0 ||
     !record.position.trim() ||
     !record.zone.trim()
   )) return null;
+  if (unit === "dB SPL") {
+    if (records.some((record) => !Number.isFinite(record.calibrationOffsetDb))) return null;
+    const offsets = records.map((record) => record.calibrationOffsetDb as number);
+    if (Math.max(...offsets) - Math.min(...offsets) > 0.01) return null;
+  }
 
   const zones = new Map<string, Map<string, number[]>>();
   for (const record of records) {
@@ -95,9 +105,18 @@ export function compareZoneLevels(
 
   const preliminary = [...zones.entries()].map(([zone, positions]) => {
     const positionLevels = [...positions.values()]
-      .map((levels) => energyAverageDb(levels))
+      .map((captures) => {
+        const totalDuration = captures.reduce((sum, record) => sum + record.durationSeconds, 0);
+        const meanEnergy = captures.reduce((sum, record) =>
+          sum + (10 ** (record.levelDb / 10)) * record.durationSeconds, 0) / totalDuration;
+        return totalDuration > 0 && meanEnergy > 0 && Number.isFinite(meanEnergy)
+          ? 10 * Math.log10(meanEnergy)
+          : null;
+      })
       .filter((value): value is number => value !== null);
-    const meanDb = positionLevels.reduce((sum, value) => sum + value, 0) / positionLevels.length;
+    const meanDb = positionLevels.length
+      ? positionLevels.reduce((sum, value) => sum + value, 0) / positionLevels.length
+      : Number.NaN;
     const minDb = Math.min(...positionLevels);
     const maxDb = Math.max(...positionLevels);
     const variance = positionLevels.reduce((sum, value) => sum + (value - meanDb) ** 2, 0) / positionLevels.length;
