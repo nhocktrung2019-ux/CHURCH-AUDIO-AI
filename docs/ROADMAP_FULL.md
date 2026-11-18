@@ -70,3 +70,11 @@ Status labels distinguish code availability from hardware verification. Beta cod
 
 
 See docs/DSP_INTEGRATION_MATRIX.md for the model families, documented transport references and the safety gates required before any direct control adapter is enabled.
+
+
+## v0.30.0 SPL zone analyzer increment
+
+- Added a dedicated zone-by-zone measurement workspace with nine default areas and custom area names.
+- Records the latest reading for each zone in the active session, compares min/max/spread, computes an energy average and proposes a conservative gain offset relative to the median, bounded to ±6 dB.
+- Readings are labeled dBFS until an SPL calibration offset is active. This UI-level offset is not a claim of IEC 61672 compliance or full-chain calibration.
+- Gain recommendations are advisory only; no automatic mixer/DSP write is performed. Physical microphone movement, stable capture, acoustic validation and per-zone repeatability remain operator/QA gates.
