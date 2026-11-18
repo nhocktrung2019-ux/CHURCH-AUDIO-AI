@@ -25,7 +25,7 @@ test("calibration rejects invalid route, sample rate, level and reference", () =
   assert.equal(createInputSplCalibration("", 48000, -30, 94), null);
   assert.equal(createInputSplCalibration("mic", 4000, -30, 94), null);
   assert.equal(createInputSplCalibration("mic", 48000, -100, 94), null);
-  assert.equal(createInputSplCalibration("mic", 48000, -30, 100 as 94), null);
+  assert.equal(createInputSplCalibration("mic", 48000, -30, 100), null);
 });
 
 test("profile registry isolates exact device IDs and rejects tampering", () => {
