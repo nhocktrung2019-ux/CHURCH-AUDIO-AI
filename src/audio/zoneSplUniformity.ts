@@ -3,6 +3,8 @@ export type ZoneSplRecord = {
   id: number;
   zone: string;
   position: string;
+  xM?: number;
+  yM?: number;
   levelDb: number;
   rawDbfs: number;
   unit: ZoneSplUnit;
