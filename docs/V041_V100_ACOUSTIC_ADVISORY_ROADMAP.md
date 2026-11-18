@@ -16,8 +16,8 @@ This branch adds the read-only acoustic advisory engine for the v0.41–v0.47 fo
 | v0.46 | Auditable DSP change proposal envelope | Implemented in \`createDspAdvisoryProposal\`; \`writeEnabled: false\` is a literal type and runtime value |
 | v0.47 | Focused regression coverage | Added \`tests/acousticAdvisoryEngine.test.mjs\` |
 | v0.48 | Android advisory panel, review queue and technician acknowledgement | Implemented as an inline responsive quality/advisory panel in the zone SPL workspace; no DSP action buttons |
-| v0.49 | Survey-quality and outlier annotations in JSON/CSV report | Planned; existing report format is not silently changed |
-| v0.50 | Field validation, calibration traceability and UX acceptance | Pending CI and physical-device validation |
+| v0.49 | Survey-quality and outlier annotations in CSV export | Implemented: per-record quality status and repeat-outlier review columns; raw values remain unchanged |
+| v0.50 | Field validation, calibration traceability and UX acceptance | Pending CI, field measurements and physical-device validation |
 
 ## Scope for v0.51–v0.100
 
