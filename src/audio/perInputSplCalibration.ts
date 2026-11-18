@@ -48,7 +48,7 @@ export function createInputSplCalibration(
   calibratedAt = new Date().toISOString(),
 ): InputSplCalibrationProfile | null {
   if (!deviceId.trim() || !Number.isFinite(sampleRate) || sampleRate < 8000 || sampleRate > 192000
-    || !Number.isFinite(measuredToneDbfs) || measuredToneDbfs < -90 || measuredToneDbfs > 0
+    || !Number.isFinite(measuredToneDbfs) || measuredToneDbfs < -80 || measuredToneDbfs > -3
     || (referenceLevelDbSpl !== 94 && referenceLevelDbSpl !== 114)
     || !Number.isFinite(Date.parse(calibratedAt))) return null;
   return {
@@ -72,7 +72,7 @@ export function validateInputSplCalibration(value: unknown, expectedDeviceId?: s
     && Number.isFinite(profile.sampleRate) && (profile.sampleRate as number) >= 8000 && (profile.sampleRate as number) <= 192000
     && profile.calibratorFrequencyHz === 1000
     && (profile.referenceLevelDbSpl === 94 || profile.referenceLevelDbSpl === 114)
-    && Number.isFinite(profile.measuredToneDbfs) && (profile.measuredToneDbfs as number) >= -90 && (profile.measuredToneDbfs as number) <= 0
+    && Number.isFinite(profile.measuredToneDbfs) && (profile.measuredToneDbfs as number) >= -80 && (profile.measuredToneDbfs as number) <= -3
     && Number.isFinite(profile.offsetDb) && Math.abs((profile.offsetDb as number) - (profile.referenceLevelDbSpl as number) + (profile.measuredToneDbfs as number)) < 0.01
     && typeof profile.calibratedAt === "string" && Number.isFinite(Date.parse(profile.calibratedAt));
 }
