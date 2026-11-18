@@ -74,3 +74,26 @@ test("zone comparison marks a zone with fewer than two positions insufficient", 
   ]);
   assert.equal(rows.find((row) => row.zone === "Khu 1").status, "insufficient");
 });
+
+
+test("zone comparison duration-weights repeated LAeq captures at a seat", async () => {
+  const { compareZoneLevels } = await import("../src/audio/zoneSplUniformity.ts");
+  const rows = compareZoneLevels([
+    {...record(1, 0), zone: "Khu 1", position: "Ghế A", durationSeconds: 10},
+    {...record(2, 10), zone: "Khu 1", position: "Ghế A", durationSeconds: 30},
+    {...record(3, 5), zone: "Khu 2", position: "Ghế A"},
+    {...record(4, 5), zone: "Khu 2", position: "Ghế B"},
+  ]);
+  const expected = 10 * Math.log10((10 * 1 + 30 * 10) / 40);
+  assert.ok(Math.abs(rows.find((row) => row.zone === "Khu 1").meanDb - expected) < 0.001);
+});
+
+test("dB SPL zone comparison requires a consistent recorded calibration offset", async () => {
+  const { compareZoneLevels } = await import("../src/audio/zoneSplUniformity.ts");
+  const base = [
+    {...record(1, 80, "dB SPL"), zone: "Khu 1", position: "A", calibrationOffsetDb: 93},
+    {...record(2, 82, "dB SPL"), zone: "Khu 2", position: "A", calibrationOffsetDb: 94},
+  ];
+  assert.equal(compareZoneLevels(base), null);
+  assert.equal(compareZoneLevels(base.map((row) => ({...row, calibrationOffsetDb: 93}))).length, 2);
+});
