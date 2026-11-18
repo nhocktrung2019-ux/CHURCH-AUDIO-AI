@@ -219,7 +219,9 @@ export function compareSurveySessions(
   if (unit === "dB SPL") {
     const offsets = all.map((record) => record.calibrationOffsetDb);
     const known = offsets.filter((offset): offset is number => typeof offset === "number" && Number.isFinite(offset));
-    if (known.length !== offsets.length || Math.max(...known) - Math.min(...known) > 0.01) return null;
+    if (known.length !== offsets.length || Math.max(...known) - Math.min(...known) > 0.01 ||
+      all.some((record) => !validLevel(record.rawDbfs) ||
+        Math.abs(record.levelDb - (record.rawDbfs + (record.calibrationOffsetDb ?? Number.NaN))) > 0.05)) return null;
   }
 
   const aggregate = (records: ZoneSplRecord[]) => {
