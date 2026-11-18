@@ -154,7 +154,10 @@ function createSpeakerGroup(speaker: WebGLSpeaker, index: number, roomLength: nu
   group.userData = {
     kind: "speaker",
     id: speaker.id,
-    signature: [speaker.model, speaker.coverage].join("|"),
+    // Keep the creation signature identical to the reconciliation signature below.
+    // Including room dimensions rebuilds the beam when the room is resized; index
+    // keeps the speaker tint correct if the speaker list is reordered.
+    signature: [speaker.model, speaker.coverage, speaker.verticalCoverage, roomLength, roomWidth, index].join("|"),
   };
   group.position.set(speaker.x, speaker.z, speaker.y);
 
@@ -521,7 +524,7 @@ export default function ChurchSceneWebGL(props: Props) {
       const key = "s:" + speaker.id;
       liveKeys.add(key);
       let group = state.groups.get(key);
-      const signature = [speaker.model, speaker.coverage, speaker.verticalCoverage].join("|");
+      const signature = [speaker.model, speaker.coverage, speaker.verticalCoverage, props.length, props.width, index].join("|");
       if (group && group.userData.signature !== signature) {
         state.scene.remove(group);
         disposeObject(group);
