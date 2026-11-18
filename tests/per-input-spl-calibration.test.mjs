@@ -29,7 +29,8 @@ test("calibration rejects invalid route, sample rate, level and reference", () =
 });
 
 test("profile registry isolates exact device IDs and rejects tampering", () => {
-  const valid = createInputSplCalibration("usb-a", 48000, -30, 94, "2026-11-18T08:00:00.000Z")!;
+  const valid = createInputSplCalibration("usb-a", 48000, -30, 94, "2026-11-18T08:00:00.000Z");
+  assert.ok(valid);
   const invalid = { ...valid, offsetDb: 0 };
   const restored = normalizeInputSplCalibrationRegistry({ "usb-a": valid, "usb-b": invalid });
   assert.deepEqual(Object.keys(restored), ["usb-a"]);
