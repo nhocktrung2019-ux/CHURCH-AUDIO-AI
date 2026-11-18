@@ -17,6 +17,8 @@ type Props = {
 type CaptureMeta = {
   zone: string;
   position: string;
+  xM?: number;
+  yM?: number;
   durationSeconds: number;
   inputLabel: string;
   offsetDb: number;
@@ -29,6 +31,8 @@ export default function ZoneSPLMeasurementPanel({
 }: Props) {
   const [records, setRecords] = usePersistentState<ZoneSplRecord[]>("church-audio-zone-spl-records-v1", []);
   const [position, setPosition] = useState("Hàng ghế 1 · Giữa");
+  const [coordinateX, setCoordinateX] = useState("");
+  const [coordinateY, setCoordinateY] = useState("");
   const [durationSeconds, setDurationSeconds] = useState(10);
   const [confirmCalibration, setConfirmCalibration] = useState(false);
   const [capturing, setCapturing] = useState(false);
@@ -83,6 +87,7 @@ export default function ZoneSPLMeasurementPanel({
         id: Date.now(),
         zone: meta.zone,
         position: meta.position,
+        ...(Number.isFinite(meta.xM) && Number.isFinite(meta.yM) ? { xM: meta.xM, yM: meta.yM } : {}),
         levelDb,
         rawDbfs,
         unit: meta.calibrated ? "dB SPL" : "dBFS",
@@ -100,10 +105,15 @@ export default function ZoneSPLMeasurementPanel({
 
   const startCapture = () => {
     if (!running || capturing) return;
+    if ((coordinateX.trim() !== "" || coordinateY.trim() !== "") && (!Number.isFinite(Number(coordinateX)) || !Number.isFinite(Number(coordinateY)) || Number(coordinateX) < 0 || Number(coordinateY) < 0)) {
+      setNotice("Tọa độ X/Y phải là số mét không âm; hoặc để trống cả hai nếu chưa khảo sát tọa độ.");
+      return;
+    }
     samplesRef.current = [];
     captureMetaRef.current = {
       zone: selectedZoneName.trim() || "Chưa đặt tên vùng",
       position: position.trim() || "Chưa đặt vị trí",
+      ...(coordinateX.trim() !== "" && coordinateY.trim() !== "" ? { xM: Number(coordinateX), yM: Number(coordinateY) } : {}),
       durationSeconds,
       inputLabel,
       offsetDb,
@@ -115,9 +125,9 @@ export default function ZoneSPLMeasurementPanel({
   };
 
   const exportCsv = () => {
-    const header = ["timestamp_iso", "zone", "position", "level", "unit", "raw_a_weighted_dbfs", "duration_s", "sample_count", "input"];
+    const header = ["timestamp_iso", "zone", "position", "x_m", "y_m", "level", "unit", "raw_a_weighted_dbfs", "duration_s", "sample_count", "input"];
     const rows = records.map((record) => [
-      new Date(record.timestamp).toISOString(), record.zone, record.position,
+      new Date(record.timestamp).toISOString(), record.zone, record.position, record.xM ?? "", record.yM ?? "",
       record.levelDb.toFixed(2), record.unit, record.rawDbfs.toFixed(2),
       record.durationSeconds, record.sampleCount, record.inputLabel,
     ]);
@@ -139,6 +149,8 @@ export default function ZoneSPLMeasurementPanel({
     <div className="zone-spl-form">
       <label>KHU VỰC LOA{zoneOptions.length > 0 ? <select value={selectedZoneName} onChange={(event) => onSelectedZoneChange(event.target.value)} disabled={capturing}>{zoneOptions.map((name) => <option key={name} value={name}>{name}</option>)}</select> : <input value={selectedZoneName} onChange={(event) => onSelectedZoneChange(event.target.value)} disabled={capturing} placeholder="Chọn vùng trong mô hình 3D"/>}</label>
       <label>VỊ TRÍ / HÀNG GHẾ<input value={position} onChange={(event) => setPosition(event.target.value)} disabled={capturing} placeholder="Ví dụ: Hàng ghế 3 · Trái"/></label>
+      <label>TỌA ĐỘ X (m)<input inputMode="decimal" type="number" min="0" step="0.1" value={coordinateX} onChange={(event) => setCoordinateX(event.target.value)} disabled={capturing} placeholder="Theo mặt bằng phòng"/></label>
+      <label>TỌA ĐỘ Y (m)<input inputMode="decimal" type="number" min="0" step="0.1" value={coordinateY} onChange={(event) => setCoordinateY(event.target.value)} disabled={capturing} placeholder="Theo mặt bằng phòng"/></label>
       <label>THỜI GIAN ĐO<select value={durationSeconds} onChange={(event) => setDurationSeconds(Number(event.target.value))} disabled={capturing}><option value={5}>5 giây</option><option value={10}>10 giây</option><option value={15}>15 giây</option><option value={30}>30 giây</option></select></label>
     </div>
     <label className="zone-spl-confirm"><input type="checkbox" checked={confirmCalibration} disabled={!calibrationProfileReady || capturing} onChange={(event) => setConfirmCalibration(event.target.checked)}/><span>Tôi xác nhận microphone/input đang dùng đã có file hiệu chỉnh đáp tuyến phù hợp và offset đã được đặt bằng acoustic calibrator thực.</span></label>
@@ -167,8 +179,8 @@ export default function ZoneSPLMeasurementPanel({
       {zoneSummaries.map(({zone: zoneName, summary}) => summary && <tr key={zoneName}><td>{zoneName}</td><td>{summary.count}</td><td>{summary.meanDb.toFixed(1)} {summary.unit}</td><td>{summary.minDb.toFixed(1)}–{summary.maxDb.toFixed(1)}</td><td>{summary.spreadDb.toFixed(1)} dB</td><td>{summary.standardDeviationDb.toFixed(1)}</td></tr>)}
       {!zoneSummaries.length && <tr><td colSpan={6}>Chưa có điểm đo cùng đơn vị. Hãy chọn vùng, đặt micro tại vị trí ghế và bắt đầu đo.</td></tr>}
     </tbody></table></div>
-    <div className="zone-spl-records">{records.slice(0, 30).map((record) => <article key={record.id}><div><b>{record.zone} · {record.position}</b><small>{new Date(record.timestamp).toLocaleString()} · {record.durationSeconds}s · {record.inputLabel || "Micro mặc định"}</small></div><strong>{record.levelDb.toFixed(1)} <small>{record.unit}</small></strong><button className="icon-button" aria-label="Xóa điểm đo" onClick={() => removeRecord(record.id)}><Trash2/></button></article>)}</div>
+    <div className="zone-spl-records">{records.slice(0, 30).map((record) => <article key={record.id}><div><b>{record.zone} · {record.position}</b><small>{new Date(record.timestamp).toLocaleString()} · {record.durationSeconds}s · {record.inputLabel || "Micro mặc định"} · {Number.isFinite(record.xM) && Number.isFinite(record.yM) ? `X ${record.xM} m / Y ${record.yM} m` : "Chưa gắn tọa độ"}</small></div><strong>{record.levelDb.toFixed(1)} <small>{record.unit}</small></strong><button className="icon-button" aria-label="Xóa điểm đo" onClick={() => removeRecord(record.id)}><Trash2/></button></article>)}</div>
     {records.length > 30 && <p className="muted">Đang hiển thị 30 / {records.length} điểm gần nhất. CSV chứa toàn bộ dữ liệu.</p>}
-    <p className="warning">Mức đo được lấy mẫu A-weighted từ luồng microphone mỗi 100 ms và tính trung bình năng lượng trong khoảng đo; đây là phép đo khảo sát của ứng dụng, chưa được xác nhận dung sai IEC 61672. Nếu chưa xác nhận hiệu chuẩn riêng cho đúng input, bản ghi được giữ ở dBFS, không gắn nhãn dB SPL. Không so sánh các bản ghi khác đơn vị.</p>
+    <p className="warning">Tọa độ X/Y là vị trí khảo sát do kỹ thuật viên nhập theo mặt bằng thực tế; ứng dụng không tự suy đoán tọa độ từ tên hàng ghế. Bản đồ nhiệt chỉ dùng các điểm có đủ cả X và Y. Mức đo được lấy mẫu A-weighted từ luồng microphone mỗi 100 ms và tính trung bình năng lượng trong khoảng đo; đây là phép đo khảo sát của ứng dụng, chưa được xác nhận dung sai IEC 61672. Nếu chưa xác nhận hiệu chuẩn riêng cho đúng input, bản ghi được giữ ở dBFS, không gắn nhãn dB SPL. Không so sánh các bản ghi khác đơn vị.</p>
   </section>;
 }
