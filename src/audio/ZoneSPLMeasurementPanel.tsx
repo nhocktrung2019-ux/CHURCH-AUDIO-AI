@@ -65,7 +65,7 @@ export default function ZoneSPLMeasurementPanel({
   const advisoryPlan = buildZoneAdvisoryPlan(validRecords, zoneBalanceToleranceDb);
   const surveyOutliers = detectSurveyOutliers(validRecords);
   const exportAnnotations = new Map(annotateSurveyRecords(records, { lengthM: roomLengthM, widthM: roomWidthM })
-    .map((annotation) => [annotation.recordId, annotation]));
+    .map((annotation) => [annotation.recordId, annotation] as const));
 
   useEffect(() => {
     if (!capturing) return;
