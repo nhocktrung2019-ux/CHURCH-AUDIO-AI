@@ -134,7 +134,7 @@ export function compareZoneLevels(
   const referenceMean = preliminary.reduce((sum, row) => sum + row.meanDb, 0) / preliminary.length;
   return preliminary.map((row) => {
     const deltaFromMeanDb = row.meanDb - referenceMean;
-    const status = row.positionCount < 2
+    const status: ZoneBalanceRow["status"] = row.positionCount < 2
       ? "insufficient"
       : deltaFromMeanDb < -toleranceDb
         ? "low"
