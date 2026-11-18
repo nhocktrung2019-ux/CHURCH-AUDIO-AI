@@ -180,3 +180,10 @@
 
 - Add advanced measurement workspaces, calibration tools, transfer-function diagnostics and room/system planning.
 
+
+## 0.30.0-beta.1 — SPL zone analyzer foundation
+
+- Add a dedicated zone-by-zone SPL workspace with nine default listening areas and custom zone labels.
+- Capture one stable reading per zone, compare minimum/maximum/spread, calculate an energy average and derive conservative ±6 dB gain suggestions relative to the median.
+- Clearly label uncalibrated readings as dBFS; calibration offset does not constitute IEC 61672 validation. Suggestions remain advisory and are never written to DSP hardware.
+- Add regression tests for zone statistics, energy averaging, invalid values and bounded gain suggestions.
