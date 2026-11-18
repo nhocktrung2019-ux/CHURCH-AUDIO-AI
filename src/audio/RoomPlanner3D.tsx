@@ -1,5 +1,5 @@
 import { usePersistentState } from "./usePersistentState";
-import { useEffect, useState, type PointerEvent } from "react";
+import { useEffect, useRef, useState, type PointerEvent } from "react";
 import{Plus,Speaker,Trash2,Move3d,Ruler}from"lucide-react";
 import{SPEAKER_MODELS,SPEAKER_SPECS}from"../data/speakerModels";
 import ChurchSceneWebGL from "./ChurchSceneWebGL";
@@ -24,6 +24,7 @@ export default function RoomPlanner3D({ onZoneOptionsChange, selectedZoneName, o
  });
  const [cameraYaw,setCameraYaw]=usePersistentState("church-audio-room-camera-yaw",0),[cameraPitch,setCameraPitch]=usePersistentState("church-audio-room-camera-pitch",50),[analysisBandHz,setAnalysisBandHz]=usePersistentState("church-audio-room-analysis-band",1000);
  const [dragging,setDragging]=useState<{kind:"speaker"|"object";id:number}|null>(null);
+ const lastExternalZoneRef=useRef(selectedZoneName);
  const [sceneObjects,setSceneObjects]=usePersistentState<SceneObject[]>("church-audio-room-scene-objects",[{id:101,kind:"altar",name:"Bàn thờ",x:23,y:6.2,w:2.8,d:1.5,h:1.05,rotation:0},{id:102,kind:"pulpit",name:"Tòa giảng",x:20.5,y:10,w:1.1,d:1.1,h:1.25,rotation:0},{id:103,kind:"stage",name:"Sân khấu / cung thánh",x:22,y:8,w:6,d:5,h:.35,rotation:0},...[4,8,12].flatMap((x)=>[3,8,13].map((y)=>({id:200+x*10+y,kind:"column" as const,name:"Cột",x,y,w:.55,d:.55,h:height,rotation:0}))),...[0,1,2,3,4].flatMap((row)=>[3,5,7,9,11,13].map((y,col)=>({id:500+row*20+col,kind:"pew" as const,name:"Hàng ghế "+(row+1),x:7+row*2.2,y,w:1.65,d:.42,h:.48,rotation:0}))) ]),[selectedObject,setSelectedObject]=usePersistentState("church-audio-room-selected-object",101);
  const current=speakers.find(s=>s.id===selected)??speakers[0];
  useEffect(()=>{
@@ -33,9 +34,12 @@ export default function RoomPlanner3D({ onZoneOptionsChange, selectedZoneName, o
   if(active) onSelectedZoneChange?.(active.zone);
  },[speakers,selected,onZoneOptionsChange,onSelectedZoneChange]);
  useEffect(()=>{
-  if(!selectedZoneName) return;
+  if(!selectedZoneName || selectedZoneName===lastExternalZoneRef.current) return;
+  lastExternalZoneRef.current=selectedZoneName;
+  const active=speakers.find(s=>s.id===selected);
+  if(active?.zone===selectedZoneName) return;
   const match=speakers.find(s=>s.zone===selectedZoneName);
-  if(match && match.id!==selected) setSelected(match.id);
+  if(match) setSelected(match.id);
  },[selectedZoneName,speakers,selected]);
  const coverageFor=(sp:SpeakerUnit)=>{const bands=SPEAKER_SPECS[sp.model]?.coverageByFrequency;const data=bands?.find(b=>b.frequencyHz===analysisBandHz);return data?.horizontalDeg??sp.coverage;};
  const verticalCoverageFor=(sp:SpeakerUnit)=>{const bands=SPEAKER_SPECS[sp.model]?.coverageByFrequency;const data=bands?.find(b=>b.frequencyHz===analysisBandHz);return data?.verticalDeg??sp.verticalCoverage;};
