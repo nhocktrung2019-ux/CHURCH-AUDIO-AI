@@ -1,4 +1,4 @@
-import { micCorrectionAt, type MicCalibrationFile, type MicCalibrationPoint } from "./micCalibration";
+import { micCorrectionAt, type MicCalibrationFile, type MicCalibrationPoint } from "./micCalibration.ts";
 
 export type MultiInputCalibrationRegistry = Record<string, MicCalibrationFile>;
 
