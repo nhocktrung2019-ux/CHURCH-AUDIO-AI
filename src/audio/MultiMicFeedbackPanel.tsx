@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from "react";
+import { parseMicCalibration } from "./micCalibration";
+import { applyInputMicCalibration, normalizeMultiInputCalibrationRegistry, removeInputCalibration, setInputCalibration as storeInputCalibration } from "./multiInputCalibration";
 import { Activity, Mic2, ShieldCheck, Square, VolumeX } from "lucide-react";
 import { detectNarrowPeaks, formatVietnameseFeedbackAlert } from "./feedback";
 import { assessMultiSourceInput, multiSourceSynchronizationWarning, type MultiSourceInputAssessment } from "./multiSourceDiagnostics";
@@ -36,6 +38,35 @@ export default function MultiMicFeedbackPanel() {
   const [notice, setNotice] = useState("");
   const [feedbackAlertsEnabled, setFeedbackAlertsEnabled] = useState(true);
   const [alertMessage, setAlertMessage] = useState("");
+  const [inputCalibrations, setInputCalibrations] = useState(() => {
+    try {
+      const stored = typeof window !== "undefined"
+        ? window.localStorage.getItem("church-audio-multi-input-calibration-v1")
+        : null;
+      return normalizeMultiInputCalibrationRegistry(stored ? JSON.parse(stored) : {});
+    } catch {
+      return {};
+    }
+  });
+  useEffect(() => {
+    try {
+      window.localStorage.setItem("church-audio-multi-input-calibration-v1", JSON.stringify(inputCalibrations));
+    } catch {
+      // A full or unavailable storage area must not interrupt live audio capture.
+    }
+  }, [inputCalibrations]);
+
+  const importInputCalibration = async (device: InputDevice, file?: File) => {
+    if (!file) return;
+    try {
+      const parsed = parseMicCalibration(await file.text(), file.name);
+      setInputCalibrations(current => storeInputCalibration(current, device.deviceId, parsed));
+      setNotice("Đã lưu correction riêng cho " + device.label + " (" + parsed.points.length + " điểm). Chỉ áp dụng trong dải tần được hiệu chuẩn.");
+      setError("");
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Không thể nạp file hiệu chuẩn cho input này.");
+    }
+  };
   const audioRef = useRef<AudioContext | null>(null);
   const sessionsRef = useRef<Session[]>([]);
   const frameRef = useRef<number>(0);
@@ -181,7 +212,8 @@ export default function MultiMicFeedbackPanel() {
           lastTick = time;
           const next: ChannelState[] = sessionsRef.current.map(s => {
             s.analyser.getFloatFrequencyData(s.data);
-            const bands = toLogBands(s.data, activeAudio.sampleRate);
+            const rawBands = toLogBands(s.data, activeAudio.sampleRate);
+            const bands = applyInputMicCalibration(rawBands, inputCalibrations[s.id]?.points ?? [], 20, Math.min(20000, activeAudio.sampleRate / 2));
             const history = [...(historiesRef.current.get(s.id) ?? []), bands].slice(-24);
             historiesRef.current.set(s.id, history);
             const trackState = s.track.readyState === "ended" ? "ended" : s.track.muted ? "muted" : "live";
@@ -248,7 +280,13 @@ export default function MultiMicFeedbackPanel() {
       <button className="secondary" disabled={busy || running} onClick={() => void refresh()}><Mic2 /> Quét / cấp quyền nguồn</button>
       <button disabled={busy || (!running && !selected.length)} onClick={() => running ? stop() : void start()}>{running ? <Square /> : <Activity />}{busy ? "Đang mở thiết bị…" : running ? "Dừng phép đo" : "Bắt đầu đo cùng lúc"}</button>
     </div>
-    {devices.length > 0 && <div className="multi-mic-select"><b>Chọn các nguồn tham gia cùng một phép đo (tối đa 4)</b>{devices.map((d, i) => <label key={d.deviceId}><input type="checkbox" checked={selected.includes(d.deviceId)} disabled={running || (!selected.includes(d.deviceId) && selected.length >= 4)} onChange={e => setSelected(current => e.target.checked ? [...current, d.deviceId] : current.filter(id => id !== d.deviceId))} /><span>{d.label || "Microphone " + (i + 1)}</span></label>)}</div>}
+    {devices.length > 0 && <div className="multi-mic-select"><b>Chọn các nguồn tham gia cùng một phép đo (tối đa 4)</b>{devices.map((d, i) => <div className="multi-input-device-option" key={d.deviceId}>
+        <label><input type="checkbox" checked={selected.includes(d.deviceId)} disabled={running || (!selected.includes(d.deviceId) && selected.length >= 4)} onChange={e => setSelected(current => e.target.checked ? [...current, d.deviceId] : current.filter(id => id !== d.deviceId))} /><span>{d.label || "Microphone " + (i + 1)}</span></label>
+        <div className="multi-input-calibration">
+          <label>Hiệu chuẩn đáp tuyến riêng <input type="file" accept=".txt,.csv,.cal,.dat" disabled={running || busy} onChange={event => { const file = event.target.files?.[0]; void importInputCalibration(d, file); event.target.value = ""; }} /></label>
+          {inputCalibrations[d.deviceId] ? <><small>{inputCalibrations[d.deviceId].points.length} điểm · {inputCalibrations[d.deviceId].points[0].frequencyHz}–{inputCalibrations[d.deviceId].points[inputCalibrations[d.deviceId].points.length - 1].frequencyHz} Hz · correction hoạt động</small><button className="secondary" disabled={running || busy} onClick={() => setInputCalibrations(current => removeInputCalibration(current, d.deviceId))}>Gỡ profile</button></> : <small>Chưa nạp profile · đang hiển thị phổ thô</small>}
+        </div>
+      </div>)}</div>}
     {notice && <p className="device-notice">{notice}</p>}{error && <p className="error">{error}</p>}
 
     {channels.length > 0 && <section className="multi-source-composite">
@@ -271,6 +309,7 @@ export default function MultiMicFeedbackPanel() {
       </article>;
     })}
     <div className="permission-help"><b>Giới hạn đồng bộ và hiệu chuẩn</b><span>Các luồng cùng được cập nhật trong một phiên phần mềm, nhưng không bảo đảm cùng clock phần cứng hoặc cùng thời điểm lấy mẫu tuyệt đối. Độ nhạy/đáp tuyến từng micro khác nhau; cần hiệu chuẩn riêng từng nguồn trước khi so sánh mức SPL. Một interface USB đa kênh xuất hiện thành một device vẫn chưa tách được từng hardware channel trong bản này.</span></div>
+    <p className="warning">Correction đáp tuyến được lưu riêng theo ID từng input và chỉ áp dụng khi tần số nằm trong dải dữ liệu hiệu chuẩn. Correction này không thay thế calibrator SPL 94/114 dB, không xác nhận độ nhạy tuyệt đối và không đồng bộ clock giữa các micro.</p>
     <p className="warning">Nếu Android/WebView chỉ cho phép một capture session hoặc driver không hỗ trợ mở đồng thời, ứng dụng sẽ báo từng nguồn không mở được. Không dùng phổ tổng hợp này để tính phase, delay tuyệt đối, SPL chứng nhận hoặc phản xạ đa kênh. Không tự động mute, tăng/giảm gain hay ghi EQ xuống mixer.</p>
   </section>;
 }
