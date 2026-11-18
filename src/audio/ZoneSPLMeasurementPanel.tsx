@@ -112,7 +112,7 @@ export default function ZoneSPLMeasurementPanel({
   const startCapture = () => {
     if (!running || capturing) return;
     if ((coordinateX.trim() !== "" || coordinateY.trim() !== "") && (!Number.isFinite(Number(coordinateX)) || !Number.isFinite(Number(coordinateY)) || Number(coordinateX) < 0 || Number(coordinateY) < 0 || Number(coordinateX) > roomLengthM || Number(coordinateY) > roomWidthM)) {
-      setNotice("Tọa độ X/Y phải nằm trong phòng (X 0–${roomLengthM} m, Y 0–${roomWidthM} m); hoặc để trống cả hai nếu chưa khảo sát tọa độ.");
+      setNotice(`Tọa độ X/Y phải nằm trong phòng (X 0–${roomLengthM} m, Y 0–${roomWidthM} m); hoặc để trống cả hai nếu chưa khảo sát tọa độ.`);
       return;
     }
     samplesRef.current = [];
