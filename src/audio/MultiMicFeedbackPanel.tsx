@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Activity, Mic2, ShieldCheck, Square, VolumeX } from "lucide-react";
-import { detectNarrowPeaks } from "./feedback";
+import { detectNarrowPeaks, formatVietnameseFeedbackAlert } from "./feedback";
 import { assessMultiSourceInput, multiSourceSynchronizationWarning, type MultiSourceInputAssessment } from "./multiSourceDiagnostics";
 
 type InputDevice = { deviceId: string; label: string };
@@ -229,12 +229,9 @@ export default function MultiMicFeedbackPanel() {
         }
       }
     }
-    if (!candidates.length) return;
-    const details = candidates.slice(0, 3)
-      .map((item) => `${item.label}, khoảng ${Math.round(item.frequencyHz)} héc`)
-      .join("; ");
-    const message = `Cảnh báo, có đỉnh tần số nghi vấn hú rít tại ${details}. Hãy hạ mức âm thanh, kiểm tra lần lượt micro và loa monitor. Không tăng gain hoặc áp dụng EQ tự động.`;
-    setAlertMessage(message);
+    const message = formatVietnameseFeedbackAlert(candidates);
+    // Clear obsolete warnings as soon as no persistent candidate remains.
+    setAlertMessage(message ?? "");
   }, [channels, running, feedbackAlertsEnabled]);
 
   return <section className="panel multi-mic-panel" id="multi-mic">
