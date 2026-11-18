@@ -100,3 +100,28 @@ export function detectNarrowPeaks(history: number[][]): FeedbackCandidate[] {
   // they are distinct local maxima, rather than duplicate bins on one plateau.
   return found.sort((a, b) => b.prominenceDb - a.prominenceDb).slice(0, 6);
 }
+
+
+export type FeedbackAlertSource = {
+  label: string;
+  frequencyHz: number;
+};
+
+/**
+ * Builds a concise Vietnamese advisory message for persistent narrow-peak
+ * candidates. A spectral peak is never described as confirmed feedback.
+ */
+export function formatVietnameseFeedbackAlert(
+  candidates: FeedbackAlertSource[],
+): string | null {
+  if (!Array.isArray(candidates) || candidates.length === 0) return null;
+  const details = candidates.slice(0, 3)
+    .filter((item) => item && typeof item.label === "string"
+      && item.label.trim().length > 0
+      && Number.isFinite(item.frequencyHz)
+      && item.frequencyHz >= 20
+      && item.frequencyHz <= 20000)
+    .map((item) => `${item.label.trim()}, khoảng ${Math.round(item.frequencyHz)} Hz`);
+  if (details.length === 0) return null;
+  return `Cảnh báo: phát hiện đỉnh tần số nghi vấn hú rít tại ${details.join("; ")}. Đây chưa phải xác nhận hú thật. Hãy giảm mức âm thanh an toàn, kiểm tra lần lượt từng micro và loa monitor; không tăng gain hoặc áp dụng EQ tự động.`;
+}
