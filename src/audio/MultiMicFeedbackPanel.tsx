@@ -83,6 +83,7 @@ export default function MultiMicFeedbackPanel() {
   const sessionsRef = useRef<Session[]>([]);
   const frameRef = useRef<number>(0);
   const historiesRef = useRef<Map<string, number[][]>>(new Map());
+  const toneHistoryRef = useRef<Map<string, number[]>>(new Map());
   const announcedPeakAtRef = useRef<Map<string, number>>(new Map());
 
   const stop = () => {
@@ -138,6 +139,7 @@ export default function MultiMicFeedbackPanel() {
     setNotice("");
     setAlertMessage("");
     announcedPeakAtRef.current.clear();
+    toneHistoryRef.current.clear();
     let audio: AudioContext | null = null;
     const opened: Session[] = [];
     const failed: string[] = [];
@@ -225,7 +227,12 @@ export default function MultiMicFeedbackPanel() {
           const next: ChannelState[] = sessionsRef.current.map(s => {
             s.analyser.getFloatFrequencyData(s.data);
             const rawBands = toLogBands(s.data, activeAudio.sampleRate);
-            const toneDbfs = estimateOneKilohertzDbfs(s.data, activeAudio.sampleRate, s.analyser.fftSize);
+            const frameToneDbfs = estimateOneKilohertzDbfs(s.data, activeAudio.sampleRate, s.analyser.fftSize);
+            const toneSamples = frameToneDbfs === null ? (toneHistoryRef.current.get(s.id) ?? []) : [...(toneHistoryRef.current.get(s.id) ?? []), frameToneDbfs].slice(-12);
+            toneHistoryRef.current.set(s.id, toneSamples);
+            const toneDbfs = toneSamples.length >= 4
+              ? 10 * Math.log10(toneSamples.reduce((sum, db) => sum + Math.pow(10, db / 10), 0) / toneSamples.length)
+              : frameToneDbfs;
             const bands = applyInputMicCalibration(rawBands, inputCalibrations[s.id]?.points ?? [], 20, Math.min(20000, activeAudio.sampleRate / 2));
             const history = [...(historiesRef.current.get(s.id) ?? []), bands].slice(-24);
             historiesRef.current.set(s.id, history);
@@ -318,8 +325,8 @@ export default function MultiMicFeedbackPanel() {
         {channel.diagnostics.warnings.length > 0 && <p className="warning">{channel.diagnostics.warnings.join(" ")}</p>}
         <div className="input-spl-calibration">
           <b>Hiệu chuẩn SPL riêng · 1 kHz</b>
-          <span>RMS dải 1 kHz hiện tại: {channel.toneDbfs === null ? "—" : channel.toneDbfs.toFixed(2) + " dBFS"}</span>
-          <span>Mức sau hiệu chuẩn: {applyInputSplOffset(channel.toneDbfs ?? NaN, inputSplCalibrations[channel.id])?.toFixed(2) ?? "Chưa hiệu chuẩn"} {inputSplCalibrations[channel.id] ? "dB SPL" : ""}</span>
+          <span>RMS dải 1 kHz (trung bình tối đa 3 giây): {channel.toneDbfs === null ? "—" : channel.toneDbfs.toFixed(2) + " dBFS"}</span>
+          <span>Mức sau hiệu chuẩn: {inputSplCalibrations[channel.id]?.sampleRate === (audioRef.current?.sampleRate ?? -1) ? applyInputSplOffset(channel.toneDbfs ?? NaN, inputSplCalibrations[channel.id])?.toFixed(2) ?? "—" : "Chưa hiệu chuẩn / sai sample rate"} {inputSplCalibrations[channel.id] ? "dB SPL" : ""}</span>
           <label>Mức calibrator thực tế
             <select value={calibratorReference} onChange={event => setCalibratorReference(Number(event.target.value) as 94 | 114)}>
               <option value={94}>94 dB SPL · 1 kHz</option>
