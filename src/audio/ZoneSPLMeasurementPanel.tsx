@@ -9,6 +9,9 @@ type Props = {
   offsetDb: number;
   calibrationProfileReady: boolean;
   inputLabel: string;
+  zoneOptions: string[];
+  selectedZoneName: string;
+  onSelectedZoneChange: (zone: string) => void;
 };
 
 type CaptureMeta = {
@@ -22,9 +25,9 @@ type CaptureMeta = {
 
 export default function ZoneSPLMeasurementPanel({
   running, liveAWeightedDbfs, offsetDb, calibrationProfileReady, inputLabel,
+  zoneOptions, selectedZoneName, onSelectedZoneChange,
 }: Props) {
   const [records, setRecords] = usePersistentState<ZoneSplRecord[]>("church-audio-zone-spl-records-v1", []);
-  const [zone, setZone] = useState("Khu vực 1");
   const [position, setPosition] = useState("Hàng ghế 1 · Giữa");
   const [durationSeconds, setDurationSeconds] = useState(10);
   const [confirmCalibration, setConfirmCalibration] = useState(false);
@@ -96,7 +99,7 @@ export default function ZoneSPLMeasurementPanel({
     if (!running || capturing) return;
     samplesRef.current = [];
     captureMetaRef.current = {
-      zone: zone.trim() || "Chưa đặt tên vùng",
+      zone: selectedZoneName.trim() || "Chưa đặt tên vùng",
       position: position.trim() || "Chưa đặt vị trí",
       durationSeconds,
       inputLabel,
@@ -131,7 +134,7 @@ export default function ZoneSPLMeasurementPanel({
     <div className="heading"><Gauge/><h2>Đo SPL từng vùng · Độ đồng đều</h2><span>{capturing ? "CAPTURING" : running ? "MIC LIVE" : "MIC OFF"}</span></div>
     <p className="muted">Đo lần lượt từng vùng loa tại các vị trí nghe. Solo đúng zone trên mixer/DSP trước mỗi lần đo; giữ nguyên gain, vị trí micro và điều kiện phát trong toàn bộ lượt so sánh.</p>
     <div className="zone-spl-form">
-      <label>KHU VỰC LOA<input value={zone} onChange={(event) => setZone(event.target.value)} disabled={capturing} placeholder="Ví dụ: Khu vực 1"/></label>
+      <label>KHU VỰC LOA{zoneOptions.length > 0 ? <select value={selectedZoneName} onChange={(event) => onSelectedZoneChange(event.target.value)} disabled={capturing}>{zoneOptions.map((name) => <option key={name} value={name}>{name}</option>)}</select> : <input value={selectedZoneName} onChange={(event) => onSelectedZoneChange(event.target.value)} disabled={capturing} placeholder="Chọn vùng trong mô hình 3D"/>}</label>
       <label>VỊ TRÍ / HÀNG GHẾ<input value={position} onChange={(event) => setPosition(event.target.value)} disabled={capturing} placeholder="Ví dụ: Hàng ghế 3 · Trái"/></label>
       <label>THỜI GIAN ĐO<select value={durationSeconds} onChange={(event) => setDurationSeconds(Number(event.target.value))} disabled={capturing}><option value={5}>5 giây</option><option value={10}>10 giây</option><option value={15}>15 giây</option><option value={30}>30 giây</option></select></label>
     </div>
