@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
+import { speakerCabinetDimensions } from "./roomGeometry";
 
 export type WebGLSpeaker = {
   id: number; name: string; model: string; x: number; y: number; z: number;
@@ -53,10 +54,15 @@ function disposeObject(root: THREE.Object3D): void {
 
 function createFurnitureGroup(item: WebGLObject): THREE.Group {
   const group = new THREE.Group();
+  const objectRotation = item.rotation * Math.PI / 180;
   group.userData = {
     kind: "object",
     id: item.id,
     signature: [item.kind, item.w, item.d, item.h].join("|"),
+    bounds: {
+      x: (Math.abs(Math.cos(objectRotation)) * item.w + Math.abs(Math.sin(objectRotation)) * item.d) / 2,
+      z: (Math.abs(Math.sin(objectRotation)) * item.w + Math.abs(Math.cos(objectRotation)) * item.d) / 2,
+    },
   };
   group.position.set(item.x, 0, item.y);
   group.rotation.y = -item.rotation * Math.PI / 180;
@@ -113,18 +119,15 @@ function createFurnitureGroup(item: WebGLObject): THREE.Group {
   return group;
 }
 
-function createSpeakerGroup(speaker: WebGLSpeaker, index: number): THREE.Group {
+function createSpeakerGroup(speaker: WebGLSpeaker, index: number, coverageDistance: number): THREE.Group {
   const group = new THREE.Group();
-  const isColumn = /CBT|MA12|column/i.test(speaker.model);
-  const isSub = /sub|subwoofer|SRX/i.test(speaker.model);
-  const width = isSub ? 0.62 : isColumn ? 0.28 : 0.42;
-  const height = isSub ? 0.48 : isColumn ? 1.12 : 0.68;
-  const depth = isSub ? 0.58 : isColumn ? 0.24 : 0.32;
+  const { width, height, depth } = speakerCabinetDimensions(speaker.model);
   const tint = new THREE.Color(speakerColors[index % speakerColors.length]);
   group.userData = {
     kind: "speaker",
     id: speaker.id,
     signature: [speaker.model, speaker.coverage].join("|"),
+    bounds: { x: width / 2, z: depth / 2 },
   };
   group.position.set(speaker.x, speaker.z, speaker.y);
 
@@ -143,7 +146,7 @@ function createSpeakerGroup(speaker: WebGLSpeaker, index: number): THREE.Group {
     group.add(driver);
   }
 
-  const radius = Math.max(speaker.coverage > 120 ? 5 : 3, Math.max(18, width * 1.7));
+  const radius = Math.max(3, coverageDistance);
   const halfAngle = THREE.MathUtils.degToRad(Math.max(5, Math.min(180, speaker.coverage)) / 2);
   const shape = new THREE.Shape();
   shape.moveTo(0, 0);
@@ -176,7 +179,7 @@ function createSpeakerGroup(speaker: WebGLSpeaker, index: number): THREE.Group {
   return group;
 }
 
-function addChurchArchitecture(scene: THREE.Scene, length: number, width: number, height: number): void {
+function addChurchArchitecture(scene: THREE.Scene, length: number, width: number, height: number, compact: boolean): void {
   const wallMaterial = new THREE.MeshStandardMaterial({
     color: 0x8b9695, roughness: 0.88, transparent: true, opacity: 0.23, side: THREE.DoubleSide,
   });
@@ -198,7 +201,12 @@ function addChurchArchitecture(scene: THREE.Scene, length: number, width: number
   addBox(scene, [wallThickness, height, width], [length, height / 2, width / 2], wallMaterial, false);
   addBox(scene, [length, 0.18, width], [length / 2, height, width / 2], wallMaterial, false);
 
-  const floorGrid = new THREE.GridHelper(Math.max(length, width), Math.max(16, Math.round(Math.max(length, width) * 2)), 0x9b876d, 0x695947);
+  const floorGrid = new THREE.GridHelper(
+    Math.max(length, width),
+    Math.min(80, Math.max(16, Math.round(Math.max(length, width) * 1.5))),
+    0x9b876d,
+    0x695947,
+  );
   floorGrid.position.set(length / 2, 0.005, width / 2);
   (floorGrid.material as THREE.Material).transparent = true;
   (floorGrid.material as THREE.Material).opacity = 0.16;
@@ -223,7 +231,7 @@ function addChurchArchitecture(scene: THREE.Scene, length: number, width: number
 
   // Repeating stone arches make the nave read as a church rather than a plain box.
   const archMaterial = new THREE.MeshStandardMaterial({ color: 0x9b8b73, roughness: 0.64 });
-  const archCount = Math.max(3, Math.floor(length / 5));
+  const archCount = Math.min(compact ? 4 : 8, Math.max(3, Math.floor(length / 5)));
   for (let i = 1; i <= archCount; i++) {
     const x = (length * i) / (archCount + 1);
     const points: THREE.Vector3[] = [];
@@ -247,8 +255,9 @@ function addChurchArchitecture(scene: THREE.Scene, length: number, width: number
   addBox(scene, [0.14, height * 0.31, 0.22], [crossX, height * 0.58, width / 2], crossMaterial);
   addBox(scene, [0.14, 0.22, width * 0.16], [crossX, height * 0.63, width / 2], crossMaterial);
 
-  for (let i = 1; i <= 4; i++) {
-    const x = length * i / 5;
+  const lightCount = compact ? 2 : 4;
+  for (let i = 1; i <= lightCount; i++) {
+    const x = length * i / (lightCount + 1);
     const light = new THREE.PointLight(0xffd9a3, 0.55, Math.max(length, width) * 0.55, 2);
     light.position.set(x, height * 0.68, width / 2);
     scene.add(light);
@@ -272,8 +281,9 @@ export default function ChurchSceneWebGL(props: Props) {
     groups: Map<string, THREE.Group>;
     raycaster: THREE.Raycaster;
     pointer: THREE.Vector2;
-    drag: { kind: "speaker" | "object"; id: number; group: THREE.Group } | null;
+    drag: { kind: "speaker" | "object"; id: number; group: THREE.Group; offset: THREE.Vector2 } | null;
     floorPlane: THREE.Plane;
+    invalidate: () => void;
   } | null>(null);
   const [webglError, setWebglError] = useState(false);
   latest.current = props;
@@ -281,19 +291,24 @@ export default function ChurchSceneWebGL(props: Props) {
   useEffect(() => {
     const element = host.current;
     if (!element) return;
+    const compactRenderer = window.matchMedia("(max-width: 720px), (pointer: coarse)").matches;
     let renderer: THREE.WebGLRenderer;
     try {
-      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: "high-performance" });
+      renderer = new THREE.WebGLRenderer({
+        antialias: !compactRenderer,
+        alpha: false,
+        powerPreference: compactRenderer ? "low-power" : "high-performance",
+      });
     } catch {
       setWebglError(true);
       return;
     }
 
     setWebglError(false);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
-    renderer.setSize(element.clientWidth, element.clientHeight);
-    renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, compactRenderer ? 1.1 : 1.5));
+    renderer.setSize(Math.max(1, element.clientWidth), Math.max(1, element.clientHeight));
+    renderer.shadowMap.enabled = !compactRenderer;
+    if (renderer.shadowMap.enabled) renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
 
@@ -316,15 +331,15 @@ export default function ChurchSceneWebGL(props: Props) {
     scene.add(ambient);
     const daylight = new THREE.DirectionalLight(0xffe4c1, 2.2);
     daylight.position.set(-props.length * 0.4, props.height * 2.5, props.width * 1.7);
-    daylight.castShadow = true;
-    daylight.shadow.mapSize.set(1024, 1024);
+    daylight.castShadow = !compactRenderer;
+    if (!compactRenderer) daylight.shadow.mapSize.set(1024, 1024);
     daylight.shadow.camera.left = -props.length;
     daylight.shadow.camera.right = props.length;
     daylight.shadow.camera.top = props.width * 2;
     daylight.shadow.camera.bottom = -props.width * 2;
     scene.add(daylight);
 
-    addChurchArchitecture(scene, props.length, props.width, props.height);
+    addChurchArchitecture(scene, props.length, props.width, props.height, compactRenderer);
 
     const groups = new Map<string, THREE.Group>();
     const state = {
@@ -335,10 +350,48 @@ export default function ChurchSceneWebGL(props: Props) {
       groups,
       raycaster: new THREE.Raycaster(),
       pointer: new THREE.Vector2(),
-      drag: null as { kind: "speaker" | "object"; id: number; group: THREE.Group } | null,
+      drag: null as { kind: "speaker" | "object"; id: number; group: THREE.Group; offset: THREE.Vector2 } | null,
       floorPlane: new THREE.Plane(new THREE.Vector3(0, 1, 0), 0),
+      invalidate: () => {},
     };
     api.current = state;
+
+    let frameId = 0;
+    const render = () => {
+      frameId = 0;
+      if (document.hidden) return;
+      controls.update();
+      renderer.render(scene, camera);
+    };
+    const invalidate = () => {
+      if (frameId !== 0 || document.hidden) return;
+      frameId = requestAnimationFrame(render);
+    };
+    state.invalidate = invalidate;
+    controls.addEventListener("change", invalidate);
+
+    const visibilityChange = () => {
+      if (document.hidden) {
+        if (frameId !== 0) cancelAnimationFrame(frameId);
+        frameId = 0;
+      } else {
+        invalidate();
+      }
+    };
+    document.addEventListener("visibilitychange", visibilityChange);
+
+    const contextLost = (event: Event) => {
+      event.preventDefault();
+      if (frameId !== 0) cancelAnimationFrame(frameId);
+      frameId = 0;
+      setWebglError(true);
+    };
+    const contextRestored = () => {
+      setWebglError(false);
+      invalidate();
+    };
+    renderer.domElement.addEventListener("webglcontextlost", contextLost);
+    renderer.domElement.addEventListener("webglcontextrestored", contextRestored);
 
     const resize = () => {
       const widthNow = Math.max(1, element.clientWidth);
@@ -346,12 +399,14 @@ export default function ChurchSceneWebGL(props: Props) {
       camera.aspect = widthNow / heightNow;
       camera.updateProjectionMatrix();
       renderer.setSize(widthNow, heightNow);
+      invalidate();
     };
     const observer = typeof ResizeObserver !== "undefined" ? new ResizeObserver(resize) : null;
     observer?.observe(element);
     window.addEventListener("resize", resize);
 
     const pointerDown = (event: PointerEvent) => {
+      if (event.button !== 0) return;
       const rect = renderer.domElement.getBoundingClientRect();
       state.pointer.set((event.clientX - rect.left) / rect.width * 2 - 1, -((event.clientY - rect.top) / rect.height) * 2 + 1);
       state.raycaster.setFromCamera(state.pointer, camera);
@@ -369,8 +424,14 @@ export default function ChurchSceneWebGL(props: Props) {
       const id = node.userData.id as number;
       const group = groups.get((kind === "speaker" ? "s:" : "o:") + id);
       if (!group) return;
-      state.drag = { kind, id, group };
+      const floorPoint = new THREE.Vector3();
+      const offset = new THREE.Vector2();
+      if (state.raycaster.ray.intersectPlane(state.floorPlane, floorPoint)) {
+        offset.set(group.position.x - floorPoint.x, group.position.z - floorPoint.z);
+      }
+      state.drag = { kind, id, group, offset };
       controls.enabled = false;
+      invalidate();
       renderer.domElement.setPointerCapture(event.pointerId);
       if (kind === "speaker") latest.current.onSelectSpeaker(id);
       else latest.current.onSelectObject(id);
@@ -384,8 +445,13 @@ export default function ChurchSceneWebGL(props: Props) {
       state.raycaster.setFromCamera(state.pointer, camera);
       const point = new THREE.Vector3();
       if (state.raycaster.ray.intersectPlane(state.floorPlane, point)) {
-        state.drag.group.position.x = THREE.MathUtils.clamp(point.x, 0, props.length);
-        state.drag.group.position.z = THREE.MathUtils.clamp(point.z, 0, props.width);
+        const bounds = state.drag.group.userData.bounds as { x: number; z: number } | undefined;
+        const padX = bounds?.x ?? 0.25;
+        const padZ = bounds?.z ?? 0.25;
+        const room = latest.current;
+        state.drag.group.position.x = THREE.MathUtils.clamp(point.x + state.drag.offset.x, Math.min(padX, room.length / 2), Math.max(room.length - padX, room.length / 2));
+        state.drag.group.position.z = THREE.MathUtils.clamp(point.z + state.drag.offset.y, Math.min(padZ, room.width / 2), Math.max(room.width - padZ, room.width / 2));
+        invalidate();
       }
     };
 
@@ -399,6 +465,7 @@ export default function ChurchSceneWebGL(props: Props) {
       }
       state.drag = null;
       controls.enabled = true;
+      invalidate();
       if (renderer.domElement.hasPointerCapture(event.pointerId)) {
         renderer.domElement.releasePointerCapture(event.pointerId);
       }
@@ -409,16 +476,14 @@ export default function ChurchSceneWebGL(props: Props) {
     renderer.domElement.addEventListener("pointerup", pointerUp);
     renderer.domElement.addEventListener("pointercancel", pointerUp);
 
-    let frameId = 0;
-    const render = () => {
-      frameId = requestAnimationFrame(render);
-      controls.update();
-      renderer.render(scene, camera);
-    };
-    frameId = requestAnimationFrame(render);
+    invalidate();
 
     return () => {
-      cancelAnimationFrame(frameId);
+      if (frameId !== 0) cancelAnimationFrame(frameId);
+      controls.removeEventListener("change", invalidate);
+      document.removeEventListener("visibilitychange", visibilityChange);
+      renderer.domElement.removeEventListener("webglcontextlost", contextLost);
+      renderer.domElement.removeEventListener("webglcontextrestored", contextRestored);
       observer?.disconnect();
       window.removeEventListener("resize", resize);
       renderer.domElement.removeEventListener("pointerdown", pointerDown);
@@ -475,7 +540,8 @@ export default function ChurchSceneWebGL(props: Props) {
         group = undefined;
       }
       if (!group) {
-        group = createSpeakerGroup(speaker, index);
+        const coverageDistance = Math.max(3, Math.min(24, Math.hypot(props.length, props.width) * 0.6));
+        group = createSpeakerGroup(speaker, index, coverageDistance);
         state.scene.add(group);
         state.groups.set(key, group);
       }
@@ -493,6 +559,7 @@ export default function ChurchSceneWebGL(props: Props) {
         state.groups.delete(key);
       }
     }
+    state.invalidate();
   }, [props.speakers, props.objects, props.selectedSpeaker, props.selectedObject]);
 
   return (
