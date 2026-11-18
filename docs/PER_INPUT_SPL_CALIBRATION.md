@@ -12,7 +12,7 @@
 2. Disable AGC, echo cancellation and noise suppression where the platform permits. The app requests these options off, but Android/WebView may ignore them; check the input diagnostics and repeatability.
 3. Attach a calibrated acoustic calibrator directly to the microphone using the correct coupler. Do not hold a loudspeaker near the microphone and do not use a phone-generated tone as the reference.
 4. Use the calibrator's stated 1 kHz level (94 dB SPL or 114 dB SPL). Choose the matching reference in the app.
-5. Start capture and wait for the rolling 1 kHz spectral estimate to settle. Keep the signal unclipped and comfortably above the noise floor. Save the offset for this exact input.
+5. Start capture and wait for the rolling 1 kHz spectral estimate to settle. Keep the signal unclipped and within the accepted -80 to -3 dBFS calibration window and comfortably above the noise floor. Save the offset for this exact input.
 6. Remove and reseat the calibrator, repeat the check, and confirm the displayed result returns to the calibrator's reference level. If gain, interface, sample rate, device ID or route changes, recalibrate.
 7. For frequency response, separately import the exact microphone correction file. A one-point offset cannot flatten a microphone's frequency response.
 
