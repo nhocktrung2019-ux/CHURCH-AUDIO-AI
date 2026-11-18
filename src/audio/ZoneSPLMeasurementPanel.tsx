@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Activity, Download, Gauge, Trash2 } from "lucide-react";
 import { usePersistentState } from "./usePersistentState";
 import { compareZoneLevels, energyAverageDb, summarizeUniformity, type ZoneSplRecord, type ZoneSplUnit } from "./zoneSplUniformity";
-import { assessSurveyQuality, buildZoneAdvisoryPlan, detectSurveyOutliers } from "./acousticAdvisoryEngine";
+import { annotateSurveyRecords, assessSurveyQuality, buildZoneAdvisoryPlan, detectSurveyOutliers } from "./acousticAdvisoryEngine";
 
 type Props = {
   running: boolean;
@@ -64,6 +64,8 @@ export default function ZoneSPLMeasurementPanel({
   const surveyQuality = assessSurveyQuality(validRecords, { lengthM: roomLengthM, widthM: roomWidthM });
   const advisoryPlan = buildZoneAdvisoryPlan(validRecords, zoneBalanceToleranceDb);
   const surveyOutliers = detectSurveyOutliers(validRecords);
+  const exportAnnotations = new Map(annotateSurveyRecords(records, { lengthM: roomLengthM, widthM: roomWidthM })
+    .map((annotation) => [annotation.recordId, annotation]));
 
   useEffect(() => {
     if (!capturing) return;
@@ -135,12 +137,18 @@ export default function ZoneSPLMeasurementPanel({
   };
 
   const exportCsv = () => {
-    const header = ["timestamp_iso", "zone", "position", "x_m", "y_m", "level", "unit", "raw_a_weighted_dbfs", "duration_s", "sample_count", "input"];
-    const rows = records.map((record) => [
-      new Date(record.timestamp).toISOString(), record.zone, record.position, record.xM ?? "", record.yM ?? "",
-      record.levelDb.toFixed(2), record.unit, record.rawDbfs.toFixed(2),
-      record.durationSeconds, record.sampleCount, record.inputLabel,
-    ]);
+    const header = ["timestamp_iso", "zone", "position", "x_m", "y_m", "level", "unit", "raw_a_weighted_dbfs", "duration_s", "sample_count", "input", "quality_status", "outlier_review_flag", "outlier_deviation_db", "outlier_reference_median_db", "review_reason"];
+    const rows = records.map((record) => {
+      const annotation = exportAnnotations.get(record.id);
+      return [
+        new Date(record.timestamp).toISOString(), record.zone, record.position, record.xM ?? "", record.yM ?? "",
+        record.levelDb.toFixed(2), record.unit, record.rawDbfs.toFixed(2),
+        record.durationSeconds, record.sampleCount, record.inputLabel,
+        annotation?.qualityStatus ?? "blocked", annotation?.outlierFlag ? "review" : "",
+        annotation?.outlierDeviationDb?.toFixed(2) ?? "", annotation?.outlierMedianDb?.toFixed(2) ?? "",
+        annotation?.reviewReason ?? "",
+      ];
+    });
     const csv = [header, ...rows].map((row) => row.map((value) => `"${String(value).replaceAll('"', '""')}"`).join(",")).join("\r\n");
     const url = URL.createObjectURL(new Blob(["\uFEFF", csv], { type: "text/csv;charset=utf-8" }));
     const anchor = document.createElement("a");
