@@ -2,13 +2,13 @@
 
 A Vietnamese-first measurement and system-tuning workspace for church sound systems. Targets Android through Capacitor and laptop/desktop browsers.
 
-**Integrated beta branch version:** `0.29.0-beta.1`.
+**Integrated beta branch version:** `0.30.0-beta.1`.
 
 ## Workspaces
 
 - **Audio input/output and generator:** Web Audio microphone capture, available-device enumeration, sine/white/pink/log-sweep generator and digital level monitoring.
 - **RTA and spectrum:** multicolour 64-band log-frequency RTA, selectable frequency cursor, adjustable display sensitivity (high/medium/low) and refresh response (fast/medium/slow), spectrum history, spectrogram/waterfall and saved frequency checkpoints.
-- **Level and calibration:** Z/A/C-weighted estimates, elapsed-time Leq integration, microphone correction profiles and one-point SPL calibration workflow.
+- **Level and calibration:** Z/A/C-weighted estimates, elapsed-time Leq integration, microphone correction profiles and one-point SPL calibration workflow.\n- **Measured zone SPL and uniformity:** timed A-weighted captures saved by zone/listening position, energy averaging, per-zone min/max/mean/spread/standard deviation, unit-safe comparisons and CSV export. Results remain dBFS unless the operator confirms the exact input-chain correction and acoustic-calibrator offset.
 - **Room acoustics:** sweep-based impulse response and Schroeder decay analysis with RT20/RT30/RT60 estimates and fit/noise indicators.
 - **Transfer and alignment:** transfer-response/coherence and phase-shape diagnostics, relative delay estimates and target-aware PEQ cut suggestions. Select Flat, Spoken-word or Worship-music contours; multi-position mode combines up to eight listening positions (minimum three), each requiring 3–5 repeat captures at a fixed microphone position; unstable repeat bins (spread >3 dB) are excluded, and capture sets are rejected if PCM channel/mix metadata changes or input RMS drifts by more than 3 dB. Per-frequency repeatability and spatial diagnostics are shown. PEQ remains cut-only and requires high coherence plus clean raw PCM.
 - **Feedback watch:** persistent narrow-peak candidates, Vietnamese on-screen warnings, saved suspected feedback points and advisory notch recommendations.
