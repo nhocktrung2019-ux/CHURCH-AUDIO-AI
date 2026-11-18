@@ -54,3 +54,37 @@ test("short, too-small and mostly invalid histories fail safely", () => {
   const invalid = Array.from({ length: 10 }, () => Array(64).fill(Number.NaN));
   assert.deepEqual(detectNarrowPeaks(invalid), []);
 });
+
+
+test("Vietnamese alert explicitly labels peaks as unconfirmed candidates", async () => {
+  const { formatVietnameseFeedbackAlert } = await import("../src/audio/feedback.ts");
+  const message = formatVietnameseFeedbackAlert([
+    { label: "Micro bục giảng", frequencyHz: 2498 },
+  ]);
+  assert.match(message, /Micro bục giảng, khoảng 2498 Hz/);
+  assert.match(message, /nghi vấn/);
+  assert.match(message, /chưa phải xác nhận hú thật/);
+  assert.match(message, /không tăng gain/);
+});
+
+test("Vietnamese alert ignores invalid sources and returns null when none remain", async () => {
+  const { formatVietnameseFeedbackAlert } = await import("../src/audio/feedback.ts");
+  assert.equal(formatVietnameseFeedbackAlert([]), null);
+  assert.equal(formatVietnameseFeedbackAlert([
+    { label: "Input lỗi", frequencyHz: Number.NaN },
+    { label: "Ngoài dải", frequencyHz: 25000 },
+    { label: "", frequencyHz: 1000 },
+  ]), null);
+});
+
+test("Vietnamese alert limits output to three valid sources", async () => {
+  const { formatVietnameseFeedbackAlert } = await import("../src/audio/feedback.ts");
+  const message = formatVietnameseFeedbackAlert([
+    { label: "Mic 1", frequencyHz: 500 },
+    { label: "Mic 2", frequencyHz: 1000 },
+    { label: "Mic 3", frequencyHz: 2000 },
+    { label: "Mic 4", frequencyHz: 4000 },
+  ]);
+  assert.match(message, /Mic 3/);
+  assert.doesNotMatch(message, /Mic 4/);
+});
