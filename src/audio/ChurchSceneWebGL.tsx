@@ -478,13 +478,6 @@ export default function ChurchSceneWebGL(props: Props) {
       frameId = 0;
       setWebglError(true);
     };
-    const handleContextRestored = () => {
-      // Rebuild the renderer/scene from the latest React props after context recovery.
-      setWebglError(false);
-      setWebglError(true);
-    };
-    renderer.domElement.addEventListener("webglcontextlost", handleContextLost, false);
-    renderer.domElement.addEventListener("webglcontextrestored", handleContextRestored, false);
     const render = (time: number) => {
       if (document.hidden || contextLost) return;
       frameId = requestAnimationFrame(render);
@@ -493,6 +486,14 @@ export default function ChurchSceneWebGL(props: Props) {
       controls.update();
       renderer.render(scene, camera);
     };
+    const handleContextRestored = () => {
+      contextLost = false;
+      lastFrameTime = 0;
+      setWebglError(false);
+      if (!document.hidden && !frameId) frameId = requestAnimationFrame(render);
+    };
+    renderer.domElement.addEventListener("webglcontextlost", handleContextLost, false);
+    renderer.domElement.addEventListener("webglcontextrestored", handleContextRestored, false);
     const handleVisibility = () => {
       if (document.hidden) {
         cancelAnimationFrame(frameId);
