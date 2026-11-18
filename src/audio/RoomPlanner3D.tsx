@@ -15,7 +15,12 @@ type RoomPlanner3DProps = {
 };
 export default function RoomPlanner3D({ onZoneOptionsChange, selectedZoneName, onSelectedZoneChange }: RoomPlanner3DProps = {}){
  const[length,setLength]=usePersistentState("church-audio-room-length",28),[width,setWidth]=usePersistentState("church-audio-room-width",16),[height,setHeight]=usePersistentState("church-audio-room-height",7);
- const [measuredZoneRecords] = usePersistentState<ZoneSplRecord[]>("church-audio-zone-spl-records-v1", []);
+ const [measuredZoneRecords,setMeasuredZoneRecords] = usePersistentState<ZoneSplRecord[]>("church-audio-zone-spl-records-v1", []);
+ useEffect(()=>{
+  const refresh=()=>{try{const stored=window.localStorage.getItem("church-audio-zone-spl-records-v1");if(stored!==null)setMeasuredZoneRecords(JSON.parse(stored) as ZoneSplRecord[]);}catch{ /* keep last valid in-memory survey */ }};
+  window.addEventListener("church-audio-zone-spl-records-updated",refresh);
+  return ()=>window.removeEventListener("church-audio-zone-spl-records-updated",refresh);
+ },[setMeasuredZoneRecords]);
  const[speakers,setSpeakers]=usePersistentState<SpeakerUnit[]>("church-audio-room-speakers",[{id:1,name:"Loa chính trái",model:"CBT 70J-1 (CBT 70)",zone:"Khu vực 1",x:3,y:3,z:5.5,azimuth:35,coverage:90,verticalCoverage:40,sensitivity:null,powerW:null,impedance:8},{id:2,name:"Loa chính phải",model:"CBT 70J-1 (CBT 70)",zone:"Khu vực 1",x:3,y:13,z:5.5,azimuth:-35,coverage:90,verticalCoverage:40,sensitivity:null,powerW:null,impedance:8},{id:3,name:"Loa delay",model:"Bose MA12",zone:"Khu vực 2",x:17,y:8,z:4,azimuth:180,coverage:100,verticalCoverage:40,sensitivity:null,powerW:null,impedance:8}]);
  const[selected,setSelected]=usePersistentState("church-audio-room-selected",1),[refX,setRefX]=usePersistentState("church-audio-room-ref-x",22),[refY,setRefY]=usePersistentState("church-audio-room-ref-y",8),[targetSpl,setTargetSpl]=usePersistentState("church-audio-room-target-spl",85),[view,setView]=usePersistentState<"perspective"|"top"|"webgl">("church-audio-room-view-v2",()=>{
   try {
