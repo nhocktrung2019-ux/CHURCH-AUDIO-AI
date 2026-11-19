@@ -1,4 +1,14 @@
-import { getSpeakerCoverageStatus } from "./speakerCoverageModel";
+type CoverageSpeaker = { x:number; y:number; z:number; azimuth:number; coverage:number; verticalCoverage:number };
+function getSpeakerCoverageStatus(speaker: CoverageSpeaker, listener: {x:number;y:number;z:number}) {
+  const dx=listener.x-speaker.x, dy=listener.y-speaker.y;
+  const horizontalDistance=Math.hypot(dx,dy);
+  const bearing=Math.atan2(dy,dx)*180/Math.PI;
+  const horizontalAngle=((bearing-speaker.azimuth+540)%360)-180;
+  const verticalAngle=Math.atan2(listener.z-speaker.z,Math.max(.01,horizontalDistance))*180/Math.PI;
+  const horizontalRatio=Math.abs(horizontalAngle)/Math.max(2.5,Math.min(90,speaker.coverage/2));
+  const verticalRatio=Math.abs(verticalAngle)/Math.max(2.5,Math.min(90,speaker.verticalCoverage/2));
+  return {horizontalRatio,verticalRatio};
+}
 
 export type OptimizationSpeaker = {
   id: number;
