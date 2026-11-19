@@ -49,8 +49,6 @@ export default function RoomPlanner3D(){
  const roof=[[0,0],[length,0],[length,width],[0,width]].map(([x,y])=>project(x,y,height)).map(p=>p.x+","+p.y).join(" ");
  const wallFront=[[0,0,0],[length,0,0],[length,0,height],[0,0,height]].map(([x,y,z])=>project(x,y,z)).map(p=>p.x+","+p.y).join(" ");
  const wallSide=[[length,0,0],[length,width,0],[length,width,height],[length,0,height]].map(([x,y,z])=>project(x,y,z)).map(p=>p.x+","+p.y).join(" ");
- const distances=speakers.map(s=>Math.hypot(refX-s.x,refY-s.y,1.2-s.z)),maxDistance=Math.max(0,...distances);
- const soundEstimates=speakers.map((s,i)=>{const coverage=getSpeakerCoverageStatus({...s,coverage:coverageFor(s),verticalCoverage:verticalCoverageFor(s)},{x:refX,y:refY,z:1.2});const angularLossDb=Math.max(-36,-6*coverage.horizontalRatio**2-6*coverage.verticalRatio**2);const spl=s.sensitivity!==null&&s.powerW!==null&&s.powerW>0&&distances[i]>.1?s.sensitivity+10*Math.log10(s.powerW)-20*Math.log10(distances[i])+angularLossDb:null;return{inCoverage:coverage.inCoverage,spl};});
  const gridCols=9,gridRows=7;
  const evaluatePoint=(x:number,y:number)=>{
   const hits:{spl:number;zone:string}[]=[];
