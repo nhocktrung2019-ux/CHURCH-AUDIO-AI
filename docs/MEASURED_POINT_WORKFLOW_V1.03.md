@@ -76,3 +76,22 @@ A persistent A/C/Z selector and show/hide switch are available in the WebGL view
 ### Regression tests
 
 `tests/measured-surface-model.test.mjs` covers minimum sample count, non-collinear geometry, weighting compatibility, calibration provenance, room bounds and valid SPL values.
+
+
+## v1.05 — 3D speaker coverage volumes
+
+The existing Three.js speaker groups can show a translucent 3D angular coverage volume. The shape uses each speaker's horizontal and vertical coverage values at the selected analysis frequency, and follows the speaker azimuth. The legacy floor footprint remains visible as the plan-view boundary. A persistent control hides or shows the 3D coverage layer.
+
+The same extracted horizontal/vertical angle calculation is used by the listening-reference estimate and the coarse SPL grid, reducing differences between the visualized coverage and the estimated in/out-of-angle result.
+
+### Interpretation and limitations
+
+- Coverage geometry is a schematic angular envelope; it is not a manufacturer polar response, acoustic ray trace or verified sound-pressure contour.
+- The app uses frequency-specific manufacturer coverage only where the local speaker data explicitly supplies it; otherwise it falls back to the manually entered horizontal/vertical angles.
+- The volume does not model room reflections, absorption, diffraction, occlusion, phase interference, line-array coupling, power compression or DSP processing.
+- The shape is not evidence that every point inside receives uniform SPL.
+- Field measurements remain necessary before making installation, safety or compliance decisions.
+
+### Regression tests
+
+`tests/speaker-coverage-model.test.mjs` covers on-axis listener geometry, horizontal and vertical boundary behavior, azimuth wraparound and safe angle bounds.
