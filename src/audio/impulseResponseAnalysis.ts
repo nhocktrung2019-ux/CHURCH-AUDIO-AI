@@ -174,7 +174,7 @@ export function analyzeImpulseResponse(
   for (const spec of specs) {
     const usableFloor = noiseFloorDbfs - peakDbfs <= spec.end - noiseMarginDb;
     const points = decayCurve.filter(p => p.levelDb <= spec.start && p.levelDb >= spec.end);
-    const fit = points.length >= 3 ? regression(points) : null;
+    const fit = points.length >= 3 ? regression(points.map(p => ({ x: p.timeSeconds, y: p.levelDb }))) : null;
     fitDiagnostics.set(spec.method, "floorOK=" + usableFloor + ", fitPoints=" + points.length +
       ", slope=" + (fit?.slope ?? "n/a") + ", R²=" + (fit?.rSquared ?? "n/a"));
     if (!usableFloor || points.length < 12 || !fit || fit.slope >= -0.01) continue;
