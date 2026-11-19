@@ -1,5 +1,16 @@
 # Changelog
 
+## v1.07 — Arrival time and delay alignment intelligence
+
+- Calculate 3D speaker-to-listener distance and acoustic arrival time using a temperature-adjusted speed-of-sound approximation.
+- Suggest per-speaker delay relative to the latest arrival at the selected reference point; preserve all speaker settings until an explicit DSP/manual workflow is chosen.
+- Add a room arrival-time spread map over an 11×9 grid to reveal where geometric arrival-time differences are larger.
+- Add persistent air-temperature input and retain the selected listener X/Y reference with the existing planner state.
+- Add regression tests for temperature bounds, relative delay, map sizing, invalid input and immutable speaker configuration.
+- This is a geometric timing aid only; it does not perform phase, impulse-response, transfer-function or DSP latency measurement.
+
+**Validation status:** v1.07 source and regression tests committed. Fresh CI and APK build must complete before release; physical Android validation remains pending.
+
 ## v1.06 — Modeled acoustic aiming optimization (development)
 
 - Add a pure optimization model that evaluates a coarse 9×7 listener grid using the existing horizontal/vertical speaker-angle model and free-field SPL approximation.
