@@ -40,6 +40,6 @@ export function assessLanDevice(record:LanDeviceRecord):LanReadiness {
   if(!protocolVerified)messages.push("Chưa có tài liệu giao thức/phiên bản tương thích được nhà sản xuất xác nhận.");
   else if(record.protocolEvidence==="vendor-documentation")messages.push("Có tài liệu tham chiếu; vẫn cần xác nhận tài liệu đúng firmware và model đang dùng.");
   const mayAttemptVendorWorkflow=identityComplete&&addressValid&&sameSubnet&&record.physicalLinkChecked&&record.sameNetworkChecked&&protocolVerified;
-  const status:LanReadiness=!identityComplete?"incomplete":!addressValid?"address-invalid":!sameSubnet?"different-subnet":!protocolVerified?"protocol-unverified":!record.physicalLinkChecked||!record.sameNetworkChecked?"manual-check-required":"vendor-workflow-ready";
+  const status:LanReadiness["status"]=!identityComplete?"incomplete":!addressValid?"address-invalid":!sameSubnet?"different-subnet":!protocolVerified?"protocol-unverified":!record.physicalLinkChecked||!record.sameNetworkChecked?"manual-check-required":"vendor-workflow-ready";
   return {addressValid,sameSubnet,identityComplete,protocolVerified,physicalLinkChecked:record.physicalLinkChecked,operatorNetworkCheck:record.sameNetworkChecked,mayAttemptVendorWorkflow,status,messages};
 }
