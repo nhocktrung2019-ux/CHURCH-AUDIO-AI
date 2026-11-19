@@ -164,6 +164,7 @@ export function analyzeImpulseResponse(
   const minimumRSquared = options.minimumRSquared ?? 0.9;
   const noiseMarginDb = options.noiseMarginDb ?? 10;
   const fits: DecayFit[] = [];
+  const fitDiagnostics = new Map<string, string>();
   const specs = [
     { method: "EDT" as const, start: 0, end: -10, metric: "edtSeconds" as const },
     { method: "T20" as const, start: -5, end: -25, metric: "t20Seconds" as const },
@@ -173,9 +174,10 @@ export function analyzeImpulseResponse(
   for (const spec of specs) {
     const usableFloor = noiseFloorDbfs - peakDbfs <= spec.end - noiseMarginDb;
     const points = decayCurve.filter(p => p.levelDb <= spec.start && p.levelDb >= spec.end);
-    if (!usableFloor || points.length < 12) continue;
-    const fit = regression(points);
-    if (!fit || fit.slope >= -0.01) continue;
+    const fit = points.length >= 3 ? regression(points) : null;
+    fitDiagnostics.set(spec.method, "floorOK=" + usableFloor + ", fitPoints=" + points.length +
+      ", slope=" + (fit?.slope ?? "n/a") + ", R²=" + (fit?.rSquared ?? "n/a"));
+    if (!usableFloor || points.length < 12 || !fit || fit.slope >= -0.01) continue;
     const rt60Seconds = -60 / fit.slope;
     if (!finite(rt60Seconds) || rt60Seconds <= 0 || rt60Seconds > 30 || fit.rSquared < minimumRSquared) continue;
     const result: DecayFit = { method: spec.method, startDb: spec.start, endDb: spec.end,
@@ -187,8 +189,7 @@ export function analyzeImpulseResponse(
     const found = fits.some(f => f.method === spec.method);
     add(spec.method.toLowerCase(), found ? "pass" : "warning",
       found ? spec.method + " fit hợp lệ, R² đạt ngưỡng." :
-        spec.method + " bị bỏ qua: floorOK=" + usableFloor + ", fitPoints=" + points.length +
-        ", slope=" + (fit?.slope ?? "n/a") + ", R²=" + (fit?.rSquared ?? "n/a") + ".");
+        spec.method + " bị bỏ qua: " + (fitDiagnostics.get(spec.method) ?? "không đủ dữ liệu fit") + ".");
   }
   const status = fits.length === 3 ? (checks.some(c => c.status === "warning") ? "review" : "ready")
     : fits.length > 0 ? "review" : "blocked";
