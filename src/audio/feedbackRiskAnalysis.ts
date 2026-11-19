@@ -28,6 +28,7 @@ export type FeedbackRiskAnalysis = {
   id: string;
   zone: string;
   position: string;
+  capturedAtMs: number | null;
   status: "clear" | "watch" | "alert" | "blocked";
   unit: "dBFS";
   candidates: FeedbackCandidate[];
@@ -74,7 +75,7 @@ export function analyzeFeedbackRisk(
   const blocked = (id: string, detail: string): FeedbackRiskAnalysis => {
     add(id, "fail", detail);
     return {
-      id: first?.id ?? "invalid-capture", zone, position, status: "blocked",
+      id: first?.id ?? "invalid-capture", zone, position, capturedAtMs: null, status: "blocked",
       unit: "dBFS", candidates: [], checks,
       note: "Không đủ dữ liệu phổ hợp lệ để đánh giá nguy cơ hú rít.",
     };
@@ -169,7 +170,7 @@ export function analyzeFeedbackRisk(
     candidates.length ? "Có đỉnh hẹp ổn định theo thời gian; cần xác minh bằng nghe và đo tại hiện trường." :
       "Chưa phát hiện ứng viên đạt ngưỡng persistence/prominence.");
   return {
-    id: sorted[sorted.length - 1].id, zone, position,
+    id: sorted[sorted.length - 1].id, zone, position, capturedAtMs: sorted[sorted.length - 1].capturedAtMs,
     status: candidates.some(c => c.risk === "high") ? "alert" : candidates.length ? "watch" : "clear",
     unit: "dBFS", candidates, checks,
     note: "Đây là cảnh báo nguy cơ hú rít, không phải kết luận chắc chắn. Âm sắc nhạc/feedback có thể giống nhau; xác minh bằng kỹ thuật viên. Không tự notch EQ, mute hoặc ghi DSP.",
@@ -183,22 +184,19 @@ export function buildFeedbackAlertHistory(
 ): FeedbackAlertEvent[] {
   const events: FeedbackAlertEvent[] = [];
   const active = new Map<string, { candidate: FeedbackCandidate; missing: number; lastAt: number }>();
-  const ordered = [...analyses].sort((a, b) => {
-    const ta = a.candidates[0]?.frequencyHz ?? 0;
-    const tb = b.candidates[0]?.frequencyHz ?? 0;
-    return a.zone.localeCompare(b.zone) || a.position.localeCompare(b.position) || ta - tb;
-  });
-  let clock = 0;
+  const ordered = [...analyses].sort((a, b) =>
+    (a.capturedAtMs ?? 0) - (b.capturedAtMs ?? 0));
   for (const analysis of ordered) {
-    clock++;
+    if (analysis.capturedAtMs === null) continue;
     const currentKeys = new Set<string>();
+
     for (const candidate of analysis.candidates) {
       const key = analysis.zone + "|" + analysis.position + "|" + Math.round(candidate.frequencyHz / 5);
       currentKeys.add(key);
       const existing = active.get(key);
       events.push({
         zone: analysis.zone, position: analysis.position, frequencyHz: candidate.frequencyHz,
-        event: existing ? "sustained" : "raised", capturedAtMs: clock,
+        event: existing ? "sustained" : "raised", capturedAtMs: analysis.capturedAtMs,
         risk: candidate.risk,
       });
       active.set(key, { candidate, missing: 0, lastAt: clock });
