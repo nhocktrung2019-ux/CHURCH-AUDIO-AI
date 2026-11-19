@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { MapPin, Plus, Trash2, Ruler, ShieldCheck } from "lucide-react";
+import { MapPin, Plus, Trash2, ShieldCheck } from "lucide-react";
 import { usePersistentState } from "./usePersistentState";
 import { getVerifiedMeasuredPoints, isMeasuredPointInsideRoom, isValidMeasuredSpl, type MeasuredPoint, type CalibrationState, type Weighting } from "./measuredPointModel";
 
