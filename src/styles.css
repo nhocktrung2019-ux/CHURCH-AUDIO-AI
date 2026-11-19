@@ -567,3 +567,31 @@ footer{padding-bottom:calc(26px + env(safe-area-inset-bottom))}
 .spl-zone-result small{margin-top:5px;color:#a8bbc1;font-size:10px;line-height:1.55}
 @media(max-width:680px){.spl-zone-map{grid-template-columns:repeat(2,minmax(0,1fr))}.spl-zone-summary{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:440px){.spl-zone-map{grid-template-columns:1fr}.spl-zone-toolbar{align-items:stretch;flex-direction:column}.spl-zone-actions{display:grid;grid-template-columns:1fr 1fr}.spl-zone-actions button{justify-content:center}}
+
+
+/* v1.08 crossover alignment review and portable measurement exports. */
+.crossover-review-panel{margin:14px 0 4px;padding:14px;border:1px solid #3b5e60;border-radius:11px;background:linear-gradient(145deg,rgba(22,57,53,.24),rgba(8,18,25,.78))}
+.crossover-review-panel>.heading{margin-bottom:10px}
+.crossover-review-panel>.heading h3{flex:1;margin:0;color:#dff4eb;font-size:14px}
+.crossover-review-panel>.heading>span{color:#8dd8bc;font:9px ui-monospace,SFMono-Regular,Consolas,monospace}
+.crossover-review-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.crossover-review-grid article{display:grid;align-content:start;gap:7px;min-width:0;padding:11px;border:1px solid #304650;border-radius:8px;background:rgba(8,18,25,.8)}
+.crossover-review-grid small{font-size:8px;letter-spacing:.55px}
+.crossover-review-grid b{color:#e1f0e9;font-size:15px;overflow-wrap:anywhere}
+.crossover-review-grid .crossover-status{font-size:11px;line-height:1.4}
+.crossover-status.good-overlap{color:#85d9b6}
+.crossover-status.review-polarity,.crossover-status.review-delay-or-filter{color:#f0c47f}
+.crossover-status.review-level-balance,.crossover-status.insufficient-data{color:#e6a18c}
+.crossover-recommendation{margin:10px 0;padding:11px 12px;border-left:3px solid #65d2b6;border-radius:5px;background:rgba(25,72,62,.22);color:#d9eee5;font-size:12px;line-height:1.6}
+.crossover-review-panel>.warning{font-size:10px;line-height:1.55}
+.crossover-export-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin-top:10px}
+.crossover-export-actions button{display:flex;align-items:center;justify-content:center;gap:8px;min-width:0;margin:0;padding:11px 9px;font-size:11px}
+.crossover-export-actions svg{width:15px;height:15px;flex:none}
+@media(max-width:560px){
+ .crossover-review-panel{padding:11px}
+ .crossover-review-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .crossover-review-grid article{padding:9px}
+ .crossover-review-grid b{font-size:13px}
+ .crossover-export-actions{grid-template-columns:1fr}
+ .crossover-export-actions button{width:100%}
+}
