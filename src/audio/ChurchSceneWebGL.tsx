@@ -10,9 +10,15 @@ export type WebGLObject = {
   id: number; kind: "altar" | "pulpit" | "column" | "pew" | "chair" | "stage";
   name: string; x: number; y: number; w: number; d: number; h: number; rotation: number;
 };
+export type WebGLMeasuredPoint = {
+  id: string; label: string; x: number; y: number; z: number;
+  splDb: number | null; calibration: "calibrated" | "uncalibrated";
+  weighting: "A" | "C" | "Z";
+};
 type Props = {
   length: number; width: number; height: number;
   speakers: WebGLSpeaker[]; objects: WebGLObject[];
+  measuredPoints: WebGLMeasuredPoint[]; showMeasuredPoints: boolean;
   selectedSpeaker: number; selectedObject: number;
   onSelectSpeaker: (id: number) => void; onSelectObject: (id: number) => void;
   onMoveSpeaker: (id: number, x: number, y: number) => void;
@@ -173,6 +179,93 @@ function createSpeakerGroup(speaker: WebGLSpeaker, index: number): THREE.Group {
   halo.position.y = -speaker.z + 0.03;
   halo.userData.noDrag = true;
   group.add(halo);
+  return group;
+}
+
+function measuredPointColor(point: WebGLMeasuredPoint): THREE.Color {
+  if (point.calibration !== "calibrated" || point.splDb === null || !Number.isFinite(point.splDb)) {
+    return new THREE.Color(0xffbd59);
+  }
+  if (point.splDb < 75) return new THREE.Color(0x55aaff);
+  if (point.splDb < 85) return new THREE.Color(0x54dfb0);
+  if (point.splDb < 95) return new THREE.Color(0xffc45e);
+  return new THREE.Color(0xff666e);
+}
+
+function createMeasuredPointGroup(point: WebGLMeasuredPoint): THREE.Group {
+  const group = new THREE.Group();
+  const color = measuredPointColor(point);
+  const validSpl = point.splDb !== null && Number.isFinite(point.splDb);
+  const verified = point.calibration === "calibrated" && validSpl;
+  group.userData = {
+    kind: "measured-point", id: point.id, noDrag: true,
+    signature: [point.label, point.splDb, point.calibration, point.weighting].join("|"),
+  };
+  group.position.set(point.x, point.z, point.y);
+
+  const core = new THREE.Mesh(
+    new THREE.SphereGeometry(0.13, 24, 16),
+    new THREE.MeshStandardMaterial({
+      color, emissive: color, emissiveIntensity: verified ? 0.8 : 0.28,
+      roughness: 0.24, metalness: 0.12,
+    }),
+  );
+  core.userData.noDrag = true;
+  group.add(core);
+
+  const halo = new THREE.Mesh(
+    new THREE.TorusGeometry(0.25, 0.025, 8, 40),
+    new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.92 }),
+  );
+  halo.rotation.x = Math.PI / 2;
+  halo.position.y = -point.z + 0.025;
+  halo.userData.noDrag = true;
+  group.add(halo);
+
+  const stemGeometry = new THREE.BufferGeometry().setFromPoints([
+    new THREE.Vector3(0, -point.z + 0.04, 0),
+    new THREE.Vector3(0, -point.z + Math.min(point.z, 0.75), 0),
+  ]);
+  const stem = new THREE.Line(
+    stemGeometry,
+    new THREE.LineDashedMaterial({ color, dashSize: 0.12, gapSize: 0.08, transparent: true, opacity: 0.72 }),
+  );
+  stem.computeLineDistances();
+  stem.userData.noDrag = true;
+  group.add(stem);
+
+  if (typeof document !== "undefined") {
+    const canvas = document.createElement("canvas");
+    canvas.width = 512;
+    canvas.height = 112;
+    const context = canvas.getContext("2d");
+    if (context) {
+      context.clearRect(0, 0, canvas.width, canvas.height);
+      context.fillStyle = "rgba(7, 15, 22, 0.88)";
+      context.beginPath();
+      context.roundRect(4, 8, 504, 96, 18);
+      context.fill();
+      context.strokeStyle = "#" + color.getHexString();
+      context.lineWidth = 5;
+      context.stroke();
+      context.fillStyle = "#f2f7f7";
+      context.font = "bold 30px system-ui, sans-serif";
+      context.fillText(point.label.slice(0, 22), 22, 47);
+      context.font = "24px system-ui, sans-serif";
+      context.fillStyle = "#" + color.getHexString();
+      const reading = validSpl ? point.splDb!.toFixed(1) + " dB SPL · " + point.weighting : "CHƯA XÁC MINH";
+      context.fillText(reading, 22, 82);
+      const texture = new THREE.CanvasTexture(canvas);
+      texture.colorSpace = THREE.SRGBColorSpace;
+      const label = new THREE.Sprite(new THREE.SpriteMaterial({
+        map: texture, transparent: true, depthWrite: false, sizeAttenuation: true,
+      }));
+      label.scale.set(2.65, 0.58, 1);
+      label.position.set(0.85, 0.55, 0);
+      label.userData.noDrag = true;
+      group.add(label);
+    }
+  }
   return group;
 }
 
@@ -355,7 +448,7 @@ export default function ChurchSceneWebGL(props: Props) {
       const rect = renderer.domElement.getBoundingClientRect();
       state.pointer.set((event.clientX - rect.left) / rect.width * 2 - 1, -((event.clientY - rect.top) / rect.height) * 2 + 1);
       state.raycaster.setFromCamera(state.pointer, camera);
-      const hit = state.raycaster.intersectObjects([...groups.values()], true).find((candidate) => {
+      const hit = state.raycaster.intersectObjects([...groups.values()].filter((group) => group.userData.kind !== "measured-point"), true).find((candidate) => {
         if (candidate.object.userData.noDrag) return false;
         let root: THREE.Object3D | null = candidate.object;
         while (root && !root.userData.kind) root = root.parent;
@@ -463,6 +556,26 @@ export default function ChurchSceneWebGL(props: Props) {
       group.scale.setScalar(item.id === props.selectedObject ? 1.035 : 1);
     });
 
+    props.measuredPoints.forEach((point) => {
+      const key = "m:" + point.id;
+      liveKeys.add(key);
+      let group = state.groups.get(key);
+      const signature = [point.label, point.splDb, point.calibration, point.weighting].join("|");
+      if (group && group.userData.signature !== signature) {
+        state.scene.remove(group);
+        disposeObject(group);
+        state.groups.delete(key);
+        group = undefined;
+      }
+      if (!group) {
+        group = createMeasuredPointGroup(point);
+        state.scene.add(group);
+        state.groups.set(key, group);
+      }
+      group.visible = props.showMeasuredPoints;
+      group.position.set(point.x, point.z, point.y);
+    });
+
     props.speakers.forEach((speaker, index) => {
       const key = "s:" + speaker.id;
       liveKeys.add(key);
@@ -493,7 +606,7 @@ export default function ChurchSceneWebGL(props: Props) {
         state.groups.delete(key);
       }
     }
-  }, [props.speakers, props.objects, props.selectedSpeaker, props.selectedObject]);
+  }, [props.speakers, props.objects, props.measuredPoints, props.showMeasuredPoints, props.selectedSpeaker, props.selectedObject]);
 
   return (
     <div
@@ -502,7 +615,7 @@ export default function ChurchSceneWebGL(props: Props) {
       role="application"
       aria-label="Mô hình nhà thờ 3D. Kéo nền để xoay, cuộn để thu phóng; kéo loa hoặc nội thất để di chuyển."
     >
-      <div className="webgl-hint">CHURCH 3D · KÉO NỀN ĐỂ XOAY · CUỘN ĐỂ ZOOM · KÉO LOA / NỘI THẤT ĐỂ DI CHUYỂN</div>
+      <div className="webgl-hint">CHURCH 3D · ORBIT / ZOOM · LOA & NỘI THẤT TƯƠNG TÁC · ĐIỂM SPL THỰC ĐO</div>
       {webglError && (
         <div className="webgl-error">
           Thiết bị chưa khởi tạo được WebGL. Hãy dùng chế độ Mặt bằng 2D hoặc bật tăng tốc đồ họa trong WebView.
