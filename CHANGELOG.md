@@ -1,5 +1,16 @@
 # Changelog
 
+## v1.04 — 3D measured acoustic intelligence (development)
+
+- Add a conservative inverse-distance-weighted SPL surface derived only from explicitly calibrated, in-room physical readings with a matching A/C/Z weighting.
+- Require at least four compatible readings with a non-degenerate spatial hull; render only cells inside the measured convex hull and within a bounded distance of a measurement. Uncovered areas remain transparent rather than being extrapolated.
+- Render the measured/interpolated SPL surface directly on the floor plane of the existing Three.js church scene, with a fixed 65–105 dB color scale and weighting selector.
+- Add persistent show/hide control and a live summary of compatible readings, interpolated cells and estimated range.
+- Add regression coverage for sparse/collinear point rejection, weighting compatibility, calibration provenance, room bounds and surface geometry.
+
+**Validation status:** v1.04 source and regression tests are committed. A fresh GitHub Actions run for the v1.04 head is required; no v1.04 build or APK success is claimed yet. The surface is an IDW visualization, not a standards-compliant acoustic prediction, certified SPL meter or substitute for field verification. No DSP/mixer writes are performed.
+
+
 ## v1.03 — Room-linked measured-point overlay (development branch)
 
 - Add a persistent measured-point registry with stable IDs, X/Y/Z room coordinates, capture timestamp, input label, weighting, calibration provenance and technician notes.
@@ -9,7 +20,7 @@
 - Distinguish explicitly calibrated readings from unverified entries; show weighting and measured SPL in the 3D labels, with a persistent visibility toggle.
 - Add regression tests for room bounds, finite coordinates, calibration provenance and valid SPL values.
 
-**Validation status:** GitHub Actions regression tests and `npm run build` completed successfully for the v1.03.1 head commit. Android project generation and Capacitor sync also completed; the debug APK build is still running. Physical Android verification remains pending. Point entry is manual; automatic microphone capture and validated heatmap interpolation are not included in this increment. 3D WebGL markers are now included; their color bands are visual cues only, not safety thresholds.
+**Validation status:** GitHub Actions regression tests and `npm run build` completed successfully for the v1.03.1 head commit. Android project generation and Capacitor sync also completed; the debug APK build is still running. Physical Android verification remains pending. Point entry is manual; automatic microphone capture is not included. 3D WebGL markers are included; their color bands are visual cues only, not safety thresholds.
 
 
 ## v1.02 — Intelligent SPL Mapping (development branch)
