@@ -153,7 +153,11 @@ export function analyzeMeasuredDistanceAttenuation(
     measuredDb: point.levelDb,
   })).filter(point => finite(point.distanceM) && point.distanceM > 0.05);
   if (points.length < 3 || new Set(points.map(point => point.distanceM.toFixed(2))).size < 3)
-    return { ...blocked("At least three distinct coordinate-matched listening positions and distances are required."), pointCount: points.length };
+    return {
+      status: "insufficient", speakerName: speaker.name, zone: speaker.zone, pointCount: points.length,
+      slopeDbPerDecade: null, rSquared: null, points: [],
+      reason: "At least three distinct coordinate-matched listening positions and distances are required.",
+    };
   const xs = points.map(point => Math.log10(point.distanceM));
   const ys = points.map(point => point.measuredDb);
   const meanX = xs.reduce((sum, value) => sum + value, 0) / xs.length;
