@@ -614,3 +614,11 @@ footer{padding-bottom:calc(26px + env(safe-area-inset-bottom))}
 .v104-surface-toolbar button:disabled{opacity:.42;cursor:not-allowed}
 .v104-surface-toolbar>span{font-size:11px;line-height:1.5;color:#a8bac2;align-self:center}
 @media(max-width:620px){.v104-surface-toolbar{grid-template-columns:1fr 1fr}.v104-surface-toolbar>span{grid-column:1/-1}.v104-surface-toolbar button{min-height:48px;padding:8px;font-size:11px}}
+
+
+/* v1.05 — 3D speaker coverage controls */
+.v105-coverage-toggle{display:flex;flex-direction:column;gap:6px;align-items:stretch;min-width:0;padding:10px;border:1px solid #35505a;border-radius:8px;background:rgba(17,34,42,.72)}
+.v105-coverage-toggle>b{font:10px ui-monospace,SFMono-Regular,Consolas,monospace;letter-spacing:.7px;color:#91a0aa}
+.v105-coverage-toggle button{min-height:42px;margin:0!important;padding:9px;font-size:11px;white-space:normal}
+.v105-coverage-toggle small{font-size:9px;line-height:1.45;letter-spacing:0}
+@media(max-width:620px){.v105-coverage-toggle{padding:8px}.v105-coverage-toggle button{min-height:46px}}
