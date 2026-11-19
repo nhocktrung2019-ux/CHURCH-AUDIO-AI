@@ -671,7 +671,7 @@ export default function TransferFunctionPanel({ selectedInput, selectedOutput, r
       ["summary","A_vs_B","","","","",crossoverReview.status,"Phase degrees; relative magnitude dB; coherence 0..1"],
       ["summary","crossover_center",crossoverHz,"","","",crossoverReview.status,"Hz"],
       ["summary","mean_phase_difference","","",crossoverReview.meanPhaseDifferenceDeg ?? "","",crossoverReview.status,"degrees"],
-      ["summary","mean_magnitude_difference","","", "",crossoverReview.meanMagnitudeDifferenceDb ?? "",crossoverReview.status,"dB"],
+      ["summary","mean_magnitude_difference","",crossoverReview.meanMagnitudeDifferenceDb ?? "","","",crossoverReview.status,"dB"],
       ["summary","average_coherence","","","",crossoverReview.averageCoherence,crossoverReview.status,"0..1"],
       ...referenceA.points.map(point=>["response","A",point.frequencyHz,point.magnitudeDb,point.phaseDeg,point.coherence,"",""]),
       ...referenceB.points.map(point=>["response","B",point.frequencyHz,point.magnitudeDb,point.phaseDeg,point.coherence,"",""]),
