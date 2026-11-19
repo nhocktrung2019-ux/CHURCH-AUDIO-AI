@@ -578,3 +578,23 @@ footer{padding-bottom:calc(26px + env(safe-area-inset-bottom))}
 .measured-heatmap-mini small{color:#9db5bb;font-size:9px;line-height:1.5}
 .measured-heatmap-grid{display:grid;gap:3px;min-height:130px;aspect-ratio:3/2}
 .measured-heatmap-grid span{display:block;min-width:0;min-height:8px;border-radius:2px}
+
+
+/* Read-only acoustic advisory and survey quality panel; compact on Android. */
+.zone-spl-advisory{display:grid;gap:10px;margin:14px 0;padding:13px;border:1px solid #3b5b61;border-radius:10px;background:rgba(8,18,25,.72)}
+.zone-spl-advisory>.heading{margin:0}
+.zone-spl-advisory>.heading h3{flex:1;margin:0;color:#dceee7;font-size:13px}
+.zone-spl-quality-checks{display:grid;gap:6px;margin:0;padding:0;list-style:none}
+.zone-spl-quality-checks li{display:grid;gap:4px;padding:8px 10px;border:1px solid #304650;border-radius:7px;background:#101e27}
+.zone-spl-quality-checks b{color:#bfe9d7;font-size:10px}
+.zone-spl-quality-checks span{color:#a8bbc1;font-size:10px;line-height:1.5}
+.zone-spl-advisory h4{margin:10px 0;color:#cde7dc;font-size:11px}
+.zone-spl-advisory .warning{margin:0;line-height:1.55}
+.zone-spl-advisory .warning p{margin:7px 0 0}
+.zone-spl-advisory .muted{margin:0;font-size:10px;line-height:1.6}
+@media(max-width:600px){
+ .zone-spl-advisory{padding:10px}
+ .zone-spl-advisory>.heading h3{font-size:12px}
+ .zone-spl-advisory .table-wrap{overflow-x:auto}
+ .zone-spl-advisory table{min-width:480px}
+}

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Activity, Download, Gauge, Trash2 } from "lucide-react";
 import { usePersistentState } from "./usePersistentState";
 import { compareZoneLevels, energyAverageDb, summarizeUniformity, type ZoneSplRecord, type ZoneSplUnit } from "./zoneSplUniformity";
+import { annotateSurveyRecords, assessSurveyQuality, buildZoneAdvisoryPlan, detectSurveyOutliers } from "./acousticAdvisoryEngine";
 
 type Props = {
   running: boolean;
@@ -60,6 +61,11 @@ export default function ZoneSPLMeasurementPanel({
     zone: name,
     summary: summarizeUniformity(validRecords.filter((record) => record.zone === name)),
   }));
+  const surveyQuality = assessSurveyQuality(validRecords, { lengthM: roomLengthM, widthM: roomWidthM });
+  const advisoryPlan = buildZoneAdvisoryPlan(validRecords, zoneBalanceToleranceDb);
+  const surveyOutliers = detectSurveyOutliers(validRecords);
+  const exportAnnotations = new Map(annotateSurveyRecords(records, { lengthM: roomLengthM, widthM: roomWidthM })
+    .map((annotation) => [annotation.recordId, annotation] as const));
 
   useEffect(() => {
     if (!capturing) return;
@@ -131,12 +137,18 @@ export default function ZoneSPLMeasurementPanel({
   };
 
   const exportCsv = () => {
-    const header = ["timestamp_iso", "zone", "position", "x_m", "y_m", "level", "unit", "raw_a_weighted_dbfs", "duration_s", "sample_count", "input"];
-    const rows = records.map((record) => [
-      new Date(record.timestamp).toISOString(), record.zone, record.position, record.xM ?? "", record.yM ?? "",
-      record.levelDb.toFixed(2), record.unit, record.rawDbfs.toFixed(2),
-      record.durationSeconds, record.sampleCount, record.inputLabel,
-    ]);
+    const header = ["timestamp_iso", "zone", "position", "x_m", "y_m", "level", "unit", "raw_a_weighted_dbfs", "duration_s", "sample_count", "input", "quality_status", "outlier_review_flag", "outlier_deviation_db", "outlier_reference_median_db", "review_reason"];
+    const rows = records.map((record) => {
+      const annotation = exportAnnotations.get(record.id);
+      return [
+        new Date(record.timestamp).toISOString(), record.zone, record.position, record.xM ?? "", record.yM ?? "",
+        record.levelDb.toFixed(2), record.unit, record.rawDbfs.toFixed(2),
+        record.durationSeconds, record.sampleCount, record.inputLabel,
+        annotation?.qualityStatus ?? "blocked", annotation?.outlierFlag ? "review" : "",
+        annotation?.outlierDeviationDb?.toFixed(2) ?? "", annotation?.outlierMedianDb?.toFixed(2) ?? "",
+        annotation?.reviewReason ?? "",
+      ];
+    });
     const csv = [header, ...rows].map((row) => row.map((value) => `"${String(value).replaceAll('"', '""')}"`).join(",")).join("\r\n");
     const url = URL.createObjectURL(new Blob(["\uFEFF", csv], { type: "text/csv;charset=utf-8" }));
     const anchor = document.createElement("a");
@@ -185,6 +197,37 @@ export default function ZoneSPLMeasurementPanel({
       {zoneSummaries.map(({zone: zoneName, summary}) => summary && <tr key={zoneName}><td>{zoneName}</td><td>{summary.count}</td><td>{summary.meanDb.toFixed(1)} {summary.unit}</td><td>{summary.minDb.toFixed(1)}–{summary.maxDb.toFixed(1)}</td><td>{summary.spreadDb.toFixed(1)} dB</td><td>{summary.standardDeviationDb.toFixed(1)}</td></tr>)}
       {!zoneSummaries.length && <tr><td colSpan={6}>Chưa có điểm đo cùng đơn vị. Hãy chọn vùng, đặt micro tại vị trí ghế và bắt đầu đo.</td></tr>}
     </tbody></table></div>
+    <section className="zone-spl-advisory" aria-live="polite">
+      <div className="heading"><Gauge/><h3>Kiểm định dữ liệu & khuyến nghị kỹ thuật</h3></div>
+      <div className="zone-spl-stats">
+        <article><small>CHẤT LƯỢNG DỮ LIỆU</small><b>{surveyQuality.status === "ready" ? "Đạt kiểm tra cơ bản" : surveyQuality.status === "review" ? "Cần xem lại" : "Chưa đủ điều kiện"}</b></article>
+        <article><small>SỐ ĐIỂM ĐANG PHÂN TÍCH</small><b>{surveyQuality.recordCount}</b></article>
+        <article><small>SỐ VÙNG</small><b>{surveyQuality.zoneCount}</b></article>
+        <article><small>VỊ TRÍ KHÁC NHAU</small><b>{surveyQuality.distinctPositionCount}</b></article>
+      </div>
+      <ul className="zone-spl-quality-checks">
+        {surveyQuality.checks.map((check) => <li key={check.id}>
+          <b>{check.status === "pass" ? "Đạt" : check.status === "warning" ? "Xem lại" : "Lỗi"} · {check.id}</b>
+          <span>{check.detail}</span>
+        </li>)}
+      </ul>
+      {advisoryPlan.status === "available" ? <div className="table-wrap">
+        <h4>Khuyến nghị cân bằng vùng · chỉ tham khảo</h4>
+        <table><thead><tr><th>Vùng</th><th>Trạng thái</th><th>Lệch tham chiếu</th><th>Việc cần kiểm tra</th></tr></thead><tbody>
+          {advisoryPlan.zones.map((row) => <tr key={row.zone}>
+            <td>{row.zone}</td>
+            <td>{row.status === "low" ? "Thấp" : row.status === "high" ? "Cao" : row.status === "balanced" ? "Trong ngưỡng" : "Thiếu vị trí"}</td>
+            <td>{row.deltaFromReferenceDb > 0 ? "+" : ""}{row.deltaFromReferenceDb.toFixed(1)} dB</td>
+            <td>{row.recommendation}</td>
+          </tr>)}
+        </tbody></table>
+      </div> : <p className="warning">Chưa đủ dữ liệu đồng nhất để đưa ra khuyến nghị so sánh vùng.</p>}
+      {surveyOutliers.length > 0 && <div className="warning">
+        <b>Có {surveyOutliers.length} lần đo lặp khác biệt cần kiểm tra:</b>
+        {surveyOutliers.map((item) => <p key={item.recordIds[0]}>{item.zone} · {item.position}: {item.levelDb.toFixed(1)} {currentUnit}, lệch {item.deviationDb > 0 ? "+" : ""}{item.deviationDb.toFixed(1)} dB so với trung vị. {item.reason}</p>)}
+      </div>}
+      <p className="muted">Khuyến nghị không tự điều chỉnh DSP. Các điểm đo bị đánh dấu vẫn được giữ nguyên trong lịch sử. dBFS và dB SPL được phân tích riêng; dữ liệu mô phỏng không được đưa vào các thống kê này.</p>
+    </section>
     <div className="zone-spl-records">{records.slice(0, 30).map((record) => <article key={record.id}><div><b>{record.zone} · {record.position}</b><small>{new Date(record.timestamp).toLocaleString()} · {record.durationSeconds}s · {record.inputLabel || "Micro mặc định"} · {Number.isFinite(record.xM) && Number.isFinite(record.yM) ? `X ${record.xM} m / Y ${record.yM} m` : "Chưa gắn tọa độ"}</small></div><strong>{record.levelDb.toFixed(1)} <small>{record.unit}</small></strong><button className="icon-button" aria-label="Xóa điểm đo" onClick={() => removeRecord(record.id)}><Trash2/></button></article>)}</div>
     {records.length > 30 && <p className="muted">Đang hiển thị 30 / {records.length} điểm gần nhất. CSV chứa toàn bộ dữ liệu.</p>}
     <p className="warning">Tọa độ X/Y là vị trí khảo sát do kỹ thuật viên nhập theo mặt bằng thực tế; ứng dụng không tự suy đoán tọa độ từ tên hàng ghế. Bản đồ nhiệt chỉ dùng các điểm có đủ cả X và Y. Mức đo được lấy mẫu A-weighted từ luồng microphone mỗi 100 ms và tính trung bình năng lượng trong khoảng đo; đây là phép đo khảo sát của ứng dụng, chưa được xác nhận dung sai IEC 61672. Nếu chưa xác nhận hiệu chuẩn riêng cho đúng input, bản ghi được giữ ở dBFS, không gắn nhãn dB SPL. Không so sánh các bản ghi khác đơn vị.</p>
