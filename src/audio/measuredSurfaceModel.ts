@@ -1,4 +1,12 @@
-import { isMeasuredPointInsideRoom, isValidMeasuredSpl, type MeasuredPoint, type RoomBounds, type Weighting } from "./measuredPointModel";
+import type { MeasuredPoint, RoomBounds, Weighting } from "./measuredPointModel";
+
+const isInsideRoom = (point: MeasuredPoint, room: RoomBounds) =>
+  Number.isFinite(point.x) && Number.isFinite(point.y) && Number.isFinite(point.z) &&
+  point.x >= 0 && point.x <= room.length && point.y >= 0 && point.y <= room.width &&
+  point.z >= 0 && point.z <= room.height;
+
+const isValidSpl = (value: number | null): value is number =>
+  value !== null && Number.isFinite(value) && value >= 0 && value <= 160;
 
 export type MeasuredSurface = {
   positions: number[];
@@ -76,10 +84,10 @@ export function buildMeasuredSurface(
   rows = 14,
 ): MeasuredSurface | null {
   const points = allPoints.filter((point) =>
-    isMeasuredPointInsideRoom(point, room) &&
+    isInsideRoom(point, room) &&
     point.calibration === "calibrated" &&
     point.weighting === weighting &&
-    isValidMeasuredSpl(point.splDb),
+    isValidSpl(point.splDb),
   );
   if (points.length < 4 || room.length <= 0 || room.width <= 0) return null;
   const hull = convexHull(points);
