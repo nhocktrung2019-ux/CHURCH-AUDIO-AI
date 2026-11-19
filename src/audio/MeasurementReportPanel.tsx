@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Download, FileJson, FileSpreadsheet, FileText, Printer, RefreshCw, ShieldCheck } from "lucide-react";
+import { FileJson, FileSpreadsheet, FileText, Printer, RefreshCw, ShieldCheck } from "lucide-react";
 import { APP_VERSION } from "../appVersion";
 import { usePersistentState } from "./usePersistentState";
 import { buildMeasurementReport, measurementReportCsv, type MeasurementReport } from "./measurementReport";
