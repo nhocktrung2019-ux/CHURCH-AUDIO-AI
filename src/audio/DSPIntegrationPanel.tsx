@@ -5,6 +5,7 @@ import { Download, Network, ShieldCheck, ClipboardCheck, ExternalLink } from "lu
 import { dspProfiles } from "../data/dspProfiles";
 import CD48PresetEditor from "./CD48PresetEditor";
 import DSPDynamicsAdvisor from "./DSPDynamicsAdvisor";
+import LanDeviceManagerPanel from "./LanDeviceManagerPanel";
 import { assessMeasurementReadiness, type MeasurementEvidence } from "./measurementReadiness";
 const initialEvidence: MeasurementEvidence = {
   knownInputChain: false, measurementMicCalibrated: false, acousticCalibratorVerified: false,
@@ -130,6 +131,7 @@ export default function DSPIntegrationPanel() {
       <button onClick={exportWorksheet}><Download /> Xuất phiếu cấu hình JSON</button>
       <p className="muted">Kỹ thuật viên phải kiểm tra đúng model, firmware, routing, limiter và mức đầu ra trước khi nhập thông số. Không áp dụng trực tiếp các giá trị đề xuất trong buổi lễ đang diễn ra.</p>
     </article>
+    <LanDeviceManagerPanel />
     <DSPDynamicsAdvisor />
     <article className="panel">
       <div className="heading"><ClipboardCheck /><h2>Measurement Readiness · Kiểm định chuỗi đo</h2><span>OPERATOR CHECKLIST</span></div>
