@@ -1,55 +1,40 @@
-# v1.03 — Room-linked measured-point workflow
+# v1.03 / v1.03.1 — Room-linked measured SPL points
 
 ## Purpose
 
-Attach physical SPL observations to stable coordinates in the existing church room model without replacing the current Three.js scene or changing speaker placement.
+Attach physical SPL observations to stable coordinates in the existing church room model. The original Three.js church scene, speaker positions, furniture, camera state and legacy SPL zone records remain intact.
 
 ## Record contract
 
-Each saved point has:
-- Stable point ID and human-readable label.
-- X/Y/Z coordinates in metres, bounded by the saved room length, width and height.
-- SPL value in dB SPL, calibration state, and A/C/Z weighting.
-- Operator-entered input/microphone label, note and capture timestamp.
-
-The record is stored separately under `church-audio-measured-points-v103`. Existing room dimensions and reference listening coordinates are read from the current room-planner keys. Existing SPL zone records are not migrated, overwritten or silently assigned coordinates.
+Each saved point has a stable ID, label, X/Y/Z coordinates in metres, SPL value in dB SPL, calibration state, A/C/Z weighting, operator-entered input/microphone label, note and capture timestamp. Records are stored separately under `church-audio-measured-points-v103`.
 
 ## Measurement integrity
 
-- A point is plotted only when its coordinates are finite and within the current room bounds.
-- A point is counted as verified only when it is in bounds, contains a finite SPL value in the supported input range, and is explicitly marked calibrated by the operator.
-- Calibration state is provenance supplied by the operator; this UI does not independently verify a calibrator or microphone chain.
+- Only finite coordinates inside the current room dimensions are plotted in either view.
+- A point is counted as verified only when it is in bounds, has a finite SPL value in the supported range and is explicitly marked calibrated by the operator.
+- Calibration is operator-supplied provenance; the app does not independently verify the calibrator or microphone chain.
 - dBFS, simulated values and theoretical predictions are not converted into or admitted as measured dB SPL.
-- A/C/Z weighting is retained per point. Mixed weighting data must not be pooled into one uniformity statistic.
-- Moving/resizing the room does not rewrite saved coordinates. Out-of-bounds points remain stored for review but are hidden from the map and excluded from verified counts.
+- A/C/Z weighting is retained per point; mixed weighting must not be pooled into one uniformity statistic.
+- Resizing the room does not rewrite saved coordinates. Out-of-bounds records remain stored for review but are hidden from both visualizations.
 
-## Current UI behavior
+## v1.03 — Floor-plan workflow
 
-The design workspace now includes a room-linked floor-plan map and manual point-entry form. The default X/Y location is initialized from the existing reference listening point, with microphone height defaulted to 1.2 m. Operators can enter the measured level, calibration state, weighting, input label and notes, then save or remove individual records.
+The design workspace provides a room-linked floor-plan map and manual point-entry form. The default X/Y location is initialized from the saved reference listening point; microphone height defaults to 1.2 m. Operators can enter SPL, calibration state, weighting, input label and notes, then save or remove records.
 
-## Not included in v1.03
+## v1.03.1 — Three.js WebGL overlay
 
-- Live microphone capture directly into a selected point.
-- Automatic input-device identity verification.
-- Automatic interpolation between measured points into a continuous SPL heatmap.
-- Automatic DSP, mixer or speaker-setting writes.
+The existing Three.js church scene reads the same saved records as the floor-plan panel. In-bounds points render at their saved X/Y/Z coordinates (mapped to Three.js world X/Z/Y) as glowing markers with a floor ring, vertical locator stem and camera-facing label. Labels show the point name and SPL/weighting when available.
 
-## v1.03.1 — Three.js measured-point overlay
+Explicitly calibrated points use measured-level color bands; uncalibrated or incomplete points remain amber and are labelled unverified. Color bands are visual cues only, not exposure, safety or compliance thresholds. A persistent visibility toggle hides or shows the marker layer without deleting records. Measurement markers cannot be dragged or selected as speakers/furniture. Marker geometry, materials, line resources and label textures are disposed when updated or when the scene is torn down.
 
-The existing Three.js church scene now reads the same `church-audio-measured-points-v103` records used by the floor-plan panel. In-bounds records are rendered at their saved X/Y/Z coordinates (world axes X/Z/Y), with a glowing measurement marker, floor ring, vertical locator stem and camera-facing label. The label includes the point name and SPL/weighting when a value exists. Explicitly calibrated records use the measured-level color bands; uncalibrated or incomplete records remain amber and are labelled as unverified. These colors are display cues only and are not exposure or compliance thresholds.
-
-A persistent visibility toggle hides or shows the point layer without deleting measurements. Out-of-bounds records remain saved but are not sent to the 3D scene. Measurement markers do not participate in speaker/furniture dragging or selection. The renderer disposes marker geometry, materials and label textures when records change or the scene is torn down.
-
-## Not included in v1.03.1
+## Not included
 
 - Live microphone capture directly into a selected point.
 - Automatic input-device identity verification.
-- Validated SPL heatmap interpolation between measured points.
-- Automatic DSP, mixer or speaker-setting writes.
-- Heatmap interpolation or SPL predictions from unmeasured positions.
+- Validated interpolation into a continuous SPL heatmap.
 - Automatic DSP, mixer or speaker-setting writes.
 
-These are separate gated increments. v1.04 should only derive a measured heatmap after point density, weighting compatibility, calibration provenance and spatial interpolation rules have explicit validation and regression coverage.
+A future measured heatmap must define minimum point density, weighting compatibility, calibration provenance and spatial interpolation rules, with regression coverage before it is used for technical decisions.
 
 ## Validation
 
@@ -60,4 +45,4 @@ npm test
 npm run build
 ```
 
-Physical Android validation is still required for touch layout, persistence across app restarts and field-measurement workflow. This feature is a survey aid, not an IEC 61672-certified sound level meter.
+Physical Android validation remains required for touch interaction, persistence across app restarts and field-measurement workflow. This feature is a survey aid, not an IEC 61672-certified sound level meter.
