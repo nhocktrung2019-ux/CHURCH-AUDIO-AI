@@ -183,7 +183,7 @@ export function buildFeedbackAlertHistory(
   clearAfterWindows = 3,
 ): FeedbackAlertEvent[] {
   const events: FeedbackAlertEvent[] = [];
-  const active = new Map<string, { candidate: FeedbackCandidate; missing: number; lastAt: number }>();
+  const active = new Map<string, { candidate: FeedbackCandidate; missing: number }>();
   const ordered = [...analyses].sort((a, b) =>
     (a.capturedAtMs ?? 0) - (b.capturedAtMs ?? 0));
   for (const analysis of ordered) {
@@ -199,7 +199,7 @@ export function buildFeedbackAlertHistory(
         event: existing ? "sustained" : "raised", capturedAtMs: analysis.capturedAtMs,
         risk: candidate.risk,
       });
-      active.set(key, { candidate, missing: 0, lastAt: clock });
+      active.set(key, { candidate, missing: 0 });
     }
     for (const [key, state] of active) {
       if (key.startsWith(analysis.zone + "|" + analysis.position + "|") && !currentKeys.has(key)) {
@@ -208,7 +208,7 @@ export function buildFeedbackAlertHistory(
           events.push({
             zone: analysis.zone, position: analysis.position,
             frequencyHz: state.candidate.frequencyHz, event: "cleared",
-            capturedAtMs: clock, risk: "none",
+            capturedAtMs: analysis.capturedAtMs, risk: "none",
           });
           active.delete(key);
         }
