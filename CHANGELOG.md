@@ -1,5 +1,27 @@
 # Changelog
 
+## v1.08.1 — Crossover review UI and measurement exports
+
+- Integrate the v1.08 crossover review into the existing Transfer Function / Align workspace without replacing the current measurement workflow.
+- Add a responsive result panel for status, phase difference, relative magnitude difference, average coherence, matched-bin count, octave coverage and confidence.
+- Add versioned JSON report export with schema/version, generation timestamp, crossover band, capture metadata, A/B response arrays, units and explicit limitations.
+- Add UTF-8 CSV export with a stable column header, summary records and raw A/B response rows for spreadsheet analysis.
+- Keep outputs advisory-only: no absolute A/B delay claim, automatic polarity changes or DSP/mixer writes.
+
+**Validation status:** source changes committed to the v1.08 pull request. CI/build and Android screen-size/device validation are pending.
+
+
+## v1.08 — Crossover alignment review
+
+- Add a coherence-gated A/B crossover review model using measured magnitude and phase points around a selected crossover frequency.
+- Require at least five matched frequency bins and at least half an octave of usable coverage; report phase concentration, mean phase difference, magnitude mismatch, coherence and confidence.
+- Classify results as insufficient data, likely polarity opposition, good overlap, level-balance review or delay/filter review.
+- Keep polarity changes and crossover/delay edits advisory only. Sequential A/B phase-shape captures are never used to claim absolute arrival-time or delay.
+- Add regression tests for coherent overlap, polarity warning, level mismatch, insufficient data, invalid inputs and the absolute-delay safety boundary.
+
+**Limitations:** this milestone adds the analysis model and tests; it does not yet add a new UI panel, live impulse-response capture, verified multi-position crossover acceptance or DSP writes. Results depend on valid measurements and unchanged microphone/input/gain chain.
+
+
 ## Unified architecture v1.01 — integration baseline
 
 - Establish one product architecture spanning the 3D room planner, SPL measurement, room analysis, speaker alignment, advisory Auto EQ/feedback, equipment profiles, DSP networking, assistant and reporting.
