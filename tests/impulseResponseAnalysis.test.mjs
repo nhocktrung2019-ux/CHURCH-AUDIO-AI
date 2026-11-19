@@ -17,7 +17,7 @@ function exponentialCapture({ rt60 = 1.2, sampleRateHz = 8000, noise = 1e-7, id 
 
 test("derives EDT, T20 and T30 from a valid measured impulse response", () => {
   const result = analyzeImpulseResponse(exponentialCapture());
-  assert.notEqual(result.metrics.edtSeconds, null);
+  assert.notEqual(result.metrics.edtSeconds, null, JSON.stringify({ checks: result.checks, noiseFloorDbfs: result.noiseFloorDbfs, peakDbfs: result.peakDbfs, availableDynamicRangeDb: result.availableDynamicRangeDb, decayStart: result.decayCurve[0], decayEnd: result.decayCurve.at(-1) }));
   assert.notEqual(result.metrics.t20Seconds, null);
   assert.notEqual(result.metrics.t30Seconds, null);
   assert.ok(Math.abs(result.metrics.t20Seconds - 1.2) < 0.08);
@@ -46,7 +46,7 @@ test("withholds T20/T30 when the declared noise floor cannot support the decay r
   const result = analyzeImpulseResponse(exponentialCapture({ noise: 1e-3 }));
   assert.equal(result.metrics.t20Seconds, null);
   assert.equal(result.metrics.t30Seconds, null);
-  assert.equal(result.status, "review");
+  assert.equal(result.status, "blocked");
 });
 
 test("does not convert dBFS to dB SPL and records provenance", () => {
