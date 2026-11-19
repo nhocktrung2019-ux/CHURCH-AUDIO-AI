@@ -1,6 +1,6 @@
 import { usePersistentState } from "./usePersistentState";
 import { useState, type PointerEvent } from "react";
-import{Plus,Speaker,Trash2,Move3d,Ruler,MapPin,Eye,EyeOff}from"lucide-react";
+import{Plus,Speaker,Trash2,Move3d,Ruler,Eye,EyeOff}from"lucide-react";
 import{SPEAKER_MODELS,SPEAKER_SPECS}from"../data/speakerModels";
 import ChurchSceneWebGL from "./ChurchSceneWebGL";
 import { isMeasuredPointInsideRoom, type MeasuredPoint } from "./measuredPointModel";
