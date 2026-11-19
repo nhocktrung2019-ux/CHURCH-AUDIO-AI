@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.30.0-beta.1 — v0.76 measured SPL zone map
+
+- Add a persistent per-zone SPL measurement worksheet with editable zone names, readings and field notes.
+- Show measured coverage count, energy-averaged SPL, minimum/maximum level and min–max spread.
+- Classify zones against an operator-defined target and preserve the existing Three.js room planner unchanged.
+- Clearly distinguish manually entered calibrated SPL readings from uncalibrated dBFS and simulated coverage estimates.
+
+**Validation status:** source integration committed; automated build and Android packaging have not yet been run in this environment. Field validation with a calibrated measurement microphone is still required.
+
 ## 0.29.0-beta.1 — Capture-chain and level consistency gate
 
 - Require repeated captures at one position to retain matching PCM engine, analysis mode, input/PCM channel counts, channel-mix policy and track settings.
