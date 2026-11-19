@@ -1,0 +1,13 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import {assessFrequencyResponseQuality,buildZoneResponseCurves,smoothFractionalOctaveResponse,compareZoneResponseCurves,assessResponseRepeatability} from "../src/audio/frequencyResponseAnalysis.ts";
+const bins=(o=0,c=.95)=>[100,500,1000,5000].map((f,i)=>({frequencyHz:f,magnitudeDb:[-3,-1,0,-4][i]+o,coherence:c}));
+const sweep=(id,z,p,o=0,extra={})=>({id,zone:z,position:p,sampleRateHz:48000,inputLabel:"USB interface input 1",capturedAt:id*1000,bins:bins(o),...extra});
+const repeats=(z,p,o=0,start=1)=>[0,.1,-.1].map((d,i)=>sweep(start+i,z,p,o+d));
+test("accepts three real repeat sweeps at each listening position",()=>{const q=assessFrequencyResponseQuality([...repeats("Main","A"),...repeats("Main","B",1,4)]);assert.equal(q.status,"ready");assert.equal(q.positionCount,2)});
+test("blocks mismatched sample rate, input chain and frequency grid",()=>{const a=repeats("Main","A");assert.equal(assessFrequencyResponseQuality(a.map((s,i)=>i?{...s,sampleRateHz:44100}:s)).status,"blocked");assert.equal(assessFrequencyResponseQuality(a.map((s,i)=>i?{...s,inputLabel:"Phone mic"}:s)).status,"blocked");assert.equal(assessFrequencyResponseQuality(a.map((s,i)=>i?{...s,bins:s.bins.map((b,j)=>j?b:{...b,frequencyHz:110})}:s)).status,"blocked")});
+test("low coherence is review, not fabricated data",()=>{const a=repeats("Main","A").map(s=>({...s,bins:s.bins.map(b=>({...b,coherence:.4}))}));assert.equal(assessFrequencyResponseQuality(a).status,"review")});
+test("zone curves weight seats equally and retain sweep provenance",()=>{const c=buildZoneResponseCurves([...repeats("Main","A"),...repeats("Main","B",6,4)]);assert.equal(c.length,1);assert.equal(c[0].points[0].positionCount,2);assert.equal(c[0].sourceSweepIds.length,6)});
+test("fractional-octave smoothing does not mutate source",()=>{const a=[100,110,120].map((f,i)=>({frequencyHz:f,magnitudeDb:[-10,0,-10][i],coherence:.9,positionCount:1})),snap=JSON.stringify(a),b=smoothFractionalOctaveResponse(a,3);assert.equal(b.length,3);assert.equal(JSON.stringify(a),snap);assert.ok(b[1].magnitudeDb<0)});
+test("zone response comparison requires matching frequency grids",()=>{const [a,b]=buildZoneResponseCurves([...repeats("A","Seat"),...repeats("B","Seat",2,4)]);const d=compareZoneResponseCurves(a,b);assert.ok(Math.abs(d.points[0].deltaDb+2)<.02);assert.equal(compareZoneResponseCurves(a,{...b,points:b.points.slice(1)}),null)});
+test("repeatability flags unstable bins and preserves sweeps",()=>{const a=[sweep(1,"Main","A"),sweep(2,"Main","A",.2),sweep(3,"Main","A",5)],snap=JSON.stringify(a),r=assessResponseRepeatability(a,2);assert.equal(r[0].status,"review");assert.equal(JSON.stringify(a),snap)});
