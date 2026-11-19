@@ -203,9 +203,9 @@ function createMeasuredSurfaceGroup(
   width: number,
   weighting: "A" | "C" | "Z",
 ): THREE.Group | null {
-  const surface = buildMeasuredSurface(points as Parameters<typeof buildMeasuredSurface>[0], {
-    length, width, height: 100,
-  }, weighting);
+  const surface = buildMeasuredSurface(points.map((point) => ({
+    ...point, inputLabel: "", note: "", capturedAt: "",
+  })), { length, width, height: 100 }, weighting);
   if (!surface) return null;
 
   const geometry = new THREE.BufferGeometry();
