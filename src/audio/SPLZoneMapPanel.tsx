@@ -59,7 +59,7 @@ export default function SPLZoneMapPanel() {
       <p className="muted">Nhập số đo tại từng vị trí nghe sau khi đo bằng microphone và chuỗi đo đã hiệu chuẩn. Bản đồ này tổng hợp số đo thực nhập; không tự suy diễn SPL từ dBFS hoặc thay thế phép đo tại hiện trường.</p>
       <div className="spl-zone-toolbar">
         <label>MỨC MỤC TIÊU (dB SPL)
-          <input type="number" min="40" max="120" step="0.5" value={target} onChange={(event) => setTarget(Math.max(40, Math.min(120, Number(event.target.value) || 85))} />
+          <input type="number" min="40" max="120" step="0.5" value={target} onChange={(event) => setTarget(Math.max(40, Math.min(120, Number(event.target.value) || 85)))} />
         </label>
         <div className="spl-zone-actions">
           <button type="button" onClick={addZone}><Plus /> Thêm vùng</button>
