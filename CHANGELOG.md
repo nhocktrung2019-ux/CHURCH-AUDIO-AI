@@ -1,3 +1,13 @@
+## v1.03 — Room-linked measured-point overlay (development branch)
+
+- Add a persistent measured-point registry with stable IDs, X/Y/Z room coordinates, capture timestamp, input label, weighting, calibration provenance and technician notes.
+- Add a floor-plan overlay linked to the existing room dimensions and reference listening coordinates; points outside room bounds are not plotted or counted as verified.
+- Keep measured dB SPL records separate from dBFS and simulated/theoretical estimates; only explicitly calibrated in-room records qualify as verified points.
+- Integrate the point workspace into the existing 3D design tab without replacing or mutating RoomPlanner3D, speaker placement, furniture, camera or legacy SPL zone records.
+- Add regression tests for room bounds, finite coordinates, calibration provenance and valid SPL values.
+
+**Validation status:** implementation and regression tests are committed on `feature/v1.03-room-measurement-overlay`. CI/build and physical Android verification are pending. Point entry is manual; automatic microphone capture, 3D WebGL point rendering and validated heatmap interpolation are not included in this increment.
+
 # Changelog
 
 ## v1.02 — Intelligent SPL Mapping (development branch)
