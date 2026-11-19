@@ -89,7 +89,7 @@ export default function RoomPlanner3D({ onZoneOptionsChange, selectedZoneName, o
  });
  const knownGrid=grid.filter(p=>p.spl!==null);
  const measuredZone = selectedZoneName || current?.zone || "";
- const coordinateRecords = useMemo(() => measuredZoneRecords.filter((record): record is ZoneSplRecord & {xM:number;yM:number} => Number.isFinite(record.xM) && Number.isFinite(record.yM)) as SpatialSplPoint[], [measuredZoneRecords]);
+ const coordinateRecords = useMemo(() => measuredZoneRecords.filter((record): record is ZoneSplRecord & {xM:number;yM:number} => record.unit === "dB SPL" && Number.isFinite(record.xM) && Number.isFinite(record.yM)) as SpatialSplPoint[], [measuredZoneRecords]);
  const measuredHeatmap = useMemo(() => buildZoneSplHeatmap(coordinateRecords, measuredZone, {roomLengthM:length,roomWidthM:width,gridColumns:12,gridRows:8,interpolationRadiusM:6,minimumPositions:2}), [coordinateRecords, measuredZone, length, width]);
  const webglHeatmap = useMemo(() => measuredHeatmap?.unit === "dB SPL" ? { unit: measuredHeatmap.unit, gridColumns: measuredHeatmap.gridColumns, gridRows: measuredHeatmap.gridRows, cells: measuredHeatmap.cells } : null, [measuredHeatmap]);
  const measuredLevels = measuredHeatmap?.cells.filter(cell=>cell.levelDb!==null).map(cell=>cell.levelDb as number) ?? [];
