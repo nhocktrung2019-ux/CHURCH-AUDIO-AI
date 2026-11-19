@@ -1,3 +1,5 @@
+# Changelog
+
 ## v1.03 — Room-linked measured-point overlay (development branch)
 
 - Add a persistent measured-point registry with stable IDs, X/Y/Z room coordinates, capture timestamp, input label, weighting, calibration provenance and technician notes.
@@ -8,7 +10,6 @@
 
 **Validation status:** implementation and regression tests are committed on `feature/v1.03-room-measurement-overlay`. CI/build and physical Android verification are pending. Point entry is manual; automatic microphone capture, 3D WebGL point rendering and validated heatmap interpolation are not included in this increment.
 
-# Changelog
 
 ## v1.02 — Intelligent SPL Mapping (development branch)
 
