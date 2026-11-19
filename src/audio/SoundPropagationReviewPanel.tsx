@@ -22,8 +22,8 @@ export default function SoundPropagationReviewPanel(){
     <div className="heading"><Waves/><h3>v0.96–v0.98 · Mô phỏng truyền âm & trợ lý phân tích</h3><span>ADVISORY ONLY</span></div>
     <p className="muted">Bản đồ trường âm tương đối trên mặt bằng phòng, dùng tọa độ loa đang lưu trong mô hình 3D. Không thay đổi mô hình 3D, vị trí loa, nội thất, camera hoặc dữ liệu khảo sát.</p>
     <div className="spatial-analysis-controls">
-      <label>CAO ĐỘ TAI NGHE (m)<input type="number" min="0.5" max="2.2" step="0.05" value={earHeightM} onChange={e=>setEarHeightM(Math.max(0.5,Math.min(2.2,Number(e.target.value)||1.2))}/></label>
-      <label>MỨC THAM CHIẾU MỖI LOA TẠI 1 m (dB SPL)<input type="number" min="50" max="120" step="0.5" value={referenceSplAt1m} onChange={e=>setReferenceSplAt1m(Math.max(50,Math.min(120,Number(e.target.value)||90))}/></label>
+      <label>CAO ĐỘ TAI NGHE (m)<input type="number" min="0.5" max="2.2" step="0.05" value={earHeightM} onChange={e=>setEarHeightM(Math.max(0.5,Math.min(2.2,Number(e.target.value)||1.2)))}/></label>
+      <label>MỨC THAM CHIẾU MỖI LOA TẠI 1 m (dB SPL)<input type="number" min="50" max="120" step="0.5" value={referenceSplAt1m} onChange={e=>setReferenceSplAt1m(Math.max(50,Math.min(120,Number(e.target.value)||90)))}/></label>
     </div>
     {simulation.status==="ready" ? <>
       <div className="spatial-analysis-stats"><article><small>LOA TRONG MÔ HÌNH</small><b>{speakers.length}</b></article><article><small>PHẠM VI MÔ PHỎNG</small><b>{lengthM} × {widthM} m</b></article><article><small>SPL ƯỚC TÍNH</small><b>{simulation.minDb!.toFixed(1)}–{simulation.maxDb!.toFixed(1)} dB</b></article><article><small>ĐIỂM ĐO SPL LƯU</small><b>{measuredCount}</b></article></div>
