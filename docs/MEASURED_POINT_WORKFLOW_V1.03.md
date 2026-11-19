@@ -95,3 +95,22 @@ The same extracted horizontal/vertical angle calculation is used by the listenin
 ### Regression tests
 
 `tests/speaker-coverage-model.test.mjs` covers on-axis listener geometry, horizontal and vertical boundary behavior, azimuth wraparound and safe angle bounds.
+
+
+## v1.06 — Modeled speaker aiming recommendations
+
+The room planner now includes an optional aiming recommendation panel. It evaluates a coarse listener grid and tests individual speaker azimuth changes in a bounded search window (±30°, 5° increments). The scoring function considers RMS deviation from the selected SPL target and modeled spatial spread. Each speaker is optimized independently against the current positions and settings of all other speakers.
+
+The analysis requires a valid entered sensitivity and amplifier power. It does not invent missing values. Suggestions are read-only until the user explicitly applies a proposed azimuth.
+
+### Interpretation and limitations
+
+- SPL values are free-field estimates using the current simplified angle attenuation; no acoustic measurement is performed by this optimizer.
+- It does not model room reflections, absorption, diffraction, occlusion, phase interference, array coupling, power compression, frequency response or DSP.
+- It optimizes one speaker's azimuth at a time; it does not solve a global multi-variable optimization problem.
+- The result is not a guaranteed improvement. Verify every applied change with calibrated in-room measurements.
+- No automatic EQ, gain, delay, limiter or mixer/DSP write is performed.
+
+### Regression tests
+
+`tests/acoustic-optimization-model.test.mjs` covers missing-data behavior, bounded search, non-mutation of input settings and invalid room dimensions.
