@@ -1,5 +1,17 @@
 # Changelog
 
+## Unified architecture v1.01 — integration baseline
+
+- Establish one product architecture spanning the 3D room planner, SPL measurement, room analysis, speaker alignment, advisory Auto EQ/feedback, equipment profiles, DSP networking, assistant and reporting.
+- Preserve the existing Three.js room planner as the canonical geometry engine.
+- Add shared TypeScript contracts for projects, zones, measurements, provenance, calibration references and SPL summaries.
+- Enforce separation between calibrated dB SPL, relative dBFS, simulated SPL and interpolated SPL.
+- Add regression tests for energy averaging, exclusion of simulated values and calibration/unit integrity.
+- Align `package.json` with `src/appVersion.ts` at 0.30.0-beta.1; v1.01 remains a roadmap milestone, not the app package version.
+- Work is isolated on `integration/unified-v1.01`.
+
+**Validation status:** source and regression-test files have been committed and fetched back from GitHub. Automated tests and TypeScript/Vite build have not been executed in this environment. No APK, Windows package or physical hardware validation is claimed.
+
 ## 0.30.0-beta.1 — v0.76 measured SPL zone map
 
 - Add a persistent per-zone SPL measurement worksheet with editable zone names, readings and field notes.
