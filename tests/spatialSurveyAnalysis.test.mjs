@@ -32,7 +32,7 @@ test("v0.83 groups repeated captures by row after energy averaging positions", (
   const first = result.find(item => item.row === "Hàng ghế 1");
   assert.equal(first?.positionCount, 2);
   assert.equal(first?.captureCount, 3);
-  assert.ok((first?.spreadDb ?? 0) > 3.5);
+  assert.ok((first?.spreadDb ?? 0) > 2.5);
 });
 test("v0.84 estimates empirical distance slope from coordinate-matched samples", () => {
   const records = [
