@@ -227,7 +227,7 @@ function createMeasuredPointGroup(point: WebGLMeasuredPoint): THREE.Group {
 
   const stemGeometry = new THREE.BufferGeometry().setFromPoints([
     new THREE.Vector3(0, -point.z + 0.04, 0),
-    new THREE.Vector3(0, -point.z + Math.min(point.z, 0.75), 0),
+    new THREE.Vector3(0, -0.12, 0),
   ]);
   const stem = new THREE.Line(
     stemGeometry,
