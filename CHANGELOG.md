@@ -1,15 +1,15 @@
 # Changelog
 
-## v1.04 — 3D measured acoustic intelligence (development)
+## v1.05 — 3D speaker coverage volumes (development)
 
-- Add a conservative inverse-distance-weighted SPL surface derived only from explicitly calibrated, in-room physical readings with a matching A/C/Z weighting.
-- Require at least four compatible readings with a non-degenerate spatial hull; render only cells inside the measured convex hull and within a bounded distance of a measurement. Uncovered areas remain transparent rather than being extrapolated.
-- Render the measured/interpolated SPL surface directly on the floor plane of the existing Three.js church scene, with a fixed 65–105 dB color scale and weighting selector.
-- Add persistent show/hide control and a live summary of compatible readings, interpolated cells and estimated range.
-- Add regression coverage for sparse/collinear point rejection, weighting compatibility, calibration provenance, room bounds and surface geometry.
+- Extend the existing Three.js speaker visualization with a translucent 3D coverage volume shaped by the selected frequency band's horizontal and vertical coverage angles.
+- Preserve the floor footprint while adding upper/lower angular surfaces and left/right boundary curtains, all rotated with the speaker azimuth and scaled to the room diagonal.
+- Reuse the same horizontal/vertical angular geometry in listening-point estimates and grid SPL estimates to avoid diverging angle calculations.
+- Add a persistent show/hide control; changing frequency band updates the volume from the speaker model's available coverage-by-frequency data.
+- Add regression tests for on-axis coverage, horizontal/vertical boundaries, azimuth wraparound and angle clamping.
+- No manufacturer polar data is fabricated. Coverage volumes remain schematic geometry, not measured directivity, certified coverage or acoustic ray tracing.
 
-**Validation status:** v1.04 source and regression tests are committed. A fresh GitHub Actions run for the v1.04 head is required; no v1.04 build or APK success is claimed yet. The surface is an IDW visualization, not a standards-compliant acoustic prediction, certified SPL meter or substitute for field verification. No DSP/mixer writes are performed.
-
+**Validation status:** v1.05 implementation and tests are committed to the feature branch. Fresh CI/build and Android APK status must be checked against the latest commit; no passing result is claimed here. Physical Android touch/performance validation remains pending.
 
 ## v1.03 — Room-linked measured-point overlay (development branch)
 
