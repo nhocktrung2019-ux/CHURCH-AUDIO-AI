@@ -38,3 +38,29 @@ test("CSV is UTF-8 BOM prefixed and marks manual zone entries unverified",()=>{
  assert.match(csv,/manual-unverified/);
  assert.match(csv,/relative magnitude/); 
 });
+
+test("empty project data remains empty and never becomes a fabricated measurement",()=>{
+ const report=buildMeasurementReport({
+  ...base,
+  zoneStorage:JSON.stringify([{id:1,name:"Unmeasured",splDb:null,note:""}]),
+  rt60Storage:null,
+  transferStorage:null,
+  offsetStorage:null,
+  micCalibrationStorage:null,
+  roomStorage:{length:null,width:null,height:null},
+ });
+ assert.equal(report.integrity.measuredSPLZoneEntries,0);
+ assert.equal(report.integrity.unverifiedManualSPLZoneEntries,0);
+ assert.equal(report.rt60,null);
+ assert.equal(report.transferResponse,null);
+ assert.deepEqual(report.room,{lengthM:null,widthM:null,heightM:null});
+});
+test("invalid manual SPL values are excluded instead of clamped",()=>{
+ const report=buildMeasurementReport({...base,zoneStorage:JSON.stringify([
+  {id:1,name:"Bad high",splDb:240,note:"invalid"},
+  {id:2,name:"Valid entered",splDb:83,note:"manual"},
+ ])});
+ assert.equal(report.zoneEntries.length,1);
+ assert.equal(report.zoneEntries[0].name,"Valid entered");
+ assert.equal(report.zoneEntries[0].status,"manual-unverified");
+});
