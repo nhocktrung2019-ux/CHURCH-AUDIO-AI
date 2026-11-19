@@ -69,3 +69,15 @@ test("v0.85 blocks gain trim when fewer than three matched positions exist", () 
   ], "A", "B");
   assert.equal(buildZoneTrimAdvisory(comparison).status, "blocked");
 });
+
+test("dBFS legacy records are excluded without blocking calibrated dB SPL analysis", () => {
+  const records = [
+    row(1, "A", "Hàng ghế 1 · Giữa", 80, 1, 1),
+    row(2, "A", "Hàng ghế 2 · Giữa", 79, 2, 1),
+    row(3, "B", "Hàng ghế 1 · Giữa", 81, 1, 2),
+    row(4, "B", "Hàng ghế 2 · Giữa", 80, 2, 2),
+    { ...row(5, "A", "Legacy relative capture", -20, 1, 1), unit: "dBFS", calibrationOffsetDb: undefined },
+  ];
+  assert.equal(compareMeasuredZonePair(records, "A", "B").status, "ready");
+  assert.equal(analyzeSeatRowUniformity(records).length, 4);
+});
