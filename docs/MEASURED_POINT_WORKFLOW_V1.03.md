@@ -46,3 +46,33 @@ npm run build
 ```
 
 Physical Android validation remains required for touch interaction, persistence across app restarts and field-measurement workflow. This feature is a survey aid, not an IEC 61672-certified sound level meter.
+
+
+## v1.04 — Conservative 3D measured SPL surface
+
+The Three.js scene can display a floor-level SPL surface derived from measured records. It is deliberately separate from the existing speaker-coverage estimate.
+
+### Eligibility and interpolation rules
+
+- Only in-room records explicitly marked calibrated, with finite SPL in the supported 0–160 dB range, are eligible.
+- The operator selects A, C or Z weighting; readings with other weighting curves are excluded from that surface.
+- At least four compatible points and a non-degenerate convex hull are required.
+- Inverse-distance weighting (power 2) is used only inside the convex hull. Cells farther than the bounded nearest-point distance are left transparent. There is no extrapolation over unmeasured outer areas.
+- The floor surface uses a fixed 65–105 dB visualization scale so colors remain comparable between views. It is an interpolation visualization, not a compliance threshold.
+- The display reports eligible sample count, rendered cell count and interpolated range. It never labels interpolated cells as measured points.
+
+### Controls
+
+A persistent A/C/Z selector and show/hide switch are available in the WebGL view. Hiding the surface does not delete measurements. The measured-point markers remain a separate layer.
+
+### Limitations
+
+- Manual measurement entry only; no live microphone capture.
+- The surface is a simple spatial IDW estimate, not a standards-compliant room-acoustic model, certified sound-level meter or verified coverage prediction.
+- Sparse regions remain blank; no synthetic data is created outside the measured hull.
+- No automatic EQ, delay, gain or DSP/mixer writes.
+- Physical Android performance and touch validation are still required.
+
+### Regression tests
+
+`tests/measured-surface-model.test.mjs` covers minimum sample count, non-collinear geometry, weighting compatibility, calibration provenance, room bounds and valid SPL values.
