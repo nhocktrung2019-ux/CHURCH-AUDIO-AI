@@ -31,7 +31,21 @@ The design workspace now includes a room-linked floor-plan map and manual point-
 
 - Live microphone capture directly into a selected point.
 - Automatic input-device identity verification.
-- Overlay rendering inside the Three.js WebGL canvas.
+- Automatic interpolation between measured points into a continuous SPL heatmap.
+- Automatic DSP, mixer or speaker-setting writes.
+
+## v1.03.1 — Three.js measured-point overlay
+
+The existing Three.js church scene now reads the same `church-audio-measured-points-v103` records used by the floor-plan panel. In-bounds records are rendered at their saved X/Y/Z coordinates (world axes X/Z/Y), with a glowing measurement marker, floor ring, vertical locator stem and camera-facing label. The label includes the point name and SPL/weighting when a value exists. Explicitly calibrated records use the measured-level color bands; uncalibrated or incomplete records remain amber and are labelled as unverified. These colors are display cues only and are not exposure or compliance thresholds.
+
+A persistent visibility toggle hides or shows the point layer without deleting measurements. Out-of-bounds records remain saved but are not sent to the 3D scene. Measurement markers do not participate in speaker/furniture dragging or selection. The renderer disposes marker geometry, materials and label textures when records change or the scene is torn down.
+
+## Not included in v1.03.1
+
+- Live microphone capture directly into a selected point.
+- Automatic input-device identity verification.
+- Validated SPL heatmap interpolation between measured points.
+- Automatic DSP, mixer or speaker-setting writes.
 - Heatmap interpolation or SPL predictions from unmeasured positions.
 - Automatic DSP, mixer or speaker-setting writes.
 
