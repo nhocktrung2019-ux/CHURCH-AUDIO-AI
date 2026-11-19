@@ -187,7 +187,8 @@ export function analyzeImpulseResponse(
     const found = fits.some(f => f.method === spec.method);
     add(spec.method.toLowerCase(), found ? "pass" : "warning",
       found ? spec.method + " fit hợp lệ, R² đạt ngưỡng." :
-        spec.method + " bị bỏ qua: không đủ dynamic range, noise margin, điểm fit hoặc độ tuyến tính.");
+        spec.method + " bị bỏ qua: floorOK=" + usableFloor + ", fitPoints=" + points.length +
+        ", slope=" + (fit?.slope ?? "n/a") + ", R²=" + (fit?.rSquared ?? "n/a") + ".");
   }
   const status = fits.length === 3 ? (checks.some(c => c.status === "warning") ? "review" : "ready")
     : fits.length > 0 ? "review" : "blocked";
