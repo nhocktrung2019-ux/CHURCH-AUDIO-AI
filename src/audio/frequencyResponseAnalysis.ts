@@ -8,15 +8,22 @@ const median=(values:number[])=>{const s=[...values].sort((a,b)=>a-b),m=Math.flo
 const sameGrid=(a:FrequencyBin[],b:FrequencyBin[])=>a.length===b.length&&a.every((p,i)=>Math.abs(p.frequencyHz-b[i].frequencyHz)<=Math.max(.01,p.frequencyHz*1e-5));
 
 export function assessFrequencyResponseQuality(sweeps:FrequencyResponseSweep[],options:{minimumRepeats?:number;minimumCoherence?:number}={}):ResponseQuality{
- const minRepeats=options.minimumRepeats??3,minCoherence=options.minimumCoherence??.8,checks:ResponseCheck[]=[];
+ const requestedRepeats=options.minimumRepeats??3,requestedCoherence=options.minimumCoherence??.8;
+ const validRepeats=Number.isInteger(requestedRepeats)&&requestedRepeats>=2&&requestedRepeats<=20;
+ const validCoherence=Number.isFinite(requestedCoherence)&&requestedCoherence>=0&&requestedCoherence<=1;
+ const minRepeats=validRepeats?requestedRepeats:3,minCoherence=validCoherence?requestedCoherence:.8,checks:ResponseCheck[]=[];
  const add=(id:string,status:ResponseCheck["status"],detail:string)=>checks.push({id,status,detail});
  if(!sweeps.length){add("sweeps","fail","Chưa có sweep đáp tuyến thực tế.");return{status:"blocked",checks,sweepCount:0,positionCount:0,zoneCount:0,frequencyBinCount:0}}
- const rates=new Set(sweeps.map(s=>s.sampleRateHz)),inputs=new Set(sweeps.map(s=>norm(s.inputLabel)));
- const zones=new Set(sweeps.map(s=>norm(s.zone)).filter(Boolean)),positions=new Set(sweeps.map(s=>norm(s.zone)+"|"+norm(s.position)).filter(k=>!k.endsWith("|")));
+ add("analysis-options",validRepeats&&validCoherence?"pass":"fail","minimumRepeats phải là số nguyên 2–20; minimumCoherence phải nằm trong 0–1.");
+ const ids=sweeps.map(s=>s.id);
+ add("sweep-identity",ids.every(Number.isFinite)&&new Set(ids).size===ids.length?"pass":"fail","Mỗi sweep phải có ID số hữu hạn và duy nhất; không chấp nhận bản ghi trùng ID.");
+ const safeText=(v:unknown)=>typeof v==="string"?v:"";
+ const rates=new Set(sweeps.map(s=>s.sampleRateHz)),inputs=new Set(sweeps.map(s=>norm(safeText(s.inputLabel))));
+ const zones=new Set(sweeps.map(s=>norm(safeText(s.zone))).filter(Boolean)),positions=new Set(sweeps.map(s=>norm(safeText(s.zone))+"|"+norm(safeText(s.position))).filter(k=>!k.endsWith("|")));
  add("sample-rate",rates.size===1&&sweeps.every(s=>Number.isInteger(s.sampleRateHz)&&s.sampleRateHz>=8000)?"pass":"fail","Sample rate phải hợp lệ và đồng nhất.");
  add("input-chain",inputs.size===1&&!inputs.has("")?"pass":"fail","Chuỗi đầu vào phải được định danh và đồng nhất.");
- add("metadata",sweeps.some(s=>!s.zone.trim()||!s.position.trim()||!Number.isFinite(s.capturedAt)||!Array.isArray(s.bins)||s.bins.length<2)?"fail":"pass","Mỗi sweep cần vùng, vị trí, thời gian và ít nhất hai bins.");
- add("bin-integrity",sweeps.some(s=>s.bins.some((b,i)=>!Number.isFinite(b.frequencyHz)||b.frequencyHz<=0||!validDb(b.magnitudeDb)||!Number.isFinite(b.coherence)||b.coherence<0||b.coherence>1||(i>0&&b.frequencyHz<=s.bins[i-1].frequencyHz)))?"fail":"pass","Tần số phải tăng đơn điệu; magnitude/coherence phải hợp lệ.");
+ add("metadata",sweeps.some(s=>!safeText(s.zone).trim()||!safeText(s.position).trim()||!Number.isFinite(s.capturedAt)||!Array.isArray(s.bins)||s.bins.length<2)?"fail":"pass","Mỗi sweep cần vùng, vị trí, thời gian và ít nhất hai bins.");
+ add("bin-integrity",sweeps.some(s=>!Array.isArray(s.bins)||s.bins.some((b,i)=>!b||!Number.isFinite(b.frequencyHz)||b.frequencyHz<=0||!validDb(b.magnitudeDb)||!Number.isFinite(b.coherence)||b.coherence<0||b.coherence>1||(i>0&&b.frequencyHz<=s.bins[i-1].frequencyHz)))?"fail":"pass","Tần số phải tăng đơn điệu; magnitude/coherence phải hợp lệ.");
  const ref=sweeps[0].bins;
  add("frequency-grid",sweeps.some(s=>!sameGrid(ref,s.bins))?"fail":"pass","Các sweep phải có cùng lưới tần số; không tự nội suy bins bị thiếu.");
  const groups=new Map<string,FrequencyResponseSweep[]>();
