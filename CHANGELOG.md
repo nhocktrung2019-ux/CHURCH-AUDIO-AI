@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.06 — Modeled acoustic aiming optimization (development)
+
+- Add a pure optimization model that evaluates a coarse 9×7 listener grid using the existing horizontal/vertical speaker-angle model and free-field SPL approximation.
+- Search each speaker independently over azimuth adjustments from −30° to +30° in 5° steps; retain current configuration as a candidate and never mutate settings during analysis.
+- Rank suggestions using RMS deviation from the target SPL plus a penalty for spatial spread; expose modeled mean SPL, min–max spread and analyzed-point count.
+- Add an explicit per-speaker apply action; users must choose whether to apply each suggested azimuth.
+- Require usable sensitivity and amplifier-power inputs; do not infer missing manufacturer or amplifier data.
+- Add regression tests for missing data, immutable input, bounded azimuth search and invalid room dimensions.
+- This is a coarse free-field aiming aid, not room-acoustic AI, measured optimization or an automatic DSP controller.
+
+**Validation status:** v1.06 source and tests are committed. Fresh CI/build is required; Android APK and physical-device verification remain pending.
+
 ## v1.05 — 3D speaker coverage volumes (development)
 
 - Extend the existing Three.js speaker visualization with a translucent 3D coverage volume shaped by the selected frequency band's horizontal and vertical coverage angles.
