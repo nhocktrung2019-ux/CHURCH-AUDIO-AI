@@ -5,7 +5,7 @@ import { buildMeasuredSurface } from "./measuredSurfaceModel";
 
 export type WebGLSpeaker = {
   id: number; name: string; model: string; x: number; y: number; z: number;
-  azimuth: number; coverage: number;
+  azimuth: number; coverage: number; verticalCoverage: number;
 };
 export type WebGLObject = {
   id: number; kind: "altar" | "pulpit" | "column" | "pew" | "chair" | "stage";
@@ -21,6 +21,7 @@ type Props = {
   speakers: WebGLSpeaker[]; objects: WebGLObject[];
   measuredPoints: WebGLMeasuredPoint[]; showMeasuredPoints: boolean;
   showMeasuredSurface: boolean; measuredSurfaceWeighting: "A" | "C" | "Z";
+  showSpeakerCoverage: boolean;
   selectedSpeaker: number; selectedObject: number;
   onSelectSpeaker: (id: number) => void; onSelectObject: (id: number) => void;
   onMoveSpeaker: (id: number, x: number, y: number) => void;
@@ -124,7 +125,12 @@ function createFurnitureGroup(item: WebGLObject): THREE.Group {
   return group;
 }
 
-function createSpeakerGroup(speaker: WebGLSpeaker, index: number): THREE.Group {
+function createSpeakerGroup(
+  speaker: WebGLSpeaker,
+  index: number,
+  roomRadius: number,
+  showCoverage: boolean,
+): THREE.Group {
   const group = new THREE.Group();
   const isColumn = /CBT|MA12|column/i.test(speaker.model);
   const isSub = /sub|subwoofer|SRX/i.test(speaker.model);
@@ -135,7 +141,7 @@ function createSpeakerGroup(speaker: WebGLSpeaker, index: number): THREE.Group {
   group.userData = {
     kind: "speaker",
     id: speaker.id,
-    signature: [speaker.model, speaker.coverage].join("|"),
+    signature: [speaker.model, speaker.coverage, speaker.verticalCoverage, roomRadius, showCoverage].join("|"),
   };
   group.position.set(speaker.x, speaker.z, speaker.y);
 
@@ -154,27 +160,73 @@ function createSpeakerGroup(speaker: WebGLSpeaker, index: number): THREE.Group {
     group.add(driver);
   }
 
-  const radius = Math.max(speaker.coverage > 120 ? 5 : 3, Math.max(18, width * 1.7));
-  const halfAngle = THREE.MathUtils.degToRad(Math.max(5, Math.min(180, speaker.coverage)) / 2);
-  const shape = new THREE.Shape();
-  shape.moveTo(0, 0);
-  const steps = 40;
-  for (let i = 0; i <= steps; i++) {
-    const angle = -halfAngle + (i / steps) * halfAngle * 2;
-    shape.lineTo(radius * Math.cos(angle), radius * Math.sin(angle));
+  if (showCoverage) {
+    const radius = Math.max(3, roomRadius);
+    const halfH = THREE.MathUtils.degToRad(THREE.MathUtils.clamp(speaker.coverage, 5, 180) / 2);
+    const halfV = THREE.MathUtils.degToRad(THREE.MathUtils.clamp(speaker.verticalCoverage, 5, 180) / 2);
+
+    // Horizontal floor footprint, aligned to the same +X forward axis as the cabinet.
+    const shape = new THREE.Shape();
+    shape.moveTo(0, 0);
+    const steps = 40;
+    for (let i = 0; i <= steps; i++) {
+      const angle = -halfH + (i / steps) * halfH * 2;
+      shape.lineTo(radius * Math.cos(angle), radius * Math.sin(angle));
+    }
+    shape.closePath();
+    const sector = new THREE.Mesh(
+      new THREE.ShapeGeometry(shape),
+      new THREE.MeshBasicMaterial({
+        color: tint, transparent: true, opacity: 0.12,
+        side: THREE.DoubleSide, depthWrite: false,
+      }),
+    );
+    sector.rotation.set(-Math.PI / 2, 0, 0);
+    sector.position.y = -speaker.z - 0.025;
+    sector.userData.noDrag = true;
+    group.add(sector);
+
+    // Four translucent surfaces form a 3D angular coverage volume. This is a
+    // geometric guide, not a measured polar-response or acoustic ray trace.
+    const positions: number[] = [];
+    const indices: number[] = [];
+    const radialSteps = 12, angleSteps = 24, verticalSteps = 8;
+    const addGrid = (rows: number, cols: number, pointAt: (row: number, col: number) => [number, number, number]) => {
+      const base = positions.length / 3;
+      for (let row = 0; row <= rows; row++) {
+        for (let col = 0; col <= cols; col++) positions.push(...pointAt(row, col));
+      }
+      for (let row = 0; row < rows; row++) {
+        for (let col = 0; col < cols; col++) {
+          const a = base + row * (cols + 1) + col;
+          const b = a + cols + 1;
+          indices.push(a, b, a + 1, b, b + 1, a + 1);
+        }
+      }
+    };
+    const spherical = (r: number, h: number, v: number): [number, number, number] => [
+      r * Math.cos(v) * Math.cos(h),
+      r * Math.sin(v),
+      r * Math.cos(v) * Math.sin(h),
+    ];
+    for (const verticalSign of [-1, 1]) {
+      addGrid(radialSteps, angleSteps, (row, col) =>
+        spherical(radius * row / radialSteps, -halfH + 2 * halfH * col / angleSteps, verticalSign * halfV));
+    }
+    for (const horizontalSign of [-1, 1]) {
+      addGrid(radialSteps, verticalSteps, (row, col) =>
+        spherical(radius * row / radialSteps, horizontalSign * halfH, -halfV + 2 * halfV * col / verticalSteps));
+    }
+    const volumeGeometry = new THREE.BufferGeometry();
+    volumeGeometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+    volumeGeometry.setIndex(indices);
+    volumeGeometry.computeVertexNormals();
+    const volume = new THREE.Mesh(volumeGeometry, new THREE.MeshBasicMaterial({
+      color: tint, transparent: true, opacity: 0.075, side: THREE.DoubleSide, depthWrite: false,
+    }));
+    volume.userData.noDrag = true;
+    group.add(volume);
   }
-  shape.closePath();
-  const sector = new THREE.Mesh(
-    new THREE.ShapeGeometry(shape),
-    new THREE.MeshBasicMaterial({
-      color: tint, transparent: true, opacity: 0.18,
-      side: THREE.DoubleSide, depthWrite: false,
-    }),
-  );
-  sector.rotation.set(-Math.PI / 2, 0, 0);
-  sector.position.y = -speaker.z - 0.025;
-  sector.userData.noDrag = true;
-  group.add(sector);
 
   const halo = new THREE.Mesh(
     new THREE.TorusGeometry(0.42, 0.025, 6, 40),
@@ -649,7 +701,7 @@ export default function ChurchSceneWebGL(props: Props) {
       const key = "s:" + speaker.id;
       liveKeys.add(key);
       let group = state.groups.get(key);
-      const signature = [speaker.model, speaker.coverage].join("|");
+      const signature = [speaker.model, speaker.coverage, speaker.verticalCoverage, Math.hypot(props.length, props.width), props.showSpeakerCoverage].join("|");
       if (group && group.userData.signature !== signature) {
         state.scene.remove(group);
         disposeObject(group);
@@ -657,7 +709,7 @@ export default function ChurchSceneWebGL(props: Props) {
         group = undefined;
       }
       if (!group) {
-        group = createSpeakerGroup(speaker, index);
+        group = createSpeakerGroup(speaker, index, Math.hypot(props.length, props.width), props.showSpeakerCoverage);
         state.scene.add(group);
         state.groups.set(key, group);
       }
@@ -675,7 +727,7 @@ export default function ChurchSceneWebGL(props: Props) {
         state.groups.delete(key);
       }
     }
-  }, [props.speakers, props.objects, props.measuredPoints, props.showMeasuredPoints, props.showMeasuredSurface, props.measuredSurfaceWeighting, props.length, props.width, props.selectedSpeaker, props.selectedObject]);
+  }, [props.speakers, props.objects, props.measuredPoints, props.showMeasuredPoints, props.showMeasuredSurface, props.measuredSurfaceWeighting, props.showSpeakerCoverage, props.length, props.width, props.selectedSpeaker, props.selectedObject]);
 
   return (
     <div
