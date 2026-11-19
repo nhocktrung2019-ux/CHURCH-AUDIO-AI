@@ -5,8 +5,8 @@ const speakers=[{id:1,name:"Main",zone:"Main",x:0,y:0,z:3},{id:2,name:"Fill",zon
 test("geometric delay aligns nearer speaker to farthest arrival at listener point",()=>{
  const p=buildGeometricDelayPlan(speakers,{x:0,y:0,z:0},343);
  assert.equal(p.status,"ready"); assert.equal(p.writeEnabled,false);
- assert.equal(p.rows.find(x=>x.speakerName==="Main").delayMs,0);
- assert.ok(p.rows.find(x=>x.speakerName==="Fill").delayMs>0);
+ assert.equal(p.rows.find(x=>x.speakerName==="Fill").delayMs,0);
+ assert.ok(p.rows.find(x=>x.speakerName==="Main").delayMs>0);
 });
 test("geometric delay rejects missing geometry and invalid speed",()=>{
  assert.equal(buildGeometricDelayPlan(speakers.slice(0,1),{x:0,y:0,z:0}).status,"blocked");
