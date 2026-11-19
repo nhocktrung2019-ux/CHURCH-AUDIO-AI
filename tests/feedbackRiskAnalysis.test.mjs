@@ -26,6 +26,7 @@ test("flags a narrow persistent stable spectral peak as high feedback risk", () 
 
 test("does not alert on a transient narrow peak", () => {
   const frames = makeFrames();
+  for (const frame of frames) frame.magnitudeDbfs = frame.magnitudeDbfs.map((_, i) => -40 - (i % 3));
   frames[0].magnitudeDbfs[18] = -10;
   const result = analyzeFeedbackRisk(frames);
   assert.equal(result.status, "clear");
