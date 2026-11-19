@@ -1,7 +1,7 @@
 # CHURCH AUDIO AI — v0.81–v0.85 spatial SPL analysis
 
 ## Delivered
-- **v0.81 — 3D measured overlay:** the existing measured-zone heatmap is passed to the existing WebGL room scene as a translucent floor overlay. Saved room geometry, speaker coordinates, furniture and camera controls are unchanged. Cells outside the interpolation radius or without enough neighbours remain absent.
+- **v0.81 — 3D measured overlay:** the existing measured-zone heatmap is passed to the existing WebGL room scene as a translucent floor overlay only when the selected zone has calibrated dB SPL data. Saved room geometry, speaker coordinates, furniture and camera controls are unchanged. Cells outside the interpolation radius or without enough neighbours remain absent.
 - **v0.82 — paired-zone comparison:** compare two selected zones only at matching listening-position labels. Input identity, dB SPL units and calibration offset must agree.
 - **v0.83 — seat-row uniformity:** repeated captures at each labelled position are duration-weighted energy-averaged before row mean, spread and standard deviation are calculated.
 - **v0.84 — empirical distance trend:** regression of measured level against log10(distance) uses coordinate-matched positions in the selected speaker zone. This is a descriptive room measurement, not a free-field prediction.
