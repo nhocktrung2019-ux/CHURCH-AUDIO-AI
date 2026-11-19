@@ -1,4 +1,4 @@
-import { estimateRelativeDelayFromPhase, type DelayEvidence, type RelativeDelayEstimate, type PhaseTransferPoint } from "./phaseAlignment";
+import { estimateRelativeDelayFromPhase, type DelayEvidence, type RelativeDelayEstimate, type PhaseTransferPoint } from "./phaseAlignment.ts";
 
 export type AlignmentSpeakerRole = "main" | "fill" | "sub" | "delay" | "other";
 
