@@ -207,9 +207,9 @@ export type CatalogueSeed = { brand: string; model: string; category: DeviceCate
 
 /** User-requested names are intake candidates, not verified specifications or manufacturer claims. */
 export const requestedCatalogueSeeds: CatalogueSeed[] = [
-  { brand: "JBL", model: "CBT 50", category: "speaker", note: "Exact suffix/variant and manufacturer datasheet required." },
-  { brand: "JBL", model: "CBT 70", category: "speaker", note: "Exact suffix/variant and manufacturer datasheet required." },
-  { brand: "JBL", model: "CBT 100", category: "speaker", note: "Exact suffix/variant and manufacturer datasheet required." },
+  { brand: "Unconfirmed", model: "CBT 50", category: "speaker", note: "Exact suffix/variant and manufacturer datasheet required." },
+  { brand: "Unconfirmed", model: "CBT 70", category: "speaker", note: "Exact suffix/variant and manufacturer datasheet required." },
+  { brand: "Unconfirmed", model: "CBT 100", category: "speaker", note: "Exact suffix/variant and manufacturer datasheet required." },
   { brand: "Unconfirmed", model: "Column 600", category: "speaker", note: "Brand and exact model identity required." },
   { brand: "Unconfirmed", model: "Column 800", category: "speaker", note: "Brand and exact model identity required." },
   { brand: "Unconfirmed", model: "MA12", category: "speaker", note: "Confirm exact model and regional datasheet." },
