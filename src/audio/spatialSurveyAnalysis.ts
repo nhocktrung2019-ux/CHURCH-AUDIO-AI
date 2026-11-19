@@ -32,16 +32,18 @@ const finite = (value: number) => Number.isFinite(value);
 const positionKey = (value: string) => value.trim().toLocaleLowerCase("vi");
 
 function eligibleCalibratedRecords(records: ZoneSplRecord[]): { records: ZoneSplRecord[]; inputLabel: string } | null {
-  if (!records.length || records.some(record =>
-    record.unit !== "dB SPL" || !record.zone.trim() || !record.position.trim() ||
+  // dBFS records may coexist in the legacy store; exclude them rather than mixing them into SPL analysis.
+  const calibrated = records.filter(record => record.unit === "dB SPL");
+  if (!calibrated.length || calibrated.some(record =>
+    !record.zone.trim() || !record.position.trim() ||
     !record.inputLabel.trim() || !finite(record.levelDb) || record.levelDb <= -99 || record.levelDb > 200 ||
     !finite(record.durationSeconds) || record.durationSeconds <= 0 ||
     !finite(record.timestamp) || !finite(record.calibrationOffsetDb as number)
   )) return null;
-  const inputs = new Set(records.map(record => record.inputLabel.trim()));
-  const offsets = records.map(record => record.calibrationOffsetDb as number);
+  const inputs = new Set(calibrated.map(record => record.inputLabel.trim()));
+  const offsets = calibrated.map(record => record.calibrationOffsetDb as number);
   if (inputs.size !== 1 || Math.max(...offsets) - Math.min(...offsets) > 0.01) return null;
-  return { records, inputLabel: [...inputs][0] };
+  return { records: calibrated, inputLabel: [...inputs][0] };
 }
 
 function aggregateByPosition(records: ZoneSplRecord[]) {
@@ -77,8 +79,8 @@ export function compareMeasuredZonePair(records: ZoneSplRecord[], zoneA: string,
   const selected = records.filter(record => record.zone === zoneA || record.zone === zoneB);
   const eligible = eligibleCalibratedRecords(selected);
   if (!eligible) return empty("blocked", "Selected zones need calibrated dB SPL records from the same input and calibration offset.");
-  const a = aggregateByPosition(selected.filter(record => record.zone === zoneA));
-  const b = aggregateByPosition(selected.filter(record => record.zone === zoneB));
+  const a = aggregateByPosition(eligible.records.filter(record => record.zone === zoneA));
+  const b = aggregateByPosition(eligible.records.filter(record => record.zone === zoneB));
   const keys = [...a.keys()].filter(key => b.has(key)).sort();
   const points = keys.map(key => {
     const left = a.get(key)!; const right = b.get(key)!;
@@ -106,10 +108,10 @@ function parseSeatRow(position: string): string | null {
 export function analyzeSeatRowUniformity(records: ZoneSplRecord[]): SeatRowSummary[] {
   const eligible = eligibleCalibratedRecords(records);
   if (!eligible) return [];
-  const zones = [...new Set(records.map(record => record.zone))].sort((a, b) => a.localeCompare(b, "vi"));
+  const zones = [...new Set(eligible.records.map(record => record.zone))].sort((a, b) => a.localeCompare(b, "vi"));
   const output: SeatRowSummary[] = [];
   for (const zone of zones) {
-    const byPosition = aggregateByPosition(records.filter(record => record.zone === zone));
+    const byPosition = aggregateByPosition(eligible.records.filter(record => record.zone === zone));
     const rows = new Map<string, Array<{ levelDb: number; captureCount: number }>>();
     for (const item of byPosition.values()) {
       const row = parseSeatRow(item.label);
@@ -144,7 +146,7 @@ export function analyzeMeasuredDistanceAttenuation(
   const selected = records.filter(record => record.zone === speaker.zone);
   const eligible = eligibleCalibratedRecords(selected);
   if (!eligible) return blocked("This zone needs one consistent calibrated dB SPL input chain.");
-  const positions = aggregateByPosition(selected);
+  const positions = aggregateByPosition(eligible.records);
   const points = [...positions.values()].filter(point => point.xM !== null && point.yM !== null).map(point => ({
     position: point.label,
     distanceM: Math.hypot((point.xM as number) - speaker.x, (point.yM as number) - speaker.y, earHeightM - speaker.z),
