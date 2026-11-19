@@ -47,7 +47,6 @@ const MAX_SAMPLE_RATE = 192000;
 const MIN_SAMPLES = 256;
 const MAX_SAMPLES = 192000 * 60;
 const finite = (v: number) => Number.isFinite(v);
-const db = (power: number) => 10 * Math.log10(Math.max(power, 1e-30));
 
 function regression(points: Array<{ x: number; y: number }>) {
   const n = points.length;
