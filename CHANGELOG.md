@@ -1,5 +1,18 @@
 # Changelog
 
+## v1.09 — Professional Measurement Report & Calibration
+
+- Add a dedicated Reports workspace with project/site/operator metadata and local saved-data collection.
+- Add versioned JSON report export (schema 1.0.0), UTF-8 CSV export and A4 print layout for browser/Android “Save as PDF”.
+- Include saved room dimensions, microphone calibration context, transfer-response bins and RT60 octave-band results when present.
+- Persist the latest RT60 analysis with capture timestamp, zone, microphone position, input-selection category, sweep/tail durations and operator notes.
+- Explicitly label manually entered zone SPL values as unverified; do not include them in calibrated SPL summaries.
+- Keep relative transfer-response levels distinct from absolute dB SPL; record that microphone correction is not applied by the current RT60 sweep workflow.
+- Add report-model regression tests for provenance boundaries, missing/malformed storage, CSV encoding and measurement separation.
+
+**Limitations:** PDF output uses the platform print-to-PDF flow, not a signed/certified PDF. The report does not create calibration evidence for manual SPL entries or claim IEC 61672 / ISO 3382 compliance. Physical Android and field-reference validation remain required.
+
+
 ## v1.08.1 — Crossover review UI and measurement exports
 
 - Integrate the v1.08 crossover review into the existing Transfer Function / Align workspace without replacing the current measurement workflow.
