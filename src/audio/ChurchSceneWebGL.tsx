@@ -48,11 +48,14 @@ function addBox(
 
 function disposeObject(root: THREE.Object3D): void {
   root.traverse((node) => {
-    if (node instanceof THREE.Mesh) {
-      node.geometry.dispose();
-      const material = node.material;
-      if (Array.isArray(material)) material.forEach((item) => item.dispose());
-      else material.dispose();
+    if (node instanceof THREE.Mesh || node instanceof THREE.Line) node.geometry.dispose();
+    if (node instanceof THREE.Mesh || node instanceof THREE.Line || node instanceof THREE.Sprite) {
+      const materials = Array.isArray(node.material) ? node.material : [node.material];
+      materials.forEach((material) => {
+        const mapped = material as THREE.Material & { map?: THREE.Texture | null };
+        mapped.map?.dispose();
+        material.dispose();
+      });
     }
   });
 }
