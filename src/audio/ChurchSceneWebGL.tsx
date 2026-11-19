@@ -1,18 +1,27 @@
 import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
+import { buildMeasuredSurface } from "./measuredSurfaceModel";
 
 export type WebGLSpeaker = {
   id: number; name: string; model: string; x: number; y: number; z: number;
-  azimuth: number; coverage: number;
+  azimuth: number; coverage: number; verticalCoverage: number;
 };
 export type WebGLObject = {
   id: number; kind: "altar" | "pulpit" | "column" | "pew" | "chair" | "stage";
   name: string; x: number; y: number; w: number; d: number; h: number; rotation: number;
 };
+export type WebGLMeasuredPoint = {
+  id: string; label: string; x: number; y: number; z: number;
+  splDb: number | null; calibration: "calibrated" | "uncalibrated";
+  weighting: "A" | "C" | "Z";
+};
 type Props = {
   length: number; width: number; height: number;
   speakers: WebGLSpeaker[]; objects: WebGLObject[];
+  measuredPoints: WebGLMeasuredPoint[]; showMeasuredPoints: boolean;
+  showMeasuredSurface: boolean; measuredSurfaceWeighting: "A" | "C" | "Z";
+  showSpeakerCoverage: boolean;
   selectedSpeaker: number; selectedObject: number;
   onSelectSpeaker: (id: number) => void; onSelectObject: (id: number) => void;
   onMoveSpeaker: (id: number, x: number, y: number) => void;
@@ -42,11 +51,14 @@ function addBox(
 
 function disposeObject(root: THREE.Object3D): void {
   root.traverse((node) => {
-    if (node instanceof THREE.Mesh) {
-      node.geometry.dispose();
-      const material = node.material;
-      if (Array.isArray(material)) material.forEach((item) => item.dispose());
-      else material.dispose();
+    if (node instanceof THREE.Mesh || node instanceof THREE.Line) node.geometry.dispose();
+    if (node instanceof THREE.Mesh || node instanceof THREE.Line || node instanceof THREE.Sprite) {
+      const materials = Array.isArray(node.material) ? node.material : [node.material];
+      materials.forEach((material) => {
+        const mapped = material as THREE.Material & { map?: THREE.Texture | null };
+        mapped.map?.dispose();
+        material.dispose();
+      });
     }
   });
 }
@@ -113,7 +125,12 @@ function createFurnitureGroup(item: WebGLObject): THREE.Group {
   return group;
 }
 
-function createSpeakerGroup(speaker: WebGLSpeaker, index: number): THREE.Group {
+function createSpeakerGroup(
+  speaker: WebGLSpeaker,
+  index: number,
+  roomRadius: number,
+  showCoverage: boolean,
+): THREE.Group {
   const group = new THREE.Group();
   const isColumn = /CBT|MA12|column/i.test(speaker.model);
   const isSub = /sub|subwoofer|SRX/i.test(speaker.model);
@@ -124,7 +141,7 @@ function createSpeakerGroup(speaker: WebGLSpeaker, index: number): THREE.Group {
   group.userData = {
     kind: "speaker",
     id: speaker.id,
-    signature: [speaker.model, speaker.coverage].join("|"),
+    signature: [speaker.model, speaker.coverage, speaker.verticalCoverage, roomRadius, showCoverage].join("|"),
   };
   group.position.set(speaker.x, speaker.z, speaker.y);
 
@@ -143,27 +160,73 @@ function createSpeakerGroup(speaker: WebGLSpeaker, index: number): THREE.Group {
     group.add(driver);
   }
 
-  const radius = Math.max(speaker.coverage > 120 ? 5 : 3, Math.max(18, width * 1.7));
-  const halfAngle = THREE.MathUtils.degToRad(Math.max(5, Math.min(180, speaker.coverage)) / 2);
-  const shape = new THREE.Shape();
-  shape.moveTo(0, 0);
-  const steps = 40;
-  for (let i = 0; i <= steps; i++) {
-    const angle = -halfAngle + (i / steps) * halfAngle * 2;
-    shape.lineTo(radius * Math.cos(angle), radius * Math.sin(angle));
+  if (showCoverage) {
+    const radius = Math.max(3, roomRadius);
+    const halfH = THREE.MathUtils.degToRad(THREE.MathUtils.clamp(speaker.coverage, 5, 180) / 2);
+    const halfV = THREE.MathUtils.degToRad(THREE.MathUtils.clamp(speaker.verticalCoverage, 5, 180) / 2);
+
+    // Horizontal floor footprint, aligned to the same +X forward axis as the cabinet.
+    const shape = new THREE.Shape();
+    shape.moveTo(0, 0);
+    const steps = 40;
+    for (let i = 0; i <= steps; i++) {
+      const angle = -halfH + (i / steps) * halfH * 2;
+      shape.lineTo(radius * Math.cos(angle), radius * Math.sin(angle));
+    }
+    shape.closePath();
+    const sector = new THREE.Mesh(
+      new THREE.ShapeGeometry(shape),
+      new THREE.MeshBasicMaterial({
+        color: tint, transparent: true, opacity: 0.12,
+        side: THREE.DoubleSide, depthWrite: false,
+      }),
+    );
+    sector.rotation.set(-Math.PI / 2, 0, 0);
+    sector.position.y = -speaker.z - 0.025;
+    sector.userData.noDrag = true;
+    group.add(sector);
+
+    // Four translucent surfaces form a 3D angular coverage volume. This is a
+    // geometric guide, not a measured polar-response or acoustic ray trace.
+    const positions: number[] = [];
+    const indices: number[] = [];
+    const radialSteps = 12, angleSteps = 24, verticalSteps = 8;
+    const addGrid = (rows: number, cols: number, pointAt: (row: number, col: number) => [number, number, number]) => {
+      const base = positions.length / 3;
+      for (let row = 0; row <= rows; row++) {
+        for (let col = 0; col <= cols; col++) positions.push(...pointAt(row, col));
+      }
+      for (let row = 0; row < rows; row++) {
+        for (let col = 0; col < cols; col++) {
+          const a = base + row * (cols + 1) + col;
+          const b = a + cols + 1;
+          indices.push(a, b, a + 1, b, b + 1, a + 1);
+        }
+      }
+    };
+    const spherical = (r: number, h: number, v: number): [number, number, number] => [
+      r * Math.cos(v) * Math.cos(h),
+      r * Math.sin(v),
+      r * Math.cos(v) * Math.sin(h),
+    ];
+    for (const verticalSign of [-1, 1]) {
+      addGrid(radialSteps, angleSteps, (row, col) =>
+        spherical(radius * row / radialSteps, -halfH + 2 * halfH * col / angleSteps, verticalSign * halfV));
+    }
+    for (const horizontalSign of [-1, 1]) {
+      addGrid(radialSteps, verticalSteps, (row, col) =>
+        spherical(radius * row / radialSteps, horizontalSign * halfH, -halfV + 2 * halfV * col / verticalSteps));
+    }
+    const volumeGeometry = new THREE.BufferGeometry();
+    volumeGeometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+    volumeGeometry.setIndex(indices);
+    volumeGeometry.computeVertexNormals();
+    const volume = new THREE.Mesh(volumeGeometry, new THREE.MeshBasicMaterial({
+      color: tint, transparent: true, opacity: 0.075, side: THREE.DoubleSide, depthWrite: false,
+    }));
+    volume.userData.noDrag = true;
+    group.add(volume);
   }
-  shape.closePath();
-  const sector = new THREE.Mesh(
-    new THREE.ShapeGeometry(shape),
-    new THREE.MeshBasicMaterial({
-      color: tint, transparent: true, opacity: 0.18,
-      side: THREE.DoubleSide, depthWrite: false,
-    }),
-  );
-  sector.rotation.set(-Math.PI / 2, 0, 0);
-  sector.position.y = -speaker.z - 0.025;
-  sector.userData.noDrag = true;
-  group.add(sector);
 
   const halo = new THREE.Mesh(
     new THREE.TorusGeometry(0.42, 0.025, 6, 40),
@@ -173,6 +236,141 @@ function createSpeakerGroup(speaker: WebGLSpeaker, index: number): THREE.Group {
   halo.position.y = -speaker.z + 0.03;
   halo.userData.noDrag = true;
   group.add(halo);
+  return group;
+}
+
+function measuredPointColor(point: WebGLMeasuredPoint): THREE.Color {
+  if (point.calibration !== "calibrated" || point.splDb === null || !Number.isFinite(point.splDb)) {
+    return new THREE.Color(0xffbd59);
+  }
+  if (point.splDb < 75) return new THREE.Color(0x55aaff);
+  if (point.splDb < 85) return new THREE.Color(0x54dfb0);
+  if (point.splDb < 95) return new THREE.Color(0xffc45e);
+  return new THREE.Color(0xff666e);
+}
+
+function createMeasuredSurfaceGroup(
+  points: WebGLMeasuredPoint[],
+  length: number,
+  width: number,
+  weighting: "A" | "C" | "Z",
+): THREE.Group | null {
+  const surface = buildMeasuredSurface(points.map((point) => ({
+    ...point, inputLabel: "", note: "", capturedAt: "",
+  })), { length, width, height: 100 }, weighting);
+  if (!surface) return null;
+
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute("position", new THREE.Float32BufferAttribute(surface.positions, 3));
+  const colors: number[] = [];
+  for (const value of surface.values) {
+    const normalized = THREE.MathUtils.clamp((value - 65) / 40, 0, 1);
+    const color = new THREE.Color().setHSL(0.66 * (1 - normalized), 0.86, 0.52);
+    colors.push(color.r, color.g, color.b);
+  }
+  geometry.setAttribute("color", new THREE.Float32BufferAttribute(colors, 3));
+  geometry.setIndex(surface.indices);
+  geometry.computeVertexNormals();
+
+  const material = new THREE.MeshBasicMaterial({
+    vertexColors: true, transparent: true, opacity: 0.74,
+    side: THREE.DoubleSide, depthWrite: false,
+  });
+  const mesh = new THREE.Mesh(geometry, material);
+  mesh.position.y = 0.035;
+  mesh.renderOrder = 2;
+  mesh.userData.noDrag = true;
+
+  const group = new THREE.Group();
+  group.userData = {
+    kind: "measured-surface",
+    signature: [length, width, weighting, ...points.map((point) =>
+      [point.id, point.x, point.y, point.splDb, point.calibration, point.weighting].join(":"),
+    )].join("|"),
+    sampleCount: surface.sampleCount,
+    cellCount: surface.cellCount,
+    minDb: surface.minDb,
+    maxDb: surface.maxDb,
+    meanDb: surface.meanDb,
+  };
+  group.add(mesh);
+  return group;
+}
+
+function createMeasuredPointGroup(point: WebGLMeasuredPoint): THREE.Group {
+  const group = new THREE.Group();
+  const color = measuredPointColor(point);
+  const validSpl = point.splDb !== null && Number.isFinite(point.splDb);
+  const verified = point.calibration === "calibrated" && validSpl;
+  group.userData = {
+    kind: "measured-point", id: point.id, noDrag: true,
+    signature: [point.label, point.splDb, point.calibration, point.weighting].join("|"),
+  };
+  group.position.set(point.x, point.z, point.y);
+
+  const core = new THREE.Mesh(
+    new THREE.SphereGeometry(0.13, 24, 16),
+    new THREE.MeshStandardMaterial({
+      color, emissive: color, emissiveIntensity: verified ? 0.8 : 0.28,
+      roughness: 0.24, metalness: 0.12,
+    }),
+  );
+  core.userData.noDrag = true;
+  group.add(core);
+
+  const halo = new THREE.Mesh(
+    new THREE.TorusGeometry(0.25, 0.025, 8, 40),
+    new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.92 }),
+  );
+  halo.rotation.x = Math.PI / 2;
+  halo.position.y = -point.z + 0.025;
+  halo.userData.noDrag = true;
+  group.add(halo);
+
+  const stemGeometry = new THREE.BufferGeometry().setFromPoints([
+    new THREE.Vector3(0, -point.z + 0.04, 0),
+    new THREE.Vector3(0, -0.12, 0),
+  ]);
+  const stem = new THREE.Line(
+    stemGeometry,
+    new THREE.LineDashedMaterial({ color, dashSize: 0.12, gapSize: 0.08, transparent: true, opacity: 0.72 }),
+  );
+  stem.computeLineDistances();
+  stem.userData.noDrag = true;
+  group.add(stem);
+
+  if (typeof document !== "undefined") {
+    const canvas = document.createElement("canvas");
+    canvas.width = 512;
+    canvas.height = 112;
+    const context = canvas.getContext("2d");
+    if (context) {
+      context.clearRect(0, 0, canvas.width, canvas.height);
+      context.fillStyle = "rgba(7, 15, 22, 0.88)";
+      context.beginPath();
+      context.roundRect(4, 8, 504, 96, 18);
+      context.fill();
+      context.strokeStyle = "#" + color.getHexString();
+      context.lineWidth = 5;
+      context.stroke();
+      context.fillStyle = "#f2f7f7";
+      context.font = "bold 30px system-ui, sans-serif";
+      context.fillText(point.label.slice(0, 22), 22, 47);
+      context.font = "24px system-ui, sans-serif";
+      context.fillStyle = "#" + color.getHexString();
+      const reading = validSpl ? point.splDb!.toFixed(1) + " dB SPL · " + point.weighting : "CHƯA XÁC MINH";
+      context.fillText(reading, 22, 82);
+      const texture = new THREE.CanvasTexture(canvas);
+      texture.colorSpace = THREE.SRGBColorSpace;
+      const label = new THREE.Sprite(new THREE.SpriteMaterial({
+        map: texture, transparent: true, depthWrite: false, sizeAttenuation: true,
+      }));
+      label.scale.set(2.65, 0.58, 1);
+      label.position.set(0.85, 0.55, 0);
+      label.userData.noDrag = true;
+      group.add(label);
+    }
+  }
   return group;
 }
 
@@ -355,7 +553,7 @@ export default function ChurchSceneWebGL(props: Props) {
       const rect = renderer.domElement.getBoundingClientRect();
       state.pointer.set((event.clientX - rect.left) / rect.width * 2 - 1, -((event.clientY - rect.top) / rect.height) * 2 + 1);
       state.raycaster.setFromCamera(state.pointer, camera);
-      const hit = state.raycaster.intersectObjects([...groups.values()], true).find((candidate) => {
+      const hit = state.raycaster.intersectObjects([...groups.values()].filter((group) => group.userData.kind !== "measured-point"), true).find((candidate) => {
         if (candidate.object.userData.noDrag) return false;
         let root: THREE.Object3D | null = candidate.object;
         while (root && !root.userData.kind) root = root.parent;
@@ -463,11 +661,11 @@ export default function ChurchSceneWebGL(props: Props) {
       group.scale.setScalar(item.id === props.selectedObject ? 1.035 : 1);
     });
 
-    props.speakers.forEach((speaker, index) => {
-      const key = "s:" + speaker.id;
+    props.measuredPoints.forEach((point) => {
+      const key = "m:" + point.id;
       liveKeys.add(key);
       let group = state.groups.get(key);
-      const signature = [speaker.model, speaker.coverage].join("|");
+      const signature = [point.label, point.splDb, point.calibration, point.weighting].join("|");
       if (group && group.userData.signature !== signature) {
         state.scene.remove(group);
         disposeObject(group);
@@ -475,7 +673,43 @@ export default function ChurchSceneWebGL(props: Props) {
         group = undefined;
       }
       if (!group) {
-        group = createSpeakerGroup(speaker, index);
+        group = createMeasuredPointGroup(point);
+        state.scene.add(group);
+        state.groups.set(key, group);
+      }
+      group.visible = props.showMeasuredPoints;
+      group.position.set(point.x, point.z, point.y);
+    });
+
+    const surfaceKey = "surface:measured";
+    const surfaceGroup = props.showMeasuredSurface
+      ? createMeasuredSurfaceGroup(props.measuredPoints, props.length, props.width, props.measuredSurfaceWeighting)
+      : null;
+    if (surfaceGroup) {
+      const previous = state.groups.get(surfaceKey);
+      if (previous) {
+        state.scene.remove(previous);
+        disposeObject(previous);
+        state.groups.delete(surfaceKey);
+      }
+      state.scene.add(surfaceGroup);
+      state.groups.set(surfaceKey, surfaceGroup);
+      liveKeys.add(surfaceKey);
+    }
+
+    props.speakers.forEach((speaker, index) => {
+      const key = "s:" + speaker.id;
+      liveKeys.add(key);
+      let group = state.groups.get(key);
+      const signature = [speaker.model, speaker.coverage, speaker.verticalCoverage, Math.hypot(props.length, props.width), props.showSpeakerCoverage].join("|");
+      if (group && group.userData.signature !== signature) {
+        state.scene.remove(group);
+        disposeObject(group);
+        state.groups.delete(key);
+        group = undefined;
+      }
+      if (!group) {
+        group = createSpeakerGroup(speaker, index, Math.hypot(props.length, props.width), props.showSpeakerCoverage);
         state.scene.add(group);
         state.groups.set(key, group);
       }
@@ -493,7 +727,7 @@ export default function ChurchSceneWebGL(props: Props) {
         state.groups.delete(key);
       }
     }
-  }, [props.speakers, props.objects, props.selectedSpeaker, props.selectedObject]);
+  }, [props.speakers, props.objects, props.measuredPoints, props.showMeasuredPoints, props.showMeasuredSurface, props.measuredSurfaceWeighting, props.showSpeakerCoverage, props.length, props.width, props.selectedSpeaker, props.selectedObject]);
 
   return (
     <div
@@ -502,7 +736,7 @@ export default function ChurchSceneWebGL(props: Props) {
       role="application"
       aria-label="Mô hình nhà thờ 3D. Kéo nền để xoay, cuộn để thu phóng; kéo loa hoặc nội thất để di chuyển."
     >
-      <div className="webgl-hint">CHURCH 3D · KÉO NỀN ĐỂ XOAY · CUỘN ĐỂ ZOOM · KÉO LOA / NỘI THẤT ĐỂ DI CHUYỂN</div>
+      <div className="webgl-hint">CHURCH 3D · ORBIT / ZOOM · LOA & NỘI THẤT TƯƠNG TÁC · SPL THỰC ĐO + BỀ MẶT NỘI SUY</div>
       {webglError && (
         <div className="webgl-error">
           Thiết bị chưa khởi tạo được WebGL. Hãy dùng chế độ Mặt bằng 2D hoặc bật tăng tốc đồ họa trong WebView.

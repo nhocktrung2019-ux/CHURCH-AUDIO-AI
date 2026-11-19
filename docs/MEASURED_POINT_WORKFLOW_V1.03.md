@@ -1,0 +1,135 @@
+# v1.03 / v1.03.1 — Room-linked measured SPL points
+
+## Purpose
+
+Attach physical SPL observations to stable coordinates in the existing church room model. The original Three.js church scene, speaker positions, furniture, camera state and legacy SPL zone records remain intact.
+
+## Record contract
+
+Each saved point has a stable ID, label, X/Y/Z coordinates in metres, SPL value in dB SPL, calibration state, A/C/Z weighting, operator-entered input/microphone label, note and capture timestamp. Records are stored separately under `church-audio-measured-points-v103`.
+
+## Measurement integrity
+
+- Only finite coordinates inside the current room dimensions are plotted in either view.
+- A point is counted as verified only when it is in bounds, has a finite SPL value in the supported range and is explicitly marked calibrated by the operator.
+- Calibration is operator-supplied provenance; the app does not independently verify the calibrator or microphone chain.
+- dBFS, simulated values and theoretical predictions are not converted into or admitted as measured dB SPL.
+- A/C/Z weighting is retained per point; mixed weighting must not be pooled into one uniformity statistic.
+- Resizing the room does not rewrite saved coordinates. Out-of-bounds records remain stored for review but are hidden from both visualizations.
+
+## v1.03 — Floor-plan workflow
+
+The design workspace provides a room-linked floor-plan map and manual point-entry form. The default X/Y location is initialized from the saved reference listening point; microphone height defaults to 1.2 m. Operators can enter SPL, calibration state, weighting, input label and notes, then save or remove records.
+
+## v1.03.1 — Three.js WebGL overlay
+
+The existing Three.js church scene reads the same saved records as the floor-plan panel. In-bounds points render at their saved X/Y/Z coordinates (mapped to Three.js world X/Z/Y) as glowing markers with a floor ring, vertical locator stem and camera-facing label. Labels show the point name and SPL/weighting when available.
+
+Explicitly calibrated points use measured-level color bands; uncalibrated or incomplete points remain amber and are labelled unverified. Color bands are visual cues only, not exposure, safety or compliance thresholds. A persistent visibility toggle hides or shows the marker layer without deleting records. Measurement markers cannot be dragged or selected as speakers/furniture. Marker geometry, materials, line resources and label textures are disposed when updated or when the scene is torn down.
+
+## Not included
+
+- Live microphone capture directly into a selected point.
+- Automatic input-device identity verification.
+- Validated interpolation into a continuous SPL heatmap.
+- Automatic DSP, mixer or speaker-setting writes.
+
+A future measured heatmap must define minimum point density, weighting compatibility, calibration provenance and spatial interpolation rules, with regression coverage before it is used for technical decisions.
+
+## Validation
+
+Run:
+
+```bash
+npm test
+npm run build
+```
+
+Physical Android validation remains required for touch interaction, persistence across app restarts and field-measurement workflow. This feature is a survey aid, not an IEC 61672-certified sound level meter.
+
+
+## v1.04 — Conservative 3D measured SPL surface
+
+The Three.js scene can display a floor-level SPL surface derived from measured records. It is deliberately separate from the existing speaker-coverage estimate.
+
+### Eligibility and interpolation rules
+
+- Only in-room records explicitly marked calibrated, with finite SPL in the supported 0–160 dB range, are eligible.
+- The operator selects A, C or Z weighting; readings with other weighting curves are excluded from that surface.
+- At least four compatible points and a non-degenerate convex hull are required.
+- Inverse-distance weighting (power 2) is used only inside the convex hull. Cells farther than the bounded nearest-point distance are left transparent. There is no extrapolation over unmeasured outer areas.
+- The floor surface uses a fixed 65–105 dB visualization scale so colors remain comparable between views. It is an interpolation visualization, not a compliance threshold.
+- The display reports eligible sample count, rendered cell count and interpolated range. It never labels interpolated cells as measured points.
+
+### Controls
+
+A persistent A/C/Z selector and show/hide switch are available in the WebGL view. Hiding the surface does not delete measurements. The measured-point markers remain a separate layer.
+
+### Limitations
+
+- Manual measurement entry only; no live microphone capture.
+- The surface is a simple spatial IDW estimate, not a standards-compliant room-acoustic model, certified sound-level meter or verified coverage prediction.
+- Sparse regions remain blank; no synthetic data is created outside the measured hull.
+- No automatic EQ, delay, gain or DSP/mixer writes.
+- Physical Android performance and touch validation are still required.
+
+### Regression tests
+
+`tests/measured-surface-model.test.mjs` covers minimum sample count, non-collinear geometry, weighting compatibility, calibration provenance, room bounds and valid SPL values.
+
+
+## v1.05 — 3D speaker coverage volumes
+
+The existing Three.js speaker groups can show a translucent 3D angular coverage volume. The shape uses each speaker's horizontal and vertical coverage values at the selected analysis frequency, and follows the speaker azimuth. The legacy floor footprint remains visible as the plan-view boundary. A persistent control hides or shows the 3D coverage layer.
+
+The same extracted horizontal/vertical angle calculation is used by the listening-reference estimate and the coarse SPL grid, reducing differences between the visualized coverage and the estimated in/out-of-angle result.
+
+### Interpretation and limitations
+
+- Coverage geometry is a schematic angular envelope; it is not a manufacturer polar response, acoustic ray trace or verified sound-pressure contour.
+- The app uses frequency-specific manufacturer coverage only where the local speaker data explicitly supplies it; otherwise it falls back to the manually entered horizontal/vertical angles.
+- The volume does not model room reflections, absorption, diffraction, occlusion, phase interference, line-array coupling, power compression or DSP processing.
+- The shape is not evidence that every point inside receives uniform SPL.
+- Field measurements remain necessary before making installation, safety or compliance decisions.
+
+### Regression tests
+
+`tests/speaker-coverage-model.test.mjs` covers on-axis listener geometry, horizontal and vertical boundary behavior, azimuth wraparound and safe angle bounds.
+
+
+## v1.06 — Modeled speaker aiming recommendations
+
+The room planner now includes an optional aiming recommendation panel. It evaluates a coarse listener grid and tests individual speaker azimuth changes in a bounded search window (±30°, 5° increments). The scoring function considers RMS deviation from the selected SPL target and modeled spatial spread. Each speaker is optimized independently against the current positions and settings of all other speakers.
+
+The analysis requires a valid entered sensitivity and amplifier power. It does not invent missing values. Suggestions are read-only until the user explicitly applies a proposed azimuth.
+
+### Interpretation and limitations
+
+- SPL values are free-field estimates using the current simplified angle attenuation; no acoustic measurement is performed by this optimizer.
+- It does not model room reflections, absorption, diffraction, occlusion, phase interference, array coupling, power compression, frequency response or DSP.
+- It optimizes one speaker's azimuth at a time; it does not solve a global multi-variable optimization problem.
+- The result is not a guaranteed improvement. Verify every applied change with calibrated in-room measurements.
+- No automatic EQ, gain, delay, limiter or mixer/DSP write is performed.
+
+### Regression tests
+
+`tests/acoustic-optimization-model.test.mjs` covers missing-data behavior, bounded search, non-mutation of input settings and invalid room dimensions.
+
+
+## v1.07 — Arrival time and delay alignment
+
+The reference-listener panel now calculates each loudspeaker's 3D propagation distance and arrival time using the speed of sound adjusted by the entered air temperature. It proposes a non-negative delay for each speaker relative to the latest geometric arrival at the selected reference point. The purpose is to align modeled arrival times at that one point, not to automatically configure a DSP.
+
+An 11×9 room map displays the geometric spread between earliest and latest speaker arrivals at each cell. The selected listener coordinates and temperature are retained by the planner.
+
+### Interpretation and limitations
+
+- This is a distance/time-of-flight calculation. It does not measure impulse response, phase, polarity, crossover phase, DSP processing latency or loudspeaker group delay.
+- The suggested delay does not account for room reflections, absorption, obstacles, frequency-dependent propagation, filters or the intended main/fill system design.
+- A single reference point cannot guarantee alignment across the whole seating area; inspect the arrival map and measure representative seats.
+- Use a measurement microphone and impulse-response / transfer-function workflow to verify timing before changing live DSP settings.
+- No DSP/mixer write is performed.
+
+### Regression tests
+
+`tests/arrival-alignment-model.test.mjs` covers temperature adjustment, delay relative to latest arrival, map sizing, invalid inputs and immutable speaker records.

@@ -1,5 +1,51 @@
 # Changelog
 
+## v1.07 — Arrival time and delay alignment intelligence
+
+- Calculate 3D speaker-to-listener distance and acoustic arrival time using a temperature-adjusted speed-of-sound approximation.
+- Suggest per-speaker delay relative to the latest arrival at the selected reference point; preserve all speaker settings until an explicit DSP/manual workflow is chosen.
+- Add a room arrival-time spread map over an 11×9 grid to reveal where geometric arrival-time differences are larger.
+- Add persistent air-temperature input and retain the selected listener X/Y reference with the existing planner state.
+- Add regression tests for temperature bounds, relative delay, map sizing, invalid input and immutable speaker configuration.
+- This is a geometric timing aid only; it does not perform phase, impulse-response, transfer-function or DSP latency measurement.
+
+**Validation status:** v1.07 source and regression tests committed. Fresh CI and APK build must complete before release; physical Android validation remains pending.
+
+## v1.06 — Modeled acoustic aiming optimization (development)
+
+- Add a pure optimization model that evaluates a coarse 9×7 listener grid using the existing horizontal/vertical speaker-angle model and free-field SPL approximation.
+- Search each speaker independently over azimuth adjustments from −30° to +30° in 5° steps; retain current configuration as a candidate and never mutate settings during analysis.
+- Rank suggestions using RMS deviation from the target SPL plus a penalty for spatial spread; expose modeled mean SPL, min–max spread and analyzed-point count.
+- Add an explicit per-speaker apply action; users must choose whether to apply each suggested azimuth.
+- Require usable sensitivity and amplifier-power inputs; do not infer missing manufacturer or amplifier data.
+- Add regression tests for missing data, immutable input, bounded azimuth search and invalid room dimensions.
+- This is a coarse free-field aiming aid, not room-acoustic AI, measured optimization or an automatic DSP controller.
+
+**Validation status:** v1.06 source and tests are committed. Fresh CI/build is required; Android APK and physical-device verification remain pending.
+
+## v1.05 — 3D speaker coverage volumes (development)
+
+- Extend the existing Three.js speaker visualization with a translucent 3D coverage volume shaped by the selected frequency band's horizontal and vertical coverage angles.
+- Preserve the floor footprint while adding upper/lower angular surfaces and left/right boundary curtains, all rotated with the speaker azimuth and scaled to the room diagonal.
+- Reuse the same horizontal/vertical angular geometry in listening-point estimates and grid SPL estimates to avoid diverging angle calculations.
+- Add a persistent show/hide control; changing frequency band updates the volume from the speaker model's available coverage-by-frequency data.
+- Add regression tests for on-axis coverage, horizontal/vertical boundaries, azimuth wraparound and angle clamping.
+- No manufacturer polar data is fabricated. Coverage volumes remain schematic geometry, not measured directivity, certified coverage or acoustic ray tracing.
+
+**Validation status:** v1.05 implementation and tests are committed to the feature branch. Fresh CI/build and Android APK status must be checked against the latest commit; no passing result is claimed here. Physical Android touch/performance validation remains pending.
+
+## v1.03 — Room-linked measured-point overlay (development branch)
+
+- Add a persistent measured-point registry with stable IDs, X/Y/Z room coordinates, capture timestamp, input label, weighting, calibration provenance and technician notes.
+- Add a floor-plan overlay linked to the existing room dimensions and reference listening coordinates; points outside room bounds are not plotted or counted as verified.
+- Keep measured dB SPL records separate from dBFS and simulated/theoretical estimates; only explicitly calibrated in-room records qualify as verified points.
+- Integrate the point workspace into the existing 3D design tab and render the same saved X/Y/Z records as selectable-free, glowing markers with labels inside the existing Three.js WebGL room; speaker placement, furniture, camera and legacy SPL zone records remain intact.
+- Distinguish explicitly calibrated readings from unverified entries; show weighting and measured SPL in the 3D labels, with a persistent visibility toggle.
+- Add regression tests for room bounds, finite coordinates, calibration provenance and valid SPL values.
+
+**Validation status:** GitHub Actions regression tests and `npm run build` completed successfully for the v1.03.1 head commit. Android project generation and Capacitor sync also completed; the debug APK build is still running. Physical Android verification remains pending. Point entry is manual; automatic microphone capture is not included. 3D WebGL markers are included; their color bands are visual cues only, not safety thresholds.
+
+
 ## v1.02 — Intelligent SPL Mapping (development branch)
 
 - Add a calibrated-only SPL uniformity analysis utility with energy average, min/max spread, population standard deviation, target offset and ±3/±6 dB coverage counts.
