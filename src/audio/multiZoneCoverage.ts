@@ -64,7 +64,7 @@ export function analyzeMultiZoneCoverage(records: ZoneSplRecord[], referenceZone
       levels[zone] = level;
       const first = captures[0];
       const xs = captures.map(r=>r.xM), ys = captures.map(r=>r.yM);
-      if (xs.every(finite) && ys.every(finite)) { xM = xs.reduce((a,b)=>a+b,0)/xs.length; yM = ys.reduce((a,b)=>a+b,0)/ys.length; }
+      if (xs.every((value): value is number => typeof value === "number" && finite(value)) && ys.every((value): value is number => typeof value === "number" && finite(value))) { xM = xs.reduce((a,b)=>a+b,0)/xs.length; yM = ys.reduce((a,b)=>a+b,0)/ys.length; }
       const refCaptures = refMap.get(key);
       const refLevel = refCaptures ? energyMean(refCaptures) : null;
       deltas[zone] = refLevel === null ? null : level - refLevel;
