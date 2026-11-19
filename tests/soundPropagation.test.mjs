@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { buildAcousticAssistantFindings, compareMeasuredToSimulation, estimatePropagationAt, simulateSoundField } from "../src/audio/soundPropagation.ts";
 
-const speakers=[{id:1,name:"Main",model:"CBT",zone:"Main",x:2,y:2,z:5,azimuth:0,coverage:90,verticalCoverage:40}];
+const speakers=[{id:1,name:"Main",model:"CBT",zone:"Main",x:2,y:2,z:1.2,azimuth:0,coverage:90,verticalCoverage:180}];
 const config={lengthM:20,widthM:10,earHeightM:1.2,referenceSplAt1m:90,columns:9,rows:5};
 const record=(overrides={})=>({id:1,zone:"Main",position:"P1",xM:8,yM:2,levelDb:70,rawDbfs:-20,unit:"dB SPL",durationSeconds:2,sampleCount:100,inputLabel:"USB mic",timestamp:1,calibrationOffsetDb:100,...overrides});
 
