@@ -577,3 +577,30 @@ footer{padding-bottom:calc(26px + env(safe-area-inset-bottom))}
 .spl-zone-summary{grid-template-columns:repeat(3,minmax(0,1fr))}
 @media(max-width:680px){.spl-zone-summary{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:440px){.spl-zone-meta{grid-template-columns:1fr 1fr}}
+
+
+/* v1.03 room-linked measured-point overlay */
+.measured-point-panel{display:grid;gap:14px}
+.measured-point-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}
+.measured-point-summary article{display:grid;gap:6px;padding:12px;border:1px solid #29434d;border-radius:10px;background:#10212b}
+.measured-point-summary small,.measured-point-axis{color:#8fa6af;font-size:9px;font-weight:800;letter-spacing:.5px}
+.measured-point-summary b{font-size:20px;color:#e5f2ed}
+.measured-point-map{padding:8px;border:1px solid #29434d;border-radius:10px;background:#0c1b24}
+.measured-point-map svg{display:block;width:100%;height:auto;max-height:300px}
+.measured-point-axis{display:flex;justify-content:space-between;gap:8px;padding:6px 4px 0}
+.measured-point-form{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.measured-point-form label{display:grid;gap:5px;min-width:0;color:#8fa6af;font-size:9px;font-weight:800;letter-spacing:.5px}
+.measured-point-form input,.measured-point-form select{width:100%;min-width:0;min-height:38px;padding:8px;border:1px solid #3a5662;border-radius:7px;background:#101e27;color:#e1efeb;font-size:12px}
+.measured-point-note{grid-column:span 2}
+.measured-point-records{display:grid;gap:8px}
+.measured-point-record{display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:center;gap:12px;padding:10px;border:1px solid #29434d;border-radius:9px;background:#10212b}
+.measured-point-record>div:first-child{display:grid;gap:4px;min-width:0}
+.measured-point-record b{color:#e5f2ed;font-size:12px}
+.measured-point-record small{color:#8fa6af;font-size:9px;overflow-wrap:anywhere}
+.measured-point-value{text-align:right;display:grid;gap:4px}
+.measured-point-value small{color:#65c7a5;font-weight:800}
+.measured-point-record .secondary{padding:8px;min-width:36px}
+.measured-point-panel>.warning{display:flex;align-items:flex-start;gap:8px}
+.measured-point-panel>.warning svg{flex:0 0 16px;width:16px;height:16px}
+@media(max-width:680px){.measured-point-form{grid-template-columns:repeat(2,minmax(0,1fr))}.measured-point-summary{grid-template-columns:1fr 1fr}}
+@media(max-width:440px){.measured-point-form{grid-template-columns:1fr}.measured-point-note{grid-column:auto}.measured-point-record{grid-template-columns:minmax(0,1fr) auto}.measured-point-record .secondary{grid-column:2;grid-row:1}.measured-point-value{grid-column:1;grid-row:2;text-align:left}.measured-point-summary{grid-template-columns:1fr 1fr}}
