@@ -1,5 +1,15 @@
 # Changelog
 
+## v1.02 — Intelligent SPL Mapping (development branch)
+
+- Add a calibrated-only SPL uniformity analysis utility with energy average, min/max spread, population standard deviation, target offset and ±3/±6 dB coverage counts.
+- Record per-zone calibration state and A/C/Z weighting; legacy readings without calibration provenance remain unverified.
+- Prevent pooling calibrated readings that use different weighting curves.
+- Expand the zone worksheet with calibration and weighting controls while preserving the existing 3D room planner.
+- Add regression tests for calibrated filtering, energy averaging, weighting compatibility and empty measurement sets.
+
+**Validation status:** source and tests are committed on `feature/v1.02-intelligent-spl-mapping`. CI has not yet run for this branch. The worksheet still accepts manual SPL entries; live per-zone microphone capture and a true 3D SPL heatmap remain future work.
+
 ## Unified architecture v1.01 — integration baseline
 
 - Establish one product architecture spanning the 3D room planner, SPL measurement, room analysis, speaker alignment, advisory Auto EQ/feedback, equipment profiles, DSP networking, assistant and reporting.
