@@ -1,5 +1,16 @@
 # Changelog
 
+## v1.08.1 — Crossover review UI and measurement exports
+
+- Integrate the v1.08 crossover review into the existing Transfer Function / Align workspace without replacing the current measurement workflow.
+- Add a responsive result panel for status, phase difference, relative magnitude difference, average coherence, matched-bin count, octave coverage and confidence.
+- Add versioned JSON report export with schema/version, generation timestamp, crossover band, capture metadata, A/B response arrays, units and explicit limitations.
+- Add UTF-8 CSV export with a stable column header, summary records and raw A/B response rows for spreadsheet analysis.
+- Keep outputs advisory-only: no absolute A/B delay claim, automatic polarity changes or DSP/mixer writes.
+
+**Validation status:** source changes committed to the v1.08 pull request. CI/build and Android screen-size/device validation are pending.
+
+
 ## v1.08 — Crossover alignment review
 
 - Add a coherence-gated A/B crossover review model using measured magnitude and phase points around a selected crossover frequency.
