@@ -1,40 +1,12 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { validateProjectBackup, PROJECT_BACKUP_MAX_ENTRIES, PROJECT_BACKUP_MAX_BYTES } from "../src/audio/projectBackupValidation.ts";
-
-const valid = (data = { "church-audio-room-length": "28", "church-audio-room-speakers": "[]" }) => ({
-  format: "Church Audio Project", schemaVersion: 1, exportedAt: "2026-11-19T05:00:00.000Z", data,
-});
-
-test("accepts a valid project backup and reports its size", () => {
-  const result = validateProjectBackup(valid());
-  assert.equal(result.valid, true);
-  if (result.valid) {
-    assert.equal(result.entries.length, 2);
-    assert.ok(result.totalBytes > 0);
-  }
-});
-
-test("rejects wrong format, schema, and malformed timestamp", () => {
-  assert.equal(validateProjectBackup({ ...valid(), format: "other" }).valid, false);
-  assert.equal(validateProjectBackup({ ...valid(), schemaVersion: 2 }).valid, false);
-  assert.equal(validateProjectBackup({ ...valid(), exportedAt: "not-a-date" }).valid, false);
-});
-
-test("rejects foreign keys and non-string values instead of silently skipping them", () => {
-  assert.equal(validateProjectBackup(valid({ "unrelated-key": "x" })).valid, false);
-  assert.equal(validateProjectBackup(valid({ "church-audio-room-length": 28 })).valid, false);
-});
-
-test("rejects empty, oversized entry count, and oversized payload", () => {
-  assert.equal(validateProjectBackup(valid({})).valid, false);
-  const many = Object.fromEntries(Array.from({ length: PROJECT_BACKUP_MAX_ENTRIES + 1 }, (_, i) => [`church-audio-${i}`, "x"]));
-  assert.equal(validateProjectBackup(valid(many)).valid, false);
-  const large = "x".repeat(PROJECT_BACKUP_MAX_BYTES + 1);
-  assert.equal(validateProjectBackup(valid({ "church-audio-large": large })).valid, false);
-});
-
-test("rejects arrays and primitive payloads", () => {
-  assert.equal(validateProjectBackup([]).valid, false);
-  assert.equal(validateProjectBackup(null).valid, false);
-});
+import { validateProjectBackup, createProjectBackupChecksum, verifyProjectBackupChecksum, PROJECT_BACKUP_MAX_ENTRIES, PROJECT_BACKUP_MAX_BYTES } from "../src/audio/projectBackupValidation.ts";
+const data={"church-audio-room-length":"28","church-audio-room-speakers":"[]"};
+const legacy=(entries=data)=>({format:"Church Audio Project",schemaVersion:1,exportedAt:"2026-11-19T05:00:00.000Z",data});
+test("accepts v1 legacy backup and marks it unverified",()=>{const r=validateProjectBackup(legacy());assert.equal(r.valid,true);if(r.valid){assert.equal(r.schemaVersion,1);assert.equal(r.integrity,"legacy-unverified");assert.equal(r.entries.length,2);}});
+test("SHA-256 is deterministic regardless of object insertion order",async()=>{const a=await createProjectBackupChecksum(data);const b=await createProjectBackupChecksum({"church-audio-room-speakers":"[]","church-audio-room-length":"28"});assert.equal(a,b);assert.match(a,/^sha256:[a-f0-9]{64}$/);});
+test("v2 import passes only when complete data checksum matches",async()=>{const p={format:"Church Audio Project",schemaVersion:2,exportedAt:"2026-11-19T05:00:00.000Z",data,checksum:await createProjectBackupChecksum(data)};assert.equal(validateProjectBackup(p).valid,true);assert.equal(await verifyProjectBackupChecksum(p),true);assert.equal(await verifyProjectBackupChecksum({...p,data:{...data,"church-audio-room-length":"30"}}),false);});
+test("rejects missing or malformed v2 checksum",()=>{assert.equal(validateProjectBackup({format:"Church Audio Project",schemaVersion:2,data}).valid,false);assert.equal(validateProjectBackup({format:"Church Audio Project",schemaVersion:2,data,checksum:"sha256:bad"}).valid,false);});
+test("rejects wrong format/schema, malformed timestamp, foreign keys and non-string values",()=>{assert.equal(validateProjectBackup({...legacy(),format:"other"}).valid,false);assert.equal(validateProjectBackup({...legacy(),schemaVersion:3}).valid,false);assert.equal(validateProjectBackup({...legacy(),exportedAt:"not-a-date"}).valid,false);assert.equal(validateProjectBackup(legacy({"unrelated-key":"x"})).valid,false);assert.equal(validateProjectBackup(legacy({"church-audio-room-length":28})).valid,false);});
+test("rejects empty, oversized entry count and oversized payload",()=>{assert.equal(validateProjectBackup(legacy({})).valid,false);const many=Object.fromEntries(Array.from({length:PROJECT_BACKUP_MAX_ENTRIES+1},(_,i)=>[`church-audio-${i}`,"x"]));assert.equal(validateProjectBackup(legacy(many)).valid,false);assert.equal(validateProjectBackup(legacy({"church-audio-large":"x".repeat(PROJECT_BACKUP_MAX_BYTES+1)})).valid,false);});
+test("rejects arrays and primitive payloads",()=>{assert.equal(validateProjectBackup([]).valid,false);assert.equal(validateProjectBackup(null).valid,false);});
