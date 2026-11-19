@@ -55,7 +55,7 @@ export function analyzeMeasurementRepeatability(
     const levels = captures.map(item => item.levelDb);
     const minDb = Math.min(...levels), maxDb = Math.max(...levels), spreadDb = maxDb - minDb;
     return { zone, pointId, captureCount: levels.length, minDb, maxDb, spreadDb,
-      status: levels.length < 2 ? "insufficient" : spreadDb <= maxSpreadDb ? "pass" : "review" };
+      status: (levels.length < 2 ? "insufficient" : spreadDb <= maxSpreadDb ? "pass" : "review") as RepeatabilityResult["status"] };
   }).sort((a, b) => a.zone.localeCompare(b.zone) || a.pointId.localeCompare(b.pointId));
 }
 /** v0.77: robust median/MAD outlier flags; never edits or removes source records. */

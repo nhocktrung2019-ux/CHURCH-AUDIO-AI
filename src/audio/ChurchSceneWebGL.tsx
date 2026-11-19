@@ -6,18 +6,24 @@ export type WebGLSpeaker = {
   id: number; name: string; model: string; x: number; y: number; z: number;
   azimuth: number; coverage: number;
 };
+export type WebGLHeatmap = {
+  unit: "dBFS" | "dB SPL"; gridColumns: number; gridRows: number;
+  cells: Array<{ xM: number; yM: number; levelDb: number | null; confidence: "measured" | "interpolated" | "insufficient" | "outside-radius" }>;
+};
 export type WebGLObject = {
   id: number; kind: "altar" | "pulpit" | "column" | "pew" | "chair" | "stage";
   name: string; x: number; y: number; w: number; d: number; h: number; rotation: number;
 };
 type Props = {
   length: number; width: number; height: number;
-  speakers: WebGLSpeaker[]; objects: WebGLObject[];
+  speakers: WebGLSpeaker[]; objects: WebGLObject[]; heatmap?: WebGLHeatmap | null;
   selectedSpeaker: number; selectedObject: number;
   onSelectSpeaker: (id: number) => void; onSelectObject: (id: number) => void;
   onMoveSpeaker: (id: number, x: number, y: number) => void;
   onMoveObject: (id: number, x: number, y: number) => void;
 };
+
+const finiteNumber = (value: number | null) => typeof value === "number" && Number.isFinite(value);
 
 const speakerColors = [0x46d7ff, 0xffbd59, 0xd98cff, 0x73e0a1, 0xff7777, 0xf2e36b];
 const furnitureColors: Record<WebGLObject["kind"], number> = {
@@ -439,6 +445,7 @@ export default function ChurchSceneWebGL(props: Props) {
     const state = api.current;
     if (!state) return;
     const liveKeys = new Set<string>();
+    liveKeys.add("spl:heatmap");
 
     props.objects.forEach((item) => {
       const key = "o:" + item.id;
@@ -494,6 +501,49 @@ export default function ChurchSceneWebGL(props: Props) {
       }
     }
   }, [props.speakers, props.objects, props.selectedSpeaker, props.selectedObject]);
+
+  useEffect(() => {
+    const state = api.current;
+    if (!state) return;
+    const key = "spl:heatmap";
+    const previous = state.groups.get(key);
+    if (previous) {
+      state.scene.remove(previous);
+      disposeObject(previous);
+      state.groups.delete(key);
+    }
+    const heatmap = props.heatmap;
+    const valid = heatmap?.cells.filter(cell => finiteNumber(cell.levelDb) && cell.confidence !== "outside-radius" && cell.confidence !== "insufficient") ?? [];
+    if (!heatmap || !valid.length || heatmap.gridColumns < 2 || heatmap.gridRows < 2) return;
+    const levels = valid.map(cell => cell.levelDb as number);
+    const min = Math.min(...levels);
+    const max = Math.max(...levels);
+    const cellWidth = props.length / heatmap.gridColumns;
+    const cellDepth = props.width / heatmap.gridRows;
+    const group = new THREE.Group();
+    group.name = "Measured SPL overlay";
+    valid.forEach(cell => {
+      const ratio = (cell.levelDb as number - min) / Math.max(0.1, max - min);
+      const color = new THREE.Color().setHSL(0.60 * (1 - ratio), 0.86, 0.48);
+      const material = new THREE.MeshBasicMaterial({
+        color, transparent: true, opacity: cell.confidence === "measured" ? 0.58 : 0.3,
+        depthWrite: false, side: THREE.DoubleSide,
+      });
+      const mesh = new THREE.Mesh(new THREE.PlaneGeometry(cellWidth * 0.94, cellDepth * 0.94), material);
+      mesh.rotation.x = -Math.PI / 2;
+      mesh.position.set(cell.xM, 0.055, cell.yM);
+      mesh.renderOrder = 2;
+      mesh.userData.noDrag = true;
+      group.add(mesh);
+    });
+    state.scene.add(group);
+    state.groups.set(key, group);
+    return () => {
+      if (state.groups.get(key) === group) state.groups.delete(key);
+      state.scene.remove(group);
+      disposeObject(group);
+    };
+  }, [props.heatmap, props.length, props.width]);
 
   return (
     <div

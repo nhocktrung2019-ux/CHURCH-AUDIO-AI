@@ -598,3 +598,19 @@ footer{padding-bottom:calc(26px + env(safe-area-inset-bottom))}
  .zone-spl-advisory .table-wrap{overflow-x:auto}
  .zone-spl-advisory table{min-width:480px}
 }
+
+
+/* v0.81-v0.85 spatial SPL analytics */
+.spatial-analysis-panel{border-color:#42665f}
+.spatial-analysis-block{margin-top:16px;padding:14px;border:1px solid #304650;border-radius:9px;background:rgba(12,25,33,.58)}
+.spatial-analysis-block>.heading h3,.spatial-analysis-advisory>.heading h3{font-size:13px;margin:0}
+.spatial-analysis-controls{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:12px 0}
+.spatial-analysis-controls label{display:grid;gap:7px;color:#91a8b0;font-size:9px;font-weight:800;letter-spacing:.5px}
+.spatial-analysis-controls input,.spatial-analysis-controls select{width:100%;min-width:0;min-height:40px;padding:8px 10px;border:1px solid #3a5662;border-radius:7px;background:#101e27;color:#e1efeb;font-size:12px}
+.spatial-analysis-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:12px 0}
+.spatial-analysis-stats article{min-width:0;padding:10px;border:1px solid #304650;border-radius:8px;background:#12212a}
+.spatial-analysis-stats small{display:block;color:#8fa6af;font-size:8px;line-height:1.4}
+.spatial-analysis-stats b{display:block;margin-top:6px;color:#e8f4ef;font-size:13px;overflow-wrap:anywhere}
+.spatial-analysis-advisory{margin-top:16px;padding:14px;border:1px solid #755b36;border-radius:9px;background:rgba(38,29,15,.28)}
+.spatial-analysis-advisory p{font-size:12px;line-height:1.6}
+@media(max-width:620px){.spatial-analysis-controls{grid-template-columns:1fr}.spatial-analysis-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.spatial-analysis-block{padding:11px}}
