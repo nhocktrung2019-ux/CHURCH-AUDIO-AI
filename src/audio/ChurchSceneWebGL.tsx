@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
+import { buildMeasuredSurface } from "./measuredSurfaceModel";
 
 export type WebGLSpeaker = {
   id: number; name: string; model: string; x: number; y: number; z: number;
@@ -19,6 +20,7 @@ type Props = {
   length: number; width: number; height: number;
   speakers: WebGLSpeaker[]; objects: WebGLObject[];
   measuredPoints: WebGLMeasuredPoint[]; showMeasuredPoints: boolean;
+  showMeasuredSurface: boolean; measuredSurfaceWeighting: "A" | "C" | "Z";
   selectedSpeaker: number; selectedObject: number;
   onSelectSpeaker: (id: number) => void; onSelectObject: (id: number) => void;
   onMoveSpeaker: (id: number, x: number, y: number) => void;
@@ -193,6 +195,54 @@ function measuredPointColor(point: WebGLMeasuredPoint): THREE.Color {
   if (point.splDb < 85) return new THREE.Color(0x54dfb0);
   if (point.splDb < 95) return new THREE.Color(0xffc45e);
   return new THREE.Color(0xff666e);
+}
+
+function createMeasuredSurfaceGroup(
+  points: WebGLMeasuredPoint[],
+  length: number,
+  width: number,
+  weighting: "A" | "C" | "Z",
+): THREE.Group | null {
+  const surface = buildMeasuredSurface(points as Parameters<typeof buildMeasuredSurface>[0], {
+    length, width, height: 100,
+  }, weighting);
+  if (!surface) return null;
+
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute("position", new THREE.Float32BufferAttribute(surface.positions, 3));
+  const colors: number[] = [];
+  for (const value of surface.values) {
+    const normalized = THREE.MathUtils.clamp((value - 65) / 40, 0, 1);
+    const color = new THREE.Color().setHSL(0.66 * (1 - normalized), 0.86, 0.52);
+    colors.push(color.r, color.g, color.b);
+  }
+  geometry.setAttribute("color", new THREE.Float32BufferAttribute(colors, 3));
+  geometry.setIndex(surface.indices);
+  geometry.computeVertexNormals();
+
+  const material = new THREE.MeshBasicMaterial({
+    vertexColors: true, transparent: true, opacity: 0.74,
+    side: THREE.DoubleSide, depthWrite: false,
+  });
+  const mesh = new THREE.Mesh(geometry, material);
+  mesh.position.y = 0.035;
+  mesh.renderOrder = 2;
+  mesh.userData.noDrag = true;
+
+  const group = new THREE.Group();
+  group.userData = {
+    kind: "measured-surface",
+    signature: [length, width, weighting, ...points.map((point) =>
+      [point.id, point.x, point.y, point.splDb, point.calibration, point.weighting].join(":"),
+    )].join("|"),
+    sampleCount: surface.sampleCount,
+    cellCount: surface.cellCount,
+    minDb: surface.minDb,
+    maxDb: surface.maxDb,
+    meanDb: surface.meanDb,
+  };
+  group.add(mesh);
+  return group;
 }
 
 function createMeasuredPointGroup(point: WebGLMeasuredPoint): THREE.Group {
@@ -579,6 +629,22 @@ export default function ChurchSceneWebGL(props: Props) {
       group.position.set(point.x, point.z, point.y);
     });
 
+    const surfaceKey = "surface:measured";
+    const surfaceGroup = props.showMeasuredSurface
+      ? createMeasuredSurfaceGroup(props.measuredPoints, props.length, props.width, props.measuredSurfaceWeighting)
+      : null;
+    if (surfaceGroup) {
+      const previous = state.groups.get(surfaceKey);
+      if (previous) {
+        state.scene.remove(previous);
+        disposeObject(previous);
+        state.groups.delete(surfaceKey);
+      }
+      state.scene.add(surfaceGroup);
+      state.groups.set(surfaceKey, surfaceGroup);
+      liveKeys.add(surfaceKey);
+    }
+
     props.speakers.forEach((speaker, index) => {
       const key = "s:" + speaker.id;
       liveKeys.add(key);
@@ -609,7 +675,7 @@ export default function ChurchSceneWebGL(props: Props) {
         state.groups.delete(key);
       }
     }
-  }, [props.speakers, props.objects, props.measuredPoints, props.showMeasuredPoints, props.selectedSpeaker, props.selectedObject]);
+  }, [props.speakers, props.objects, props.measuredPoints, props.showMeasuredPoints, props.showMeasuredSurface, props.measuredSurfaceWeighting, props.length, props.width, props.selectedSpeaker, props.selectedObject]);
 
   return (
     <div
@@ -618,7 +684,7 @@ export default function ChurchSceneWebGL(props: Props) {
       role="application"
       aria-label="Mô hình nhà thờ 3D. Kéo nền để xoay, cuộn để thu phóng; kéo loa hoặc nội thất để di chuyển."
     >
-      <div className="webgl-hint">CHURCH 3D · ORBIT / ZOOM · LOA & NỘI THẤT TƯƠNG TÁC · ĐIỂM SPL THỰC ĐO</div>
+      <div className="webgl-hint">CHURCH 3D · ORBIT / ZOOM · LOA & NỘI THẤT TƯƠNG TÁC · SPL THỰC ĐO + BỀ MẶT NỘI SUY</div>
       {webglError && (
         <div className="webgl-error">
           Thiết bị chưa khởi tạo được WebGL. Hãy dùng chế độ Mặt bằng 2D hoặc bật tăng tốc đồ họa trong WebView.
