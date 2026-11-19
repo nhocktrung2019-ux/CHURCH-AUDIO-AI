@@ -9,7 +9,7 @@
 - Distinguish explicitly calibrated readings from unverified entries; show weighting and measured SPL in the 3D labels, with a persistent visibility toggle.
 - Add regression tests for room bounds, finite coordinates, calibration provenance and valid SPL values.
 
-**Validation status:** implementation and regression tests are committed on `feature/v1.03-room-measurement-overlay`. CI/build and physical Android verification are pending. Point entry is manual; automatic microphone capture and validated heatmap interpolation are not included in this increment. 3D WebGL markers are now included; their color bands are visual cues only, not safety thresholds.
+**Validation status:** GitHub Actions regression tests and `npm run build` completed successfully for the v1.03.1 head commit. Android project generation and Capacitor sync also completed; the debug APK build is still running. Physical Android verification remains pending. Point entry is manual; automatic microphone capture and validated heatmap interpolation are not included in this increment. 3D WebGL markers are now included; their color bands are visual cues only, not safety thresholds.
 
 
 ## v1.02 — Intelligent SPL Mapping (development branch)
