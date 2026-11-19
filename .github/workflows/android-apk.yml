@@ -13,7 +13,7 @@ on:
       - "capacitor.config.ts"
       - ".github/workflows/android-apk.yml"
   push:
-    branches: [main, feature/v0.17-auto-eq-phase, feature/v0.18-audioworklet-pcm, feature/v0.19-pcm-metadata-integrity, feature/v0.20-dual-channel-foundation, feature/v0.21-multichannel-pcm-preservation, feature/v0.22-synchronous-transfer-live, feature/v0.66-v0.70-device-catalogue-v1, feature/v0.76-v0.80-measurement-confidence, feature/v0.81-v0.85-spatial-analysis-3d, feature/v4-audio-system-health]
+    branches: [main, feature/v0.17-auto-eq-phase, feature/v0.18-audioworklet-pcm, feature/v0.19-pcm-metadata-integrity, feature/v0.20-dual-channel-foundation, feature/v0.21-multichannel-pcm-preservation, feature/v0.22-synchronous-transfer-live, feature/v0.66-v0.70-device-catalogue-v1, feature/v0.76-v0.80-measurement-confidence, feature/v4-audio-system-health]
     paths:
       - "src/**"
       - "tests/**"
