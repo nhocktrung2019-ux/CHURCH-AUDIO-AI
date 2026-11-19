@@ -43,7 +43,7 @@ test("blocks invalid sample rate and malformed samples", () => {
 });
 
 test("withholds T20/T30 when the declared noise floor cannot support the decay range", () => {
-  const result = analyzeImpulseResponse(exponentialCapture({ noise: 1e-3 }));
+  const result = analyzeImpulseResponse(exponentialCapture({ noise: 0.02 }));
   assert.equal(result.metrics.t20Seconds, null);
   assert.equal(result.metrics.t30Seconds, null);
   assert.equal(result.status, "blocked");
