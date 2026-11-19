@@ -595,3 +595,63 @@ footer{padding-bottom:calc(26px + env(safe-area-inset-bottom))}
  .crossover-export-actions{grid-template-columns:1fr}
  .crossover-export-actions button{width:100%}
 }
+
+
+/* v1.09 professional measurement report workspace. */
+.measurement-report-workspace{gap:16px}
+.report-setup .heading h2{flex:1}
+.report-setup .form-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+.report-setup textarea{width:100%;resize:vertical}
+.report-actions{display:flex;flex-wrap:wrap;gap:9px;margin-top:14px}
+.report-actions button{display:flex;align-items:center;justify-content:center;gap:8px;min-height:42px}
+.report-actions svg{width:16px;height:16px}
+.report-print-area{padding:24px;border:1px solid var(--border,#344854);border-radius:12px;background:var(--panel,#101d25);color:var(--text,#e7eef1)}
+.report-document-header{display:flex;justify-content:space-between;align-items:flex-start;gap:22px;padding-bottom:18px;border-bottom:2px solid #65bfa9}
+.report-document-header h1{font-size:24px;letter-spacing:.4px;margin:9px 0 4px}
+.report-document-header small{color:#65d2b6;font-size:9px;letter-spacing:1px}
+.report-document-header p,.report-doc-meta span{color:var(--muted,#9eafb7);font-size:11px}
+.report-doc-meta{display:grid;gap:5px;min-width:180px;text-align:right}
+.report-doc-meta b{font-size:13px}
+.report-document-section{margin-top:20px;break-inside:avoid}
+.report-document-section h2{font-size:14px;margin:0 0 11px;padding-bottom:7px;border-bottom:1px solid var(--border,#344854)}
+.report-meta-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+.report-meta-grid>div{display:grid;gap:5px;padding:10px;border:1px solid var(--border,#344854);border-radius:7px;min-width:0}
+.report-meta-grid small{font-size:9px;color:var(--muted,#9eafb7)}
+.report-meta-grid b{font-size:12px;overflow-wrap:anywhere}
+.report-integrity-note{display:flex;gap:8px;align-items:flex-start;padding:10px;border-left:3px solid #d5a65c;background:rgba(213,166,92,.08);font-size:11px;line-height:1.55}
+.report-integrity-note svg{width:15px;height:15px;flex:none}
+.report-document-section .table-wrap{overflow-x:auto}
+.report-document-section table{width:100%;border-collapse:collapse;font-size:10px}
+.report-document-section th,.report-document-section td{padding:7px 8px;border-bottom:1px solid var(--border,#344854);text-align:left}
+.report-document-section th{color:#65d2b6;font-weight:700}
+.report-document-section p,.report-document-section li{font-size:11px;line-height:1.55}
+.report-document-section ul{padding-left:18px}
+.report-footnote{padding-top:10px;border-top:1px solid var(--border,#344854);color:var(--muted,#9eafb7)}
+@media(max-width:620px){
+ .report-setup .form-grid{grid-template-columns:1fr}
+ .report-actions{display:grid;grid-template-columns:1fr 1fr}
+ .report-actions button{width:100%;font-size:11px;padding:10px 7px}
+ .report-print-area{padding:14px}
+ .report-document-header{display:grid}
+ .report-doc-meta{text-align:left;min-width:0}
+ .report-document-header h1{font-size:20px}
+ .report-meta-grid{grid-template-columns:1fr 1fr}
+}
+@media print{
+ @page{size:A4;margin:14mm}
+ body{background:#fff!important;color:#111!important}
+ .shell>header,.hero,.workspace-tabs,.workspace-title,.roadmap,footer,.no-print{display:none!important}
+ .shell{max-width:none!important;width:100%!important;padding:0!important;margin:0!important}
+ .measurement-report-workspace{display:block!important}
+ .report-print-area{display:block!important;padding:0!important;border:0!important;border-radius:0!important;background:#fff!important;color:#111!important}
+ .report-document-header{border-color:#267a69}
+ .report-document-header small,.report-document-section th{color:#176b5b!important}
+ .report-document-header p,.report-doc-meta span,.report-meta-grid small,.report-footnote{color:#444!important}
+ .report-meta-grid>div{border-color:#bbb!important}
+ .report-document-section h2{border-color:#bbb!important}
+ .report-document-section th,.report-document-section td{border-color:#ccc!important;color:#111!important}
+ .report-integrity-note{background:#f4f1e8!important;color:#222!important;border-color:#a67c32!important}
+ .report-document-section{break-inside:avoid-page}
+ .report-document-section table{break-inside:auto}
+ .report-document-section tr{break-inside:avoid}
+}

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { usePersistentState } from "./usePersistentState";
 import { Play, Square, AlertTriangle, Waves } from "lucide-react";
 import { analyzeImpulseResponse, createLogSweep, type ImpulseResponseResult } from "./rt60";
 import { explainMicrophoneError, requestMicrophoneStream } from "./microphone";
@@ -21,7 +22,11 @@ export default function RT60MeasurementPanel({ selectedInput, running }: Props) 
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
-  const [result, setResult] = useState<ImpulseResponseResult | null>(null);
+  const [reportRecord,setReportRecord] = usePersistentState<Record<string, unknown> | null>("church-audio-rt60-report-v109",null);
+  const [zoneLabel,setZoneLabel] = usePersistentState("church-audio-rt60-zone-v109","Main / FOH");
+  const [positionLabel,setPositionLabel] = usePersistentState("church-audio-rt60-position-v109","Center listening position");
+  const [operatorNotes,setOperatorNotes] = usePersistentState("church-audio-rt60-notes-v109","");
+  const [result, setResult] = useState<ImpulseResponseResult | null>(() => reportRecord?.result as ImpulseResponseResult | undefined ?? null);
   const [impulse, setImpulse] = useState<Float32Array | null>(null);
   const [duration, setDuration] = useState(6);
   const [tailSeconds, setTailSeconds] = useState(4);
@@ -84,6 +89,16 @@ export default function RT60MeasurementPanel({ selectedInput, running }: Props) 
       else if (analyzed.result.quality !== "good") setNotice("Một số dải tần thiếu dynamic range hoặc độ tuyến tính. Hãy kiểm tra decay plot và đo lặp tại nhiều vị trí.");
       setResult(analyzed.result);
       setImpulse(analyzed.impulse);
+      setReportRecord({
+        capturedAt: new Date().toISOString(),
+        zone: zoneLabel,
+        position: positionLabel,
+        inputSelection: selectedInput ? "selected-input" : "system-default",
+        sweepDurationSeconds: duration,
+        tailSeconds,
+        operatorNotes,
+        result: analyzed.result,
+      });
     } catch (cause) {
       setError(explainMicrophoneError(cause));
     } finally {
@@ -107,9 +122,13 @@ export default function RT60MeasurementPanel({ selectedInput, running }: Props) 
     <div className="heading"><Waves /><h2>RT60 Studio · Impulse Response / Schroeder</h2><span>{result?.quality.toUpperCase() ?? "SWEEP"}</span></div>
     <p className="muted">Phát logarithmic sine sweep qua loa, thu micro và giải chập để lấy impulse response. Đường suy giảm Schroeder được lọc theo octave band, fit T20/T30 rồi ngoại suy RT60.</p>
     <div className="form-grid">
+      <div><label>KHU VỰC ĐO</label><input value={zoneLabel} onChange={e=>setZoneLabel(e.target.value)} maxLength={120} placeholder="Ví dụ: Khu vực ghế giữa"/></div>
+      <div><label>VỊ TRÍ MICROPHONE</label><input value={positionLabel} onChange={e=>setPositionLabel(e.target.value)} maxLength={120} placeholder="Ví dụ: FOH / hàng ghế 5"/></div>
       <div><label>THỜI LƯỢNG SWEEP</label><select value={duration} onChange={e => setDuration(+e.target.value)} disabled={busy}><option value={4}>4 giây · nhanh</option><option value={6}>6 giây · mặc định</option><option value={10}>10 giây · SNR tốt hơn</option></select></div>
       <div><label>TAIL SAU SWEEP</label><select value={tailSeconds} onChange={e => setTailSeconds(+e.target.value)} disabled={busy}><option value={2}>2 giây</option><option value={4}>4 giây</option><option value={6}>6 giây</option></select></div>
     </div>
+    <label>GHI CHÚ KỸ THUẬT VIÊN<input value={operatorNotes} onChange={e=>setOperatorNotes(e.target.value)} maxLength={1000} placeholder="Điều kiện phòng, tiếng ồn, hướng micro..."/></label>
+    {reportRecord&&<p className="device-notice">Đã lưu kết quả RT60 gần nhất vào hồ sơ báo cáo · {String(reportRecord.capturedAt??"")}</p>}
     <button disabled={busy || running} onClick={() => void measure()}>{busy ? <Square /> : <Play />}{busy ? "Đang sweep / ghi / phân tích…" : "Đo RT60 bằng sine sweep"}</button>
     {running && <p className="device-notice">Dừng RTA trước khi đo. Phép đo sẽ sử dụng micro riêng trong thời gian sweep và thu đuôi vang.</p>}
     {notice && <p className="device-notice">{notice}</p>}
