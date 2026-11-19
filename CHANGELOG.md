@@ -8,7 +8,11 @@
 - Preserve the existing Three.js room planner as the canonical geometry engine.
 - Start implementation on the dedicated `integration/unified-v1.01` branch.
 
-**Validation status:** architecture baseline only. This commit does not claim automated tests, application build, APK packaging, Windows packaging or physical hardware validation.
+- Add shared TypeScript contracts for projects, zones, measurement provenance, calibration references and SPL summaries.
+- Add domain validation that prevents dBFS, calibrated SPL, simulated SPL and interpolated SPL from being silently mixed.
+- Add Node regression tests for energy averaging, exclusion of simulated data and calibration/unit integrity.
+
+**Validation status:** source and regression-test files committed; tests and application build have not yet been executed in this environment. No APK, Windows package or physical hardware validation is claimed.
 
 ## 0.30.0-beta.1 — v0.76 measured SPL zone map
 
