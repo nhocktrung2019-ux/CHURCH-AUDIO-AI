@@ -114,3 +114,22 @@ The analysis requires a valid entered sensitivity and amplifier power. It does n
 ### Regression tests
 
 `tests/acoustic-optimization-model.test.mjs` covers missing-data behavior, bounded search, non-mutation of input settings and invalid room dimensions.
+
+
+## v1.07 — Arrival time and delay alignment
+
+The reference-listener panel now calculates each loudspeaker's 3D propagation distance and arrival time using the speed of sound adjusted by the entered air temperature. It proposes a non-negative delay for each speaker relative to the latest geometric arrival at the selected reference point. The purpose is to align modeled arrival times at that one point, not to automatically configure a DSP.
+
+An 11×9 room map displays the geometric spread between earliest and latest speaker arrivals at each cell. The selected listener coordinates and temperature are retained by the planner.
+
+### Interpretation and limitations
+
+- This is a distance/time-of-flight calculation. It does not measure impulse response, phase, polarity, crossover phase, DSP processing latency or loudspeaker group delay.
+- The suggested delay does not account for room reflections, absorption, obstacles, frequency-dependent propagation, filters or the intended main/fill system design.
+- A single reference point cannot guarantee alignment across the whole seating area; inspect the arrival map and measure representative seats.
+- Use a measurement microphone and impulse-response / transfer-function workflow to verify timing before changing live DSP settings.
+- No DSP/mixer write is performed.
+
+### Regression tests
+
+`tests/arrival-alignment-model.test.mjs` covers temperature adjustment, delay relative to latest arrival, map sizing, invalid inputs and immutable speaker records.
