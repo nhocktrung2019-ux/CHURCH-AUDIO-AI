@@ -46,7 +46,7 @@ test("withholds T20/T30 when the declared noise floor cannot support the decay r
   const result = analyzeImpulseResponse(exponentialCapture({ noise: 0.02 }));
   assert.equal(result.metrics.t20Seconds, null);
   assert.equal(result.metrics.t30Seconds, null);
-  assert.equal(result.status, "blocked");
+  assert.equal(result.status, "review");
 });
 
 test("does not convert dBFS to dB SPL and records provenance", () => {
