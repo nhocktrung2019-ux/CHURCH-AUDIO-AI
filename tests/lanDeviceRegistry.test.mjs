@@ -1,0 +1,9 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import { assessLanDevice, parseLanIPv4, sameLanSubnet } from "../src/audio/lanDeviceRegistry.ts";
+const base={id:"1",systemName:"Main",manufacturer:"db Acoustics",model:"CD48",hardwareRevision:"Ver 2215",firmware:"2215",transport:"wifi-lan",deviceIp:"192.168.20.20",controllerIp:"192.168.20.10",subnetPrefix:24,protocolEvidence:"none",protocolReference:"",physicalLinkChecked:true,sameNetworkChecked:true,vendorSoftwareLoginChecked:false,notes:"",updatedAt:"2026-11-19T00:00:00Z"};
+test("IPv4 parser rejects malformed addresses",()=>{assert.equal(parseLanIPv4("192.168.1.1")!==null,true);assert.equal(parseLanIPv4("192.168.1.999"),null);assert.equal(parseLanIPv4("192.168.01.1"),null);});
+test("subnet comparison handles matching and different networks",()=>{assert.equal(sameLanSubnet("192.168.20.20","192.168.20.10",24),true);assert.equal(sameLanSubnet("192.168.20.20","192.168.21.10",24),false);});
+test("same subnet does not claim device online when protocol is unknown",()=>{const result=assessLanDevice(base);assert.equal(result.sameSubnet,true);assert.equal(result.mayAttemptVendorWorkflow,false);assert.equal(result.status,"protocol-unverified");});
+test("vendor workflow readiness requires exact identity, protocol and manual physical/network checks",()=>{const ready=assessLanDevice({...base,protocolEvidence:"vendor-confirmed",protocolReference:"Vendor protocol spec rev 2"});assert.equal(ready.mayAttemptVendorWorkflow,true);const noCable=assessLanDevice({...base,protocolEvidence:"vendor-confirmed",protocolReference:"Vendor spec",physicalLinkChecked:false});assert.equal(noCable.mayAttemptVendorWorkflow,false);});
+test("invalid address and missing model block readiness",()=>{assert.equal(assessLanDevice({...base,deviceIp:"10.0.0.999"}).status,"address-invalid");assert.equal(assessLanDevice({...base,model:""}).status,"incomplete");});
