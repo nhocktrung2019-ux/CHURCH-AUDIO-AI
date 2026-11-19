@@ -48,8 +48,12 @@ function insidePolygon(x: number, y: number, polygon: SurfacePoint[]): boolean {
   let inside = false;
   for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
     const a = polygon[i], b = polygon[j];
+    const dx = b.x - a.x, dy = b.y - a.y;
+    const crossValue = (x - a.x) * dy - (y - a.y) * dx;
+    const dot = (x - a.x) * dx + (y - a.y) * dy;
+    if (Math.abs(crossValue) < 1e-7 && dot >= -1e-7 && dot <= dx * dx + dy * dy + 1e-7) return true;
     const intersects = ((a.y > y) !== (b.y > y)) &&
-      x < ((b.x - a.x) * (y - a.y)) / (b.y - a.y) + a.x;
+      x < (dx * (y - a.y)) / dy + a.x;
     if (intersects) inside = !inside;
   }
   return inside;
@@ -89,7 +93,8 @@ export function buildMeasuredSurface(
     point.weighting === weighting &&
     isValidSpl(point.splDb),
   );
-  if (points.length < 4 || room.length <= 0 || room.width <= 0) return null;
+  if (points.length < 4 || !Number.isFinite(room.length) || !Number.isFinite(room.width) ||
+      !Number.isFinite(room.height) || room.length <= 0 || room.width <= 0 || room.height <= 0) return null;
   const hull = convexHull(points);
   if (hull.length < 3) return null;
   const area = Math.abs(hull.reduce((sum, point, index) => {
@@ -118,6 +123,7 @@ export function buildMeasuredSurface(
       if (nearest > maxDistance) continue;
 
       const corners = [[x0, y0], [x1, y0], [x1, y1], [x0, y1]] as const;
+      if (!corners.every(([x, y]) => insidePolygon(x, y, hull))) continue;
       for (const [x, y] of corners) {
         const value = interpolate(x, y, points);
         positions.push(x, 0, y);
