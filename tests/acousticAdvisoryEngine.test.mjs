@@ -104,7 +104,7 @@ test("before/after comparison refuses insufficient position matching", () => {
 test("axial room mode outputs are marked theoretical and validate room dimensions", () => {
   const modes = estimateAxialRoomModes({ lengthM: 10, widthM: 8, heightM: 4 }, 343, 3);
   assert.equal(modes.length, 9);
-  assert.equal(modes[0].axis, "height");
+  assert.equal(modes[0].axis, "length");
   assert.equal(modes[0].classification, "theoretical-estimate");
   assert.equal(estimateAxialRoomModes({ lengthM: 0, widthM: 8, heightM: 4 }).length, 0);
 });
