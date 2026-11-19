@@ -1,29 +1,8 @@
 import { useMemo, useState } from "react";
 import { MapPin, Plus, Trash2, Ruler, ShieldCheck } from "lucide-react";
 import { usePersistentState } from "./usePersistentState";
+import { getVerifiedMeasuredPoints, isMeasuredPointInsideRoom, isValidMeasuredSpl, type MeasuredPoint, type CalibrationState, type Weighting } from "./measuredPointModel";
 
-type CalibrationState = "calibrated" | "uncalibrated";
-type Weighting = "A" | "C" | "Z";
-type MeasuredPoint = {
-  id: string;
-  label: string;
-  x: number;
-  y: number;
-  z: number;
-  splDb: number | null;
-  calibration: CalibrationState;
-  weighting: Weighting;
-  inputLabel: string;
-  note: string;
-  capturedAt: string;
-};
-
-const finite = (value: number) => Number.isFinite(value);
-const insideRoom = (point: MeasuredPoint, length: number, width: number, height: number) =>
-  finite(point.x) && finite(point.y) && finite(point.z) &&
-  point.x >= 0 && point.x <= length &&
-  point.y >= 0 && point.y <= width &&
-  point.z >= 0 && point.z <= height;
 
 export default function MeasuredPointOverlay() {
   const [length] = usePersistentState("church-audio-room-length", 28);
@@ -43,16 +22,14 @@ export default function MeasuredPointOverlay() {
   const [note, setNote] = useState("");
 
   const validPoints = useMemo(
-    () => points.filter((point) => insideRoom(point, length, width, height)),
+    () => points.filter((point) => isMeasuredPointInsideRoom(point, { length, width, height })),
     [points, length, width, height],
   );
-  const verified = validPoints.filter(
-    (point) => point.calibration === "calibrated" && point.splDb !== null && finite(point.splDb),
-  );
+  const verified = getVerifiedMeasuredPoints(points, { length, width, height });
 
   const addPoint = () => {
     const value = splDb === "" ? null : Number(splDb);
-    if (value === null || !finite(value) || value < 0 || value > 160) return;
+    if (value === null || !isValidMeasuredSpl(value)) return;
     const next: MeasuredPoint = {
       id: `mp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       label: label.trim() || `Điểm đo ${points.length + 1}`,
@@ -103,10 +80,10 @@ export default function MeasuredPointOverlay() {
       <label>MIC / INPUT LABEL<input value={inputLabel} onChange={(event) => setInputLabel(event.target.value)} placeholder="Tên micro / interface" /></label>
       <label className="measured-point-note">GHI CHÚ<input value={note} onChange={(event) => setNote(event.target.value)} placeholder="Điều kiện đo, vị trí ghế, mức phát..." /></label>
     </div>
-    <button type="button" onClick={addPoint} disabled={splDb === "" || !finite(x) || !finite(y) || !finite(z) || x < 0 || x > length || y < 0 || y > width || z < 0 || z > height}><Plus /> Lưu điểm đo vào mô hình</button>
+    <button type="button" onClick={addPoint} disabled={splDb === "" || !Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(z) || x < 0 || x > length || y < 0 || y > width || z < 0 || z > height}><Plus /> Lưu điểm đo vào mô hình</button>
     <div className="measured-point-records">
       {points.length === 0 ? <p className="muted">Chưa có điểm đo. Hãy nhập tọa độ và số đo tại hiện trường để tạo bản đồ.</p> : points.map((point) => {
-        const inBounds = insideRoom(point, length, width, height);
+        const inBounds = isMeasuredPointInsideRoom(point, { length, width, height });
         return <article key={point.id} className="measured-point-record">
           <div><b>{point.label}</b><small>{point.id} · X {point.x.toFixed(1)} / Y {point.y.toFixed(1)} / Z {point.z.toFixed(1)} m</small><small>{point.inputLabel || "Chưa ghi nguồn input"} · {point.weighting}-weighting · {new Date(point.capturedAt).toLocaleString("vi-VN")}</small></div>
           <div className="measured-point-value"><b>{point.splDb === null ? "—" : point.splDb.toFixed(1) + " dB"}</b><small>{point.calibration === "calibrated" ? "ĐÃ XÁC NHẬN" : "CHƯA XÁC MINH"}{!inBounds ? " · NGOÀI PHÒNG" : ""}</small></div>
