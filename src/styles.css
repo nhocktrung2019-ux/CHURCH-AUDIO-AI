@@ -636,3 +636,11 @@ footer{padding-bottom:calc(26px + env(safe-area-inset-bottom))}
 .optimization-metrics{display:grid;grid-template-columns:1fr;gap:6px;margin-top:10px}
 .optimization-item button{min-height:42px}
 @media(max-width:700px){.optimization-summary{grid-template-columns:1fr}.optimization-list{grid-template-columns:1fr}.room-optimization-panel{padding:12px}}
+
+
+/* v1.07 — arrival-time alignment map */
+.arrival-map-title{margin:16px 0 8px;font-size:12px;letter-spacing:.4px;color:#c8d9dc}
+.arrival-map{display:grid;grid-template-columns:repeat(11,minmax(0,1fr));gap:3px;padding:8px;border:1px solid #30434d;border-radius:8px;background:rgba(8,17,24,.48)}
+.arrival-map>div{display:flex;align-items:center;justify-content:center;min-height:28px;border-radius:3px;color:#fff;font:10px ui-monospace,SFMono-Regular,Consolas,monospace}
+.arrival-map small{font-size:9px;text-shadow:0 1px 2px #000}
+@media(max-width:620px){.arrival-map{gap:2px;padding:5px}.arrival-map>div{min-height:24px}.arrival-map small{font-size:8px}}
