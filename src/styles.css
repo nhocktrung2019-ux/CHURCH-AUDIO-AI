@@ -604,3 +604,13 @@ footer{padding-bottom:calc(26px + env(safe-area-inset-bottom))}
 .measured-point-panel>.warning svg{flex:0 0 16px;width:16px;height:16px}
 @media(max-width:680px){.measured-point-form{grid-template-columns:repeat(2,minmax(0,1fr))}.measured-point-summary{grid-template-columns:1fr 1fr}}
 @media(max-width:440px){.measured-point-form{grid-template-columns:1fr}.measured-point-note{grid-column:auto}.measured-point-record{grid-template-columns:minmax(0,1fr) auto}.measured-point-record .secondary{grid-column:2;grid-row:1}.measured-point-value{grid-column:1;grid-row:2;text-align:left}.measured-point-summary{grid-template-columns:1fr 1fr}}
+
+
+/* v1.04 — measured acoustic surface controls */
+.v104-surface-toolbar{display:grid;grid-template-columns:minmax(120px,.65fr) minmax(170px,1fr) minmax(220px,2fr);gap:10px;align-items:end;margin:12px 0;padding:12px;border:1px solid #34505a;border-radius:9px;background:linear-gradient(120deg,rgba(25,49,57,.8),rgba(14,24,32,.92))}
+.v104-surface-toolbar label{display:block;margin:0!important;color:#91a0aa;font:10px ui-monospace,SFMono-Regular,Consolas,monospace}
+.v104-surface-toolbar select{display:block;width:100%;min-height:44px;margin-top:7px;padding:9px;background:#0d151d;color:#e5edf1;border:1px solid #394752;border-radius:6px}
+.v104-surface-toolbar button{width:100%;margin:0!important;white-space:normal}
+.v104-surface-toolbar button:disabled{opacity:.42;cursor:not-allowed}
+.v104-surface-toolbar>span{font-size:11px;line-height:1.5;color:#a8bac2;align-self:center}
+@media(max-width:620px){.v104-surface-toolbar{grid-template-columns:1fr 1fr}.v104-surface-toolbar>span{grid-column:1/-1}.v104-surface-toolbar button{min-height:48px;padding:8px;font-size:11px}}
