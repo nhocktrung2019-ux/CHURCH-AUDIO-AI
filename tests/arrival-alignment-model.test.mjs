@@ -19,8 +19,8 @@ test("delays earlier arrivals to align with latest arrival at the reference poin
  const main=result.alignments.find(x=>x.speakerId===1);
  const delay=result.alignments.find(x=>x.speakerId===2);
  assert.ok(main && delay);
- assert.ok(main.suggestedDelayMs>delay.suggestedDelayMs);
- assert.equal(delay.suggestedDelayMs,0);
+ assert.equal(main.suggestedDelayMs,0);
+ assert.ok(delay.suggestedDelayMs>main.suggestedDelayMs);
 });
 
 test("creates bounded arrival map cells and rejects invalid input",()=>{
