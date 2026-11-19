@@ -5,6 +5,7 @@ import{SPEAKER_MODELS,SPEAKER_SPECS}from"../data/speakerModels";
 import ChurchSceneWebGL from "./ChurchSceneWebGL";
 import { isMeasuredPointInsideRoom, type MeasuredPoint } from "./measuredPointModel";
 import { buildMeasuredSurface } from "./measuredSurfaceModel";
+import { getSpeakerCoverageStatus } from "./speakerCoverageModel";
 type SpeakerUnit={id:number;name:string;model:string;zone:string;x:number;y:number;z:number;azimuth:number;coverage:number;verticalCoverage:number;sensitivity:number|null;powerW:number|null;impedance:number};
 type SceneObject={id:number;kind:"altar"|"pulpit"|"column"|"pew"|"chair"|"stage";name:string;x:number;y:number;w:number;d:number;h:number;rotation:number};
 const clamp=(v:number,min:number,max:number)=>Math.max(min,Math.min(max,v));
@@ -46,17 +47,15 @@ export default function RoomPlanner3D(){
  const wallFront=[[0,0,0],[length,0,0],[length,0,height],[0,0,height]].map(([x,y,z])=>project(x,y,z)).map(p=>p.x+","+p.y).join(" ");
  const wallSide=[[length,0,0],[length,width,0],[length,width,height],[length,0,height]].map(([x,y,z])=>project(x,y,z)).map(p=>p.x+","+p.y).join(" ");
  const distances=speakers.map(s=>Math.hypot(refX-s.x,refY-s.y,1.2-s.z)),maxDistance=Math.max(0,...distances);
- const soundEstimates=speakers.map((s,i)=>{const dx=refX-s.x,dy=refY-s.y,horizontal=Math.hypot(dx,dy),bearing=Math.atan2(dy,dx)*180/Math.PI;const delta=((bearing-s.azimuth+540)%360)-180;const elevation=Math.atan2(1.2-s.z,Math.max(.01,horizontal))*180/Math.PI;const inCoverage=Math.abs(delta)<=coverageFor(s)/2&&Math.abs(elevation)<=verticalCoverageFor(s)/2;const hNorm=Math.abs(delta)/Math.max(1,coverageFor(s)/2),vNorm=Math.abs(elevation)/Math.max(1,verticalCoverageFor(s)/2);const angularLossDb=Math.max(-36,-6*hNorm*hNorm-6*vNorm*vNorm);const spl=s.sensitivity!==null&&s.powerW!==null&&s.powerW>0&&distances[i]>.1?s.sensitivity+10*Math.log10(s.powerW)-20*Math.log10(distances[i])+angularLossDb:null;return{inCoverage,spl};});
+ const soundEstimates=speakers.map((s,i)=>{const coverage=getSpeakerCoverageStatus({...s,coverage:coverageFor(s),verticalCoverage:verticalCoverageFor(s)},{x:refX,y:refY,z:1.2});const angularLossDb=Math.max(-36,-6*coverage.horizontalRatio**2-6*coverage.verticalRatio**2);const spl=s.sensitivity!==null&&s.powerW!==null&&s.powerW>0&&distances[i]>.1?s.sensitivity+10*Math.log10(s.powerW)-20*Math.log10(distances[i])+angularLossDb:null;return{inCoverage:coverage.inCoverage,spl};});
  const gridCols=9,gridRows=7;
  const evaluatePoint=(x:number,y:number)=>{
   const hits:{spl:number;zone:string}[]=[];
   for(const sp of speakers){
    const dx=x-sp.x,dy=y-sp.y,distance=Math.hypot(dx,dy,1.2-sp.z);
-   const bearing=Math.atan2(dy,dx)*180/Math.PI,delta=((bearing-sp.azimuth+540)%360)-180;
-   const elevation=Math.atan2(1.2-sp.z,Math.max(.01,Math.hypot(dx,dy)))*180/Math.PI;
+   const coverage=getSpeakerCoverageStatus({...sp,coverage:coverageFor(sp),verticalCoverage:verticalCoverageFor(sp)},{x,y,z:1.2});
    if(sp.sensitivity!==null&&sp.powerW!==null&&sp.powerW>0&&distance>.1){
-    const hNorm=Math.abs(delta)/Math.max(1,coverageFor(sp)/2),vNorm=Math.abs(elevation)/Math.max(1,verticalCoverageFor(sp)/2);
-    const angularLossDb=Math.max(-36,-6*hNorm*hNorm-6*vNorm*vNorm);
+    const angularLossDb=Math.max(-36,-6*coverage.horizontalRatio**2-6*coverage.verticalRatio**2);
     hits.push({spl:sp.sensitivity+10*Math.log10(sp.powerW)-20*Math.log10(distance)+angularLossDb,zone:sp.zone});
    }
   }
