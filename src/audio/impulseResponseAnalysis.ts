@@ -100,8 +100,12 @@ export function analyzeImpulseResponse(
     add("pcm-integrity", "fail", "PCM phải hữu hạn, chuẩn hóa trong [-1, 1] và có độ dài hợp lệ.");
     return blocked("Dữ liệu PCM không hợp lệ hoặc quá ngắn.");
   }
-  const peak = Math.max(...capture.samples.map(Math.abs));
-  const peakIndex = capture.samples.findIndex(v => Math.abs(v) === peak);
+  let peak = 0;
+  let peakIndex = 0;
+  for (let i = 0; i < capture.samples.length; i++) {
+    const magnitude = Math.abs(capture.samples[i]);
+    if (magnitude > peak) { peak = magnitude; peakIndex = i; }
+  }
   const peakDbfs = peak > 0 ? 20 * Math.log10(peak) : -Infinity;
   const clippingThreshold = options.clippingThreshold ?? 0.999;
   if (peak >= clippingThreshold) {
@@ -123,7 +127,11 @@ export function analyzeImpulseResponse(
   }
   const tailMeanSquare = tail.reduce((s, v) => s + v * v, 0) / tail.length;
   const estimatedNoiseDbfs = tailMeanSquare > 0 ? 10 * Math.log10(tailMeanSquare) : -160;
-  const noiseFloorDbfs = capture.noiseFloorDbfs ?? estimatedNoiseDbfs;
+  // Prefer the worse (higher) floor when an independent estimate and a declared
+  // floor are both present; metadata must not be able to overstate usable range.
+  const noiseFloorDbfs = capture.noiseFloorDbfs === undefined
+    ? estimatedNoiseDbfs
+    : Math.max(capture.noiseFloorDbfs, estimatedNoiseDbfs);
   if (!finite(noiseFloorDbfs) || noiseFloorDbfs > 0 || noiseFloorDbfs < -180) {
     add("noise-floor", "fail", "Noise floor dBFS không hợp lệ.");
     return { ...blocked("Noise floor không hợp lệ."), peakIndex, peakDbfs };
