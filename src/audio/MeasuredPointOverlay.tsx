@@ -27,13 +27,14 @@ export default function MeasuredPointOverlay() {
   );
   const verified = getVerifiedMeasuredPoints(points, { length, width, height });
 
+  const parsedSplDb = splDb === "" ? null : Number(splDb);
+
   const addPoint = () => {
-    const value = splDb === "" ? null : Number(splDb);
-    if (value === null || !isValidMeasuredSpl(value)) return;
+    if (!isValidMeasuredSpl(parsedSplDb)) return;
     const next: MeasuredPoint = {
       id: `mp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       label: label.trim() || `Điểm đo ${points.length + 1}`,
-      x, y, z, splDb: value, calibration, weighting,
+      x, y, z, splDb: parsedSplDb, calibration, weighting,
       inputLabel: inputLabel.trim(), note: note.trim(), capturedAt: new Date().toISOString(),
     };
     setPoints((current) => [...current, next]);
@@ -80,7 +81,7 @@ export default function MeasuredPointOverlay() {
       <label>MIC / INPUT LABEL<input value={inputLabel} onChange={(event) => setInputLabel(event.target.value)} placeholder="Tên micro / interface" /></label>
       <label className="measured-point-note">GHI CHÚ<input value={note} onChange={(event) => setNote(event.target.value)} placeholder="Điều kiện đo, vị trí ghế, mức phát..." /></label>
     </div>
-    <button type="button" onClick={addPoint} disabled={splDb === "" || !Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(z) || x < 0 || x > length || y < 0 || y > width || z < 0 || z > height}><Plus /> Lưu điểm đo vào mô hình</button>
+    <button type="button" onClick={addPoint} disabled={!isValidMeasuredSpl(parsedSplDb) || !Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(z) || x < 0 || x > length || y < 0 || y > width || z < 0 || z > height}><Plus /> Lưu điểm đo vào mô hình</button>
     <div className="measured-point-records">
       {points.length === 0 ? <p className="muted">Chưa có điểm đo. Hãy nhập tọa độ và số đo tại hiện trường để tạo bản đồ.</p> : points.map((point) => {
         const inBounds = isMeasuredPointInsideRoom(point, { length, width, height });
