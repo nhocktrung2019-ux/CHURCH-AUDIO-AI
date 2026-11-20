@@ -28,6 +28,9 @@ export type CD48NetworkAssessment = {
     | "needs-rj45-confirmation"
     | "invalid-address"
     | "invalid-subnet"
+    | "reserved-address"
+    | "same-address"
+    | "network-or-broadcast-address"
     | "different-subnet"
     | "same-subnet-protocol-unverified";
   sameSubnet: boolean;
@@ -63,6 +66,22 @@ export function areIPv4AddressesInSameSubnet(
   if (first === null || second === null || !isValidLanSubnetPrefix(prefix)) return null;
   const mask = (0xffffffff << (32 - prefix)) >>> 0;
   return ((first & mask) >>> 0) === ((second & mask) >>> 0);
+}
+
+function isUnusableSpecialAddress(address: number): boolean {
+  const firstOctet = address >>> 24;
+  const secondOctet = (address >>> 16) & 0xff;
+  return firstOctet === 0
+    || firstOctet === 127
+    || (firstOctet === 169 && secondOctet === 254)
+    || firstOctet >= 224;
+}
+
+function isSubnetNetworkOrBroadcast(address: number, prefix: number): boolean {
+  const mask = (0xffffffff << (32 - prefix)) >>> 0;
+  const network = (address & mask) >>> 0;
+  const broadcast = (network | (~mask >>> 0)) >>> 0;
+  return address === network || address === broadcast;
 }
 
 /**
@@ -102,6 +121,33 @@ export function assessCD48NetworkConfig(config: CD48NetworkConfig): CD48NetworkA
       message: "Subnet prefix phải từ /1 đến /30; nhập đúng subnet mask của mạng đang dùng.",
     };
   }
+  if (device === controller) {
+    return {
+      status: "same-address",
+      sameSubnet: false,
+      mayUseLanPath: false,
+      message: "IP của CD48 trùng IP điện thoại/thiết bị điều khiển. Cần cấp hai địa chỉ host khác nhau.",
+    };
+  }
+  if (isUnusableSpecialAddress(device) || isUnusableSpecialAddress(controller)) {
+    return {
+      status: "reserved-address",
+      sameSubnet: false,
+      mayUseLanPath: false,
+      message: "Địa chỉ loopback, link-local, unspecified hoặc multicast không phù hợp làm IP thiết bị/điều khiển trong cấu hình LAN này.",
+    };
+  }
+  if (
+    isSubnetNetworkOrBroadcast(device, config.subnetPrefix)
+    || isSubnetNetworkOrBroadcast(controller, config.subnetPrefix)
+  ) {
+    return {
+      status: "network-or-broadcast-address",
+      sameSubnet: false,
+      mayUseLanPath: false,
+      message: "Một địa chỉ đang là địa chỉ network hoặc broadcast của subnet. Hãy nhập IP host hợp lệ.",
+    };
+  }
   const sameSubnet = areIPv4AddressesInSameSubnet(
     config.deviceIp,
     config.controllerIp,
@@ -120,7 +166,7 @@ export function assessCD48NetworkConfig(config: CD48NetworkConfig): CD48NetworkA
     sameSubnet: true,
     mayUseLanPath: true,
     message: config.link === "wifi-lan"
-      ? "Địa chỉ cùng subnet: điện thoại có thể đi qua Wi-Fi của router đến LAN có dây của CD48. Chưa xác nhận thiết bị phản hồi hay giao thức điều khiển."
-      : "Địa chỉ cùng subnet: đường Ethernet có cấu hình IP phù hợp. Chưa xác nhận thiết bị phản hồi hay giao thức điều khiển.",
+      ? "Địa chỉ host hợp lệ và cùng subnet: điện thoại có thể đi qua Wi-Fi của router đến LAN có dây của CD48. Chưa xác nhận thiết bị phản hồi hay giao thức điều khiển."
+      : "Địa chỉ host hợp lệ và cùng subnet: đường Ethernet có cấu hình IP phù hợp. Chưa xác nhận thiết bị phản hồi hay giao thức điều khiển.",
   };
 }

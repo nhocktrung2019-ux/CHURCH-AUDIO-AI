@@ -10,6 +10,12 @@ The DSP workspace currently provides a manual configuration worksheet for these 
 
 The worksheet exports a JSON record for project documentation and technician review. It does **not** connect to a mixer, send commands, write EQ, change gain, mute channels, alter routing, or bypass the hardware safety/confirmation workflow.
 
+## v1.14 LAN readiness checks
+
+The CD48 preflight validates strict IPv4 syntax, subnet prefix, duplicate endpoint IPs, special-use endpoint addresses, and subnet network/broadcast addresses. A same-subnet result means only that the manually entered addressing is structurally plausible. It does not prove that the device is powered, reachable, authenticated, or speaking a known protocol.
+
+The current implementation does not ping, scan ports, discover devices, open sockets, authenticate, query state, or transmit control packets. See [LAN/DSP readiness gate](LAN_DSP_READINESS_V1.14.md).
+
 ## Why direct control is not enabled yet
 
 A reliable adapter must be specific to the exact model and firmware. Before enabling any control path, the project must have:

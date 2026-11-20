@@ -3,7 +3,7 @@ name: Android APK
 on:
   workflow_dispatch:
   pull_request:
-    branches: [main, feature/full-phase-integration, feature/v0.17-auto-eq-phase, feature/v0.18-audioworklet-pcm, feature/v0.19-pcm-metadata-integrity, feature/v0.20-dual-channel-foundation, feature/v0.21-multichannel-pcm-preservation, feature/v0.22-synchronous-transfer-live, feature/v0.23-channel-calibration-foundation, feature/v4-audio-system-health, feature/v1.02-intelligent-spl-mapping, feature/v1.03-room-measurement-overlay, feature/v1.11-live-spl-point-capture, feature/v1.12-rt60-pcm-capture, feature/v1.13-eq-approval-report]
+    branches: [main, feature/full-phase-integration, feature/v0.17-auto-eq-phase, feature/v0.18-audioworklet-pcm, feature/v0.19-pcm-metadata-integrity, feature/v0.20-dual-channel-foundation, feature/v0.21-multichannel-pcm-preservation, feature/v0.22-synchronous-transfer-live, feature/v0.23-channel-calibration-foundation, feature/v4-audio-system-health, feature/v1.02-intelligent-spl-mapping, feature/v1.03-room-measurement-overlay, feature/v1.11-live-spl-point-capture, feature/v1.12-rt60-pcm-capture, feature/v1.13-eq-approval-report, feature/v1.14-lan-dsp-readiness]
     paths:
       - "src/**"
       - "tests/**"
@@ -82,7 +82,18 @@ jobs:
         working-directory: android
         run: |
           chmod +x gradlew
-          ./gradlew assembleDebug
+          # Maven Central may return transient HTTP 429 responses under load.
+          # Retry dependency resolution/build before failing the Android artifact job.
+          attempt=1
+          until ./gradlew assembleDebug; do
+            if [ "$attempt" -ge 3 ]; then
+              echo "Android debug APK build failed after $attempt attempts."
+              exit 1
+            fi
+            attempt=$((attempt + 1))
+            echo "Gradle build failed (possibly transient dependency throttling); retry $attempt/3 in 25 seconds."
+            sleep 25
+          done
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
