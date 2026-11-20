@@ -9,7 +9,7 @@ export default function LiveSPLPointCapture({ running, weightedLevels, offsetDb,
   const [length] = usePersistentState("church-audio-room-length", 28);
   const [width] = usePersistentState("church-audio-room-width", 16);
   const [height] = usePersistentState("church-audio-room-height", 7);
-  const [points, setPoints] = usePersistentState<MeasuredPoint[]>("church-audio-measured-points-v103", []);
+  const [, setPoints] = usePersistentState<MeasuredPoint[]>("church-audio-measured-points-v103", []);
   const [label, setLabel] = useState("");
   const [x, setX] = useState(14); const [y, setY] = useState(8); const [z, setZ] = useState(1.2);
   const [weighting, setWeighting] = useState<Weighting>("A"); const [note, setNote] = useState("");
