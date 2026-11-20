@@ -61,6 +61,7 @@ export default function RT60MeasurementPanel({ selectedInput, running }: Props) 
         if (message?.type === "stopped") { resolveStopped?.(); return; }
         if (message?.type === "capture-error") {
           metadataError = message.reason || "AudioWorklet capture error.";
+          resolveStopped?.();
           return;
         }
         if (message?.type !== "pcm" || !(message.pcm instanceof ArrayBuffer)
