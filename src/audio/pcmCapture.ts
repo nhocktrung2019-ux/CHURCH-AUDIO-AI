@@ -102,3 +102,26 @@ export function mixInterleavedPcmToMono(
   }
   return mono;
 }
+
+/** Join copied mono PCM blocks in arrival order without exposing reused audio buffers. */
+export function concatenatePcmChunks(chunks: readonly Float32Array[], maxSamples = Number.MAX_SAFE_INTEGER): Float32Array {
+  if (!Number.isSafeInteger(maxSamples) || maxSamples < 0) {
+    throw new Error("Giới hạn mẫu PCM không hợp lệ.");
+  }
+  let total = 0;
+  for (const chunk of chunks) {
+    if (!(chunk instanceof Float32Array)) throw new Error("PCM chunk phải là Float32Array.");
+    total += chunk.length;
+    if (!Number.isSafeInteger(total)) throw new Error("Tổng số mẫu PCM vượt giới hạn an toàn.");
+  }
+  const outputLength = Math.min(total, maxSamples);
+  const output = new Float32Array(outputLength);
+  let offset = 0;
+  for (const chunk of chunks) {
+    if (offset >= outputLength) break;
+    const count = Math.min(chunk.length, outputLength - offset);
+    output.set(chunk.subarray(0, count), offset);
+    offset += count;
+  }
+  return output;
+}
