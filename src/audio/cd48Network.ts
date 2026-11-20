@@ -44,7 +44,7 @@ export function parseIPv4(value: string): number | null {
   if (parts.length !== 4) return null;
   let result = 0;
   for (const part of parts) {
-    if (!/^(0|[1-9]\\d{0,2})$/.test(part)) return null;
+    if (!/^(0|[1-9]\d{0,2})$/.test(part)) return null;
     const octet = Number(part);
     if (octet < 0 || octet > 255) return null;
     result = ((result << 8) | octet) >>> 0;
