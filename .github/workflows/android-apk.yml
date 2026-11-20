@@ -3,7 +3,7 @@ name: Android APK
 on:
   workflow_dispatch:
   pull_request:
-    branches: [main, feature/full-phase-integration, feature/v0.17-auto-eq-phase, feature/v0.18-audioworklet-pcm, feature/v0.19-pcm-metadata-integrity, feature/v0.20-dual-channel-foundation, feature/v0.21-multichannel-pcm-preservation, feature/v0.22-synchronous-transfer-live, feature/v0.23-channel-calibration-foundation, feature/v4-audio-system-health, feature/v1.02-intelligent-spl-mapping, feature/v1.03-room-measurement-overlay]
+    branches: [main, feature/full-phase-integration, feature/v0.17-auto-eq-phase, feature/v0.18-audioworklet-pcm, feature/v0.19-pcm-metadata-integrity, feature/v0.20-dual-channel-foundation, feature/v0.21-multichannel-pcm-preservation, feature/v0.22-synchronous-transfer-live, feature/v0.23-channel-calibration-foundation, feature/v4-audio-system-health, feature/v1.02-intelligent-spl-mapping, feature/v1.03-room-measurement-overlay, feature/v1.10-spl-capture-integrity]
     paths:
       - "src/**"
       - "tests/**"
