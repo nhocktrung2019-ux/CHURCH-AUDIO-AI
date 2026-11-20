@@ -8,7 +8,9 @@ test("joins PCM callback blocks without changing sample order", () => {
     Float32Array.from([0.3]),
     Float32Array.from([-0.4, -0.5]),
   ]);
-  assert.deepEqual(Array.from(result), [0.1, 0.2, 0.3, -0.4, -0.5]);
+  const expected = [0.1, 0.2, 0.3, -0.4, -0.5];
+  assert.equal(result.length, expected.length);
+  result.forEach((value, index) => assert.ok(Math.abs(value - expected[index]) < 1e-6));
 });
 
 test("caps PCM capture to the requested sample count", () => {
