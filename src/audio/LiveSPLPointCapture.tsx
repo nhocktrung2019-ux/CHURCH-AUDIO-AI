@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { Activity, MapPin, Save } from "lucide-react";
 import { usePersistentState } from "./usePersistentState";
 import { isMeasuredPointInsideRoom, isValidMeasuredSpl, type MeasuredPoint, type Weighting } from "./measuredPointModel";
+import { analyzeLiveSplCapture } from "./liveSplCapture";
 
 type Props = { running: boolean; weightedLevels: { a: number; c: number; z: number }; offsetDb: number; peakDbfs: number; inputLabel: string; };
 
@@ -14,12 +15,12 @@ export default function LiveSPLPointCapture({ running, weightedLevels, offsetDb,
   const [x, setX] = useState(14); const [y, setY] = useState(8); const [z, setZ] = useState(1.2);
   const [weighting, setWeighting] = useState<Weighting>("A"); const [note, setNote] = useState("");
   const liveDbfs = weightedLevels[weighting.toLowerCase() as "a" | "c" | "z"];
-  const calibrated = Number.isFinite(offsetDb) && Math.abs(offsetDb) > 0.001;
-  const clipped = Number.isFinite(peakDbfs) && peakDbfs >= -0.1;
-  const splDb = Number.isFinite(liveDbfs) && liveDbfs > -99 && calibrated && !clipped ? liveDbfs + offsetDb : null;
+  const capture = analyzeLiveSplCapture({ running, weightedDbfs: liveDbfs, calibrationOffsetDb: offsetDb, peakDbfs });
+  const calibrated = capture.status === "valid" || capture.status === "clipped" || capture.status === "invalid";
+  const splDb = capture.splDb;
   const candidate: MeasuredPoint = useMemo(() => ({ id: "live-candidate", label: label.trim() || "Live SPL point", x, y, z, splDb, calibration: calibrated ? "calibrated" : "uncalibrated", weighting, inputLabel, note, capturedAt: new Date().toISOString() }), [label, x, y, z, splDb, calibrated, weighting, inputLabel, note]);
   const inBounds = isMeasuredPointInsideRoom(candidate, { length, width, height });
-  const canSave = running && calibrated && !clipped && isValidMeasuredSpl(splDb) && inBounds;
+  const canSave = capture.status === "valid" && isValidMeasuredSpl(splDb) && inBounds;
   const savePoint = () => {
     if (!canSave || splDb === null) return;
     const record: MeasuredPoint = { ...candidate, id: `live-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, splDb: Math.round(splDb * 10) / 10, capturedAt: new Date().toISOString(), note: [note.trim(), "Captured from live microphone stream; SPL uses active one-point calibration offset."].filter(Boolean).join(" ") };
@@ -38,10 +39,11 @@ export default function LiveSPLPointCapture({ running, weightedLevels, offsetDb,
       <label>GHI CHÚ<input value={note} onChange={event => setNote(event.target.value)} placeholder="Mức phát, điều kiện đo..." /></label>
     </div>
     <button type="button" disabled={!canSave} onClick={savePoint}><Save /> Lưu số đo live vào bản đồ 3D</button>
-    {!running && <p className="warning"><Activity /> Hãy bật microphone trước khi chụp điểm đo.</p>}
-    {running && !calibrated && <p className="warning">Chưa có offset hiệu chuẩn. Kết quả không được lưu thành dB SPL đã hiệu chuẩn.</p>}
-    {clipped && <p className="warning">Đầu vào gần 0 dBFS, có nguy cơ clipping. Giảm gain và đo lại.</p>}
-    {running && calibrated && !clipped && !inBounds && <p className="warning">Tọa độ phải nằm trong kích thước phòng hiện tại.</p>}
+    {capture.status === "stopped" && <p className="warning"><Activity /> Hãy bật microphone trước khi chụp điểm đo.</p>}
+    {capture.status === "uncalibrated" && <p className="warning">Chưa có offset hiệu chuẩn. Kết quả không được lưu thành dB SPL đã hiệu chuẩn.</p>}
+    {capture.status === "clipped" && <p className="warning">Đầu vào gần 0 dBFS hoặc thiếu metadata peak hợp lệ. Giảm gain và đo lại.</p>}
+    {capture.status === "invalid" && <p className="warning">Mức tín hiệu hoặc kết quả SPL nằm ngoài giới hạn hợp lệ.</p>}
+    {capture.status === "valid" && !inBounds && <p className="warning">Tọa độ phải nằm trong kích thước phòng hiện tại.</p>}
     <p className="muted">Nguồn: {inputLabel || "Microphone mặc định"} · Điểm đo mới được thêm, không ghi đè dữ liệu cũ.</p>
   </section>;
 }
