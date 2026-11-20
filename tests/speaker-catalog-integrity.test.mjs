@@ -14,13 +14,13 @@ test("every published speaker specification has a source and source note", () =>
 
 test("numeric speaker specifications are finite and physically bounded", () => {
   for (const [key, spec] of Object.entries(SPEAKER_SPECS)) {
-    for (const field of ["horizontalDeg", "verticalDeg"] as const) {
+    for (const field of ["horizontalDeg", "verticalDeg"]) {
       const value = spec[field];
       if (value !== null) {
         assert.ok(Number.isFinite(value) && value > 0 && value <= 360, `${key} ${field}`);
       }
     }
-    for (const field of ["sensitivityDb1W1m", "powerLongTermW", "impedanceOhm"] as const) {
+    for (const field of ["sensitivityDb1W1m", "powerLongTermW", "impedanceOhm"]) {
       const value = spec[field];
       if (value !== null) {
         assert.ok(Number.isFinite(value) && value > 0, `${key} ${field}`);
