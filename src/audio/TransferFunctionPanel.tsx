@@ -5,6 +5,7 @@ import { analyzeSynchronousTransfer, analyzeTransfer, makeReferenceNoise, measur
 import { deinterleaveInterleavedPcm, mixInterleavedPcmToMono } from "./pcmCapture.ts";
 import { PcmCaptureIntegrityMonitor } from "./pcmCaptureIntegrity";
 import { AUTO_EQ_TARGETS, assessAutoEqReadiness, suggestParametricEq, type AutoEqTargetProfile } from "./autoEq.ts";
+import { buildEqSuggestionReport } from "./eqSuggestionReport";
 import { comparePhaseInBand } from "./phaseAlignment";
 import { aggregateMultiPositionAutoEq, assessMultiPositionAutoEq, type MultiPositionAutoEqSample } from "./multiPositionAutoEq";
 import { analyzeMeasurementRepeatability } from "./measurementRepeatability.ts";
@@ -551,28 +552,26 @@ export default function TransferFunctionPanel({ selectedInput, selectedOutput, r
   const exportEq = () => {
     if (!eq.length) return;
     const multiPositionWorksheet=eqSource==="multi-position"?{
-      source:"multi-position-aggregate",
       positions:multiPositionSamples.map(s=>({id:s.id,label:s.label,weight:s.weight,savedAt:s.savedAt,sampleRate:s.result.sampleRate,
         repeatability:s.repeatability??null,repeatabilityDiagnostics:(s.repeatabilityDiagnostics??[]).filter(d=>d.status!=="included").slice(0,100)})),
       spatialSummary:multiPositionAnalysis.summary,
       spatialDiagnostics:multiPositionAnalysis.diagnostics.filter(d=>d.status!=="included").slice(0,100),
     }:null;
-    const payload = {
-      format: "Church Audio Parametric EQ Suggestion",
-      status: "advisory-not-applied",
+    const report = buildEqSuggestionReport({
       generatedAt: new Date().toISOString(),
-      targetProfile: { id: eqTargetProfile, ...AUTO_EQ_TARGETS[eqTargetProfile] },
-      requirements: "Verify by listening and repeat measurement before manual DSP entry. No parameters are written to hardware.",
-      measurement: eqSource==="multi-position"?multiPositionWorksheet:{ sampleRate: result?.sampleRate, averageCoherence: result?.averageCoherence, captureQuality: result?.captureQuality, captureMetadata: result?.captureMetadata },
-      filters: eq.map((filter, index) => ({
-        band: index + 1, type: "PEQ", frequencyHz: filter.frequencyHz,
-        gainDb: filter.gainDb, q: filter.q, coherence: Number(filter.coherence.toFixed(3)),
+      targetProfile: { id: eqTargetProfile, label: AUTO_EQ_TARGETS[eqTargetProfile].label, description: AUTO_EQ_TARGETS[eqTargetProfile].description },
+      source: eqSource,
+      measurement: eqSource==="multi-position"
+        ? multiPositionWorksheet
+        : { sampleRate: result?.sampleRate, averageCoherence: result?.averageCoherence, captureQuality: result?.captureQuality, captureMetadata: result?.captureMetadata },
+      filters: eq.map(filter => ({
+        frequencyHz: filter.frequencyHz, gainDb: filter.gainDb, q: filter.q, coherence: filter.coherence,
       })),
-    };
-    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+    });
+    const blob = new Blob([JSON.stringify(report, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement("a");
-    anchor.href = url; anchor.download = "church-audio-peq-suggestion.json"; anchor.click();
+    anchor.href = url; anchor.download = "church-audio-peq-suggestion-v1.json"; anchor.click();
     URL.revokeObjectURL(url);
     setEqCopied(true);
   };
