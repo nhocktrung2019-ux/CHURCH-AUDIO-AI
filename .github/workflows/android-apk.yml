@@ -82,7 +82,18 @@ jobs:
         working-directory: android
         run: |
           chmod +x gradlew
-          ./gradlew assembleDebug
+          # Maven Central may return transient HTTP 429 responses under load.
+          # Retry dependency resolution/build before failing the Android artifact job.
+          attempt=1
+          until ./gradlew assembleDebug; do
+            if [ "$attempt" -ge 3 ]; then
+              echo "Android debug APK build failed after $attempt attempts."
+              exit 1
+            fi
+            attempt=$((attempt + 1))
+            echo "Gradle build failed (possibly transient dependency throttling); retry $attempt/3 in 25 seconds."
+            sleep 25
+          done
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
