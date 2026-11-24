@@ -84,6 +84,11 @@ export default function RT60MeasurementPanel({ selectedInput, running }: Props) 
       if (analyzed.result.peakToNoiseDb < 20) setNotice("Tỷ lệ đỉnh/nhiễu thấp; RT60 chỉ nên xem là tham khảo. Tăng SNR hoặc giảm tiếng ồn nền.");
       else if (analyzed.result.quality !== "good") setNotice("Một số dải tần thiếu dynamic range hoặc độ tuyến tính. Hãy kiểm tra decay plot và đo lặp tại nhiều vị trí.");
       setResult(analyzed.result);
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("church-audio-measurement-updated", {
+          detail: { key: "church-audio-rt60-latest", value: analyzed.result },
+        }));
+      }
       setImpulse(analyzed.impulse);
     } catch (cause) {
       setError(explainMicrophoneError(cause));
