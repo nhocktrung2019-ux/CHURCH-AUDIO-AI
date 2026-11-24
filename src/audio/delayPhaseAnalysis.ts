@@ -11,7 +11,7 @@ export function calculateDelayRecommendations(items: AlignmentMeasurement[], ref
     if (!item.speakerId || !item.sessionId || item.sessionId !== reference.sessionId || !Number.isFinite(item.distanceM) || item.distanceM < 0) return { speakerId: item.speakerId, geometricDelayMs: 0, measuredDelayMs: null, recommendedAdditionalDelayMs: null, status: "invalid" };
     const geometric = Math.max(0, propagationTimeMs(reference.distanceM, speedOfSoundMps) - propagationTimeMs(item.distanceM, speedOfSoundMps));
     const measured = Number.isFinite(item.measuredArrivalMs) ? item.measuredArrivalMs as number : null;
-    return { speakerId: item.speakerId, geometricDelayMs: geometric, measuredDelayMs: measured, recommendedAdditionalDelayMs: measured === null ? null : Math.max(0, (reference.measuredArrivalMs ?? 0) - measured), status: measured === null ? "geometric-only" : "measured" };
+    return { speakerId: item.speakerId, geometricDelayMs: geometric, measuredDelayMs: measured, recommendedAdditionalDelayMs: measured === null || !Number.isFinite(reference.measuredArrivalMs) ? null : Math.max(0, (reference.measuredArrivalMs as number) - measured), status: measured === null ? "geometric-only" : "measured" };
   });
 }
 export function phaseDifferenceDegrees(a: number, b: number): number {
