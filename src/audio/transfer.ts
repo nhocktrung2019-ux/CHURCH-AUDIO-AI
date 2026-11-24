@@ -28,6 +28,7 @@ export type TransferCaptureMetadata = {
 };
 
 export type TransferResult = {
+  measurementContext?: import("./measurementSession").MeasurementCaptureContext;
   points: TransferPoint[];
   estimatedDelayMs: number;
   confidence: number;
