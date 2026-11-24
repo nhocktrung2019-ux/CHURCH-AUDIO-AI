@@ -49,7 +49,7 @@ export const SPEAKER_SPECS: Record<string, SpeakerSpec> = {
   "Bose MA12": {
     manufacturer: "Bose Professional", model: "Panaray MA12", horizontalDeg: 145, verticalDeg: 20,
     sensitivityDb1W1m: 88, powerLongTermW: 300, impedanceOhm: 8, frequencyRangeHz: [100, 16000],
-    frequencyRangeTolerance: "-10 dB", maxSPLContinuousDb: 113, maxSPLPeakDb: 119, maxSPLSource: "manufacturer_published",
+    frequencyRangeTolerance: "-10 dB", maxSPLContinuousDb: 113, maxSPLPeakDb: 119, maxSPLSource: "calculated_estimate",
     drivers: "12 × 2.25 in (57 mm) mid/high-frequency drivers",
     dimensionsMm: [984, 105, 128], weightKg: 8.5,
     source: "https://www.boseprofessional.com/products/loudspeakers/line-columns/passive/ma/ma12-modular-columnar-array-loudspeaker",
@@ -58,7 +58,7 @@ export const SPEAKER_SPECS: Record<string, SpeakerSpec> = {
   "Bose MA12EX": {
     manufacturer: "Bose Professional", model: "Panaray MA12EX", horizontalDeg: 160, verticalDeg: 20,
     sensitivityDb1W1m: 87, powerLongTermW: 150, impedanceOhm: 8, frequencyRangeHz: [58, 16000],
-    frequencyRangeTolerance: "-10 dB", maxSPLContinuousDb: 112, maxSPLPeakDb: 118, maxSPLSource: "manufacturer_published",
+    frequencyRangeTolerance: "-10 dB", maxSPLContinuousDb: 112, maxSPLPeakDb: 118, maxSPLSource: "calculated_estimate",
     drivers: "12 × 2.25 in (57 mm) weather-resistant high-excursion drivers",
     dimensionsMm: [985, 104, 139], weightKg: 9.4,
     source: "https://www.boseprofessional.com/products/loudspeakers/line-columns/passive/ma/ma12ex-modular-columnar-array-loudspeaker",
@@ -67,7 +67,7 @@ export const SPEAKER_SPECS: Record<string, SpeakerSpec> = {
   "Bose 402 Series IV": {
     manufacturer: "Bose Professional", model: "Panaray 402 Series IV", horizontalDeg: 120, verticalDeg: 60,
     sensitivityDb1W1m: 91, powerLongTermW: 120, impedanceOhm: 8, frequencyRangeHz: [73, 15000],
-    frequencyRangeTolerance: "-10 dB", maxSPLContinuousDb: 112, maxSPLPeakDb: 118, maxSPLSource: "manufacturer_published",
+    frequencyRangeTolerance: "-10 dB", maxSPLContinuousDb: 112, maxSPLPeakDb: 118, maxSPLSource: "calculated_estimate",
     drivers: "4 × 4.5 in (114 mm) full-range cone drivers",
     dimensionsMm: [592, 206, 202], weightKg: 7.3, highPassHz: 75,
     source: "https://assets.boseprofessional.com/m/50836c8f81ac089d/original/ig_Panaray_402-IV_502A_802IV_en.pdf",
@@ -76,7 +76,7 @@ export const SPEAKER_SPECS: Record<string, SpeakerSpec> = {
   "Bose 802 Series IV": {
     manufacturer: "Bose Professional", model: "Panaray 802 Series IV", horizontalDeg: 120, verticalDeg: 100,
     sensitivityDb1W1m: 92, powerLongTermW: 240, impedanceOhm: 8, frequencyRangeHz: [52, 15000],
-    frequencyRangeTolerance: "-10 dB", maxSPLContinuousDb: 116, maxSPLPeakDb: 122, maxSPLSource: "manufacturer_published",
+    frequencyRangeTolerance: "-10 dB", maxSPLContinuousDb: 116, maxSPLPeakDb: 122, maxSPLSource: "calculated_estimate",
     drivers: "8 × 4.5 in full-range cone drivers",
     dimensionsMm: [336, 523, 335], weightKg: 13.6, highPassHz: 55,
     source: "https://assets.boseprofessional.com/m/50836c8f81ac089d/original/ig_Panaray_402-IV_502A_802IV_en.pdf",
@@ -85,7 +85,7 @@ export const SPEAKER_SPECS: Record<string, SpeakerSpec> = {
   "Bose 502 A": {
     manufacturer: "Bose Professional", model: "Panaray 502 A", horizontalDeg: 120, verticalDeg: 70,
     sensitivityDb1W1m: 88, powerLongTermW: 150, impedanceOhm: 8, frequencyRangeHz: [103, 15000],
-    frequencyRangeTolerance: "-10 dB", maxSPLContinuousDb: 110, maxSPLPeakDb: 116, maxSPLSource: "manufacturer_published",
+    frequencyRangeTolerance: "-10 dB", maxSPLContinuousDb: 110, maxSPLPeakDb: 116, maxSPLSource: "calculated_estimate",
     drivers: "5 × 4.5 in (114 mm) full-range cone drivers",
     dimensionsMm: [603, 146, 179], weightKg: 6.8, highPassHz: 110,
     source: "https://assets.boseprofessional.com/m/50836c8f81ac089d/original/ig_Panaray_402-IV_502A_802IV_en.pdf",
@@ -94,7 +94,7 @@ export const SPEAKER_SPECS: Record<string, SpeakerSpec> = {
   "Inter-M CU-7120": {
     manufacturer: "Inter-M", model: "CU-7120", horizontalDeg: 150, verticalDeg: 50,
     sensitivityDb1W1m: 94, powerLongTermW: 120, impedanceOhm: 8, frequencyRangeHz: [70, 20000],
-    frequencyRangeTolerance: "-20%", maxSPLContinuousDb: 115,
+    frequencyRangeTolerance: "-20%", maxSPLContinuousDb: 115, maxSPLSource: "calculated_estimate",
     drivers: "4 × 4 in LF + 2 × 1 in HF", dimensionsMm: [620, 130, 195], weightKg: 8,
     powerTapsW: [120, 60],
     source: "https://www.inter-m.com/en/mo/product/pdc_detail.php?pdCode=P010805_0016",
@@ -103,7 +103,7 @@ export const SPEAKER_SPECS: Record<string, SpeakerSpec> = {
   "Inter-M CU-7060": {
     manufacturer: "Inter-M", model: "CU-7060", horizontalDeg: 140, verticalDeg: 100,
     sensitivityDb1W1m: 92, powerLongTermW: 60, impedanceOhm: 8, frequencyRangeHz: [55, 20000],
-    frequencyRangeTolerance: "-20%", maxSPLContinuousDb: 110,
+    frequencyRangeTolerance: "-20%", maxSPLContinuousDb: 110, maxSPLSource: "calculated_estimate",
     drivers: "2 × 4 in LF + 1 × 1 in HF", dimensionsMm: [420, 130, 195], weightKg: 5.4,
     powerTapsW: [60, 30],
     source: "https://www.inter-m.com/en/mo/product/pdc_detail.php?pdCode=P010805_0015",
