@@ -273,9 +273,6 @@ function addChurchArchitecture(scene: THREE.Scene, length: number, width: number
   scene.add(createSurface([
     [0, ridgeY, midZ], [length, ridgeY, midZ], [length, height, width], [0, height, width],
   ], roofMaterial));
-  scene.add(createSurface([
-    [0, height, 0], [0, ridgeY, midZ], [0, height, width], [0, height, width],
-  ], wallMaterial));
   // Close each gable with a dedicated triangle (the surface helper expects a quad).
   const makeGable = (x: number) => {
     const geometry = new THREE.BufferGeometry();
