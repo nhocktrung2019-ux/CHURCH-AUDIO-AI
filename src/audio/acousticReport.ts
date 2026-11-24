@@ -1,5 +1,5 @@
 import type { MeasurementPosition } from "./measurementPositions";
-import type { CalibrationRecord } from "./calibrationRecords";
+import { assessCalibration, type CalibrationRecord } from "./calibrationRecords";
 export type ReportReading = { id: string; positionId: string; value: number; unit: "dB_SPL"|"dBFS"; evidence: "measured"|"manual"|"simulated"|"interpolated"; calibrationId?: string; sessionId: string; weighting: "A"|"C"|"Z" };
 export type AcousticReportInput = { reportId: string; roomId: string; sessionId: string; createdAt: string; positions: MeasurementPosition[]; calibrations: CalibrationRecord[]; readings: ReportReading[] };
 export type AcousticReport = { schemaVersion: 1; reportId: string; roomId: string; sessionId: string; createdAt: string; positions: MeasurementPosition[]; readings: Array<ReportReading & { acceptedForSpl: boolean; rejectionReason?: string }>; summary: { acceptedSplCount: number; rejectedCount: number; status: "ready"|"insufficient-data" } };
@@ -17,9 +17,8 @@ export function buildAcousticReport(input: AcousticReportInput, now = new Date()
     else if (!reading.calibrationId || !calibrations.has(reading.calibrationId)) rejectionReason = "Thiếu hồ sơ hiệu chuẩn.";
     else {
       const record = calibrations.get(reading.calibrationId)!;
-      const expiry = Date.parse(record.expiresAt);
-      if (!Number.isFinite(expiry) || now.getTime() > expiry) rejectionReason = "Hiệu chuẩn hết hạn hoặc ngày không hợp lệ.";
-      else if (record.microphoneId.trim() === "") rejectionReason = "Hồ sơ hiệu chuẩn thiếu mã microphone.";
+      const assessment = assessCalibration(record, now);
+      if (assessment.status !== "valid") rejectionReason = assessment.reason;
     }
     const acceptedForSpl = !rejectionReason && Number.isFinite(reading.value) && reading.value >= 20 && reading.value <= 140;
     if (!acceptedForSpl && !rejectionReason) rejectionReason = "Giá trị SPL ngoài phạm vi 20–140 dB.";
