@@ -2,11 +2,11 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { analyzeAcousticSnapshot } from "../src/audio/acousticDiagnostics.ts";
 
-function spectrum(levels = [80, 80, 80, 80, 80]) {
+function spectrum(levels = [-20, -20, -20, -20, -20]) {
   const ranges = [[25, 40, 63, 90, 110], [150, 200, 300, 400, 480], [600, 800, 1000, 1400, 1800],
     [2200, 3000, 4000, 5000, 5800], [6500, 8000, 10000, 14000, 18000]];
   return ranges.flatMap((frequencies, band) => frequencies.map((frequencyHz, index) => ({
-    frequencyHz, levelDb: levels[band] ?? 80, evidence: "measured",
+    frequencyHz, levelDb: levels[band] ?? -20, evidence: "measured",
   })));
 }
 
@@ -37,7 +37,7 @@ test("excludes simulated, manual, invalid and out-of-range spectrum bins", () =>
 });
 
 test("flags low-frequency build-up and high-frequency rolloff without prescribing EQ", () => {
-  const report = analyzeAcousticSnapshot({ spectrum: spectrum([92, 90, 80, 80, 68]) });
+  const report = analyzeAcousticSnapshot({ spectrum: spectrum([-5, -7, -17, -17, -29]) });
   assert.ok(report.findings.some((item) => item.code === "low-frequency-build-up"));
   assert.ok(report.findings.some((item) => item.code === "high-frequency-rolloff"));
   assert.ok(report.findings.every((item) => !item.action.toLowerCase().includes("auto apply")));
