@@ -3,8 +3,8 @@ import { useState, type PointerEvent } from "react";
 import{Plus,Speaker,Trash2,Move3d,Ruler}from"lucide-react";
 import{SPEAKER_MODELS,SPEAKER_SPECS}from"../data/speakerModels";
 import ChurchSceneWebGL from "./ChurchSceneWebGL";
-type SpeakerUnit={id:number;name:string;model:string;zone:string;x:number;y:number;z:number;azimuth:number;coverage:number;verticalCoverage:number;sensitivity:number|null;powerW:number|null;impedance:number};
 import type { MeasurementPosition } from "./measurementPositions";
+type SpeakerUnit={id:number;name:string;model:string;zone:string;x:number;y:number;z:number;azimuth:number;coverage:number;verticalCoverage:number;sensitivity:number|null;powerW:number|null;impedance:number};
 type SceneObject={id:number;kind:"altar"|"pulpit"|"column"|"pew"|"chair"|"stage";name:string;x:number;y:number;w:number;d:number;h:number;rotation:number};
 const clamp=(v:number,min:number,max:number)=>Math.max(min,Math.min(max,v));
 export default function RoomPlanner3D(){
