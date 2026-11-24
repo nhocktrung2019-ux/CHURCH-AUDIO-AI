@@ -177,35 +177,75 @@ function createSpeakerGroup(speaker: WebGLSpeaker, index: number): THREE.Group {
   return group;
 }
 
+function createSurface(
+  vertices: [number, number, number][],
+  material: THREE.Material,
+): THREE.Mesh {
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute("position", new THREE.Float32BufferAttribute(vertices.flat(), 3));
+  geometry.setIndex([0, 1, 2, 0, 2, 3]);
+  geometry.computeVertexNormals();
+  const mesh = new THREE.Mesh(geometry, material);
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  return mesh;
+}
+
+function addBeam(
+  scene: THREE.Scene,
+  start: THREE.Vector3,
+  end: THREE.Vector3,
+  radius: number,
+  material: THREE.Material,
+): void {
+  const direction = new THREE.Vector3().subVectors(end, start);
+  const beam = new THREE.Mesh(
+    new THREE.CylinderGeometry(radius, radius, direction.length(), 8),
+    material,
+  );
+  beam.position.copy(start).add(end).multiplyScalar(0.5);
+  beam.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction.normalize());
+  beam.castShadow = true;
+  scene.add(beam);
+}
+
 function addChurchArchitecture(scene: THREE.Scene, length: number, width: number, height: number): void {
   const wallMaterial = new THREE.MeshStandardMaterial({
-    color: 0x8b9695, roughness: 0.88, transparent: true, opacity: 0.23, side: THREE.DoubleSide,
+    color: 0x9a9b91, roughness: 0.9, transparent: true, opacity: 0.2, side: THREE.DoubleSide,
   });
   const trimMaterial = new THREE.MeshStandardMaterial({ color: 0x8b785d, roughness: 0.65 });
   const glassColors = [0x3a91b0, 0x8f5d98, 0xd6a44e, 0x4d8d82, 0xb55e55];
+  const woodMaterial = new THREE.MeshStandardMaterial({ color: 0x493426, roughness: 0.78 });
+  const roofMaterial = new THREE.MeshStandardMaterial({
+    color: 0x514b43, roughness: 0.82, metalness: 0.04,
+    transparent: true, opacity: 0.38, side: THREE.DoubleSide,
+  });
 
   const floor = new THREE.Mesh(
     new THREE.PlaneGeometry(length, width),
-    new THREE.MeshStandardMaterial({ color: 0x4b382a, roughness: 0.88 }),
+    new THREE.MeshStandardMaterial({ color: 0x554333, roughness: 0.86 }),
   );
   floor.rotation.x = -Math.PI / 2;
   floor.position.set(length / 2, -0.02, width / 2);
   floor.receiveShadow = true;
   scene.add(floor);
 
+  // A central carpeted aisle gives the nave a recognizable church layout.
+  const aisleWidth = Math.max(1.1, Math.min(2.2, width * 0.1));
+  addBox(scene, [length * 0.82, 0.018, aisleWidth], [length * 0.47, 0.006, width / 2], woodMaterial, false);
+
   const wallThickness = 0.18;
   addBox(scene, [length, height, wallThickness], [length / 2, height / 2, 0], wallMaterial, false);
   addBox(scene, [wallThickness, height, width], [0, height / 2, width / 2], wallMaterial, false);
   addBox(scene, [wallThickness, height, width], [length, height / 2, width / 2], wallMaterial, false);
-  addBox(scene, [length, 0.18, width], [length / 2, height, width / 2], wallMaterial, false);
 
   const floorGrid = new THREE.GridHelper(Math.max(length, width), Math.max(16, Math.round(Math.max(length, width) * 2)), 0x9b876d, 0x695947);
   floorGrid.position.set(length / 2, 0.005, width / 2);
   (floorGrid.material as THREE.Material).transparent = true;
-  (floorGrid.material as THREE.Material).opacity = 0.16;
+  (floorGrid.material as THREE.Material).opacity = 0.12;
   scene.add(floorGrid);
 
-  // Stained-glass window bays on both long side walls.
+  // Stained-glass window bays and mullions on both long nave walls.
   for (const x of [0.11, length - 0.11]) {
     for (const z of [width * 0.2, width * 0.5, width * 0.8]) {
       addBox(scene, [0.08, height * 0.36, width * 0.11], [x, height * 0.57, z], trimMaterial);
@@ -219,11 +259,51 @@ function addChurchArchitecture(scene: THREE.Scene, length: number, width: number
           z + (pane - 2) * width * 0.018,
         ], paneMaterial, false);
       }
+      addBox(scene, [0.045, height * 0.31, 0.055], [x, height * 0.57, z], trimMaterial, false);
     }
   }
 
-  // Repeating stone arches make the nave read as a church rather than a plain box.
-  const archMaterial = new THREE.MeshStandardMaterial({ color: 0x9b8b73, roughness: 0.64 });
+  // Nave roof: two pitched planes, gable end walls, ridge and exposed rafters.
+  // Keeping the roof translucent preserves visibility of the acoustic layout below.
+  const ridgeY = height + Math.max(1.25, Math.min(3.2, width * 0.13));
+  const midZ = width / 2;
+  scene.add(createSurface([
+    [0, height, 0], [length, height, 0], [length, ridgeY, midZ], [0, ridgeY, midZ],
+  ], roofMaterial));
+  scene.add(createSurface([
+    [0, ridgeY, midZ], [length, ridgeY, midZ], [length, height, width], [0, height, width],
+  ], roofMaterial));
+  scene.add(createSurface([
+    [0, height, 0], [0, ridgeY, midZ], [0, height, width], [0, height, width],
+  ], wallMaterial));
+  // Close each gable with a dedicated triangle (the surface helper expects a quad).
+  const makeGable = (x: number) => {
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute("position", new THREE.Float32BufferAttribute([
+      x, height, 0, x, height, width, x, ridgeY, midZ,
+    ], 3));
+    geometry.setIndex([0, 1, 2]);
+    geometry.computeVertexNormals();
+    const gable = new THREE.Mesh(geometry, wallMaterial);
+    gable.receiveShadow = true;
+    scene.add(gable);
+  };
+  makeGable(0.08);
+  makeGable(length - 0.08);
+
+  const timber = new THREE.MeshStandardMaterial({ color: 0x6e5942, roughness: 0.78 });
+  addBox(scene, [length, 0.16, 0.18], [length / 2, ridgeY - 0.08, midZ], timber);
+  addBox(scene, [length, 0.13, 0.16], [length / 2, height - 0.04, 0.08], timber);
+  addBox(scene, [length, 0.13, 0.16], [length / 2, height - 0.04, width - 0.08], timber);
+  const rafterCount = Math.max(4, Math.floor(length / 3.5));
+  for (let i = 0; i <= rafterCount; i++) {
+    const x = (length * i) / rafterCount;
+    addBeam(scene, new THREE.Vector3(x, height, 0.12), new THREE.Vector3(x, ridgeY, midZ), 0.075, timber);
+    addBeam(scene, new THREE.Vector3(x, height, width - 0.12), new THREE.Vector3(x, ridgeY, midZ), 0.075, timber);
+  }
+
+  // Repeating stone arches frame the nave and visually separate the side aisles.
+  const archMaterial = new THREE.MeshStandardMaterial({ color: 0xa99a82, roughness: 0.64 });
   const archCount = Math.max(3, Math.floor(length / 5));
   for (let i = 1; i <= archCount; i++) {
     const x = (length * i) / (archCount + 1);
@@ -240,18 +320,47 @@ function addChurchArchitecture(scene: THREE.Scene, length: number, width: number
     scene.add(arch);
   }
 
+  // Entrance portal and paired columns establish the front elevation.
+  const portal = new THREE.MeshStandardMaterial({ color: 0x30251e, roughness: 0.82 });
+  addBox(scene, [0.12, height * 0.58, width * 0.2], [0.13, height * 0.29, midZ], portal, false);
+  const entryColumnMaterial = new THREE.MeshStandardMaterial({ color: 0xb5a58d, roughness: 0.7 });
+  for (const z of [midZ - width * 0.17, midZ + width * 0.17]) {
+    const pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.24, height * 0.68, 20), entryColumnMaterial);
+    pillar.position.set(0.42, height * 0.34, z);
+    pillar.castShadow = true;
+    scene.add(pillar);
+    addBox(scene, [0.58, 0.14, 0.58], [0.42, height * 0.68, z], trimMaterial);
+  }
+
+  // A stronger transverse arch marks the sanctuary transition near the altar.
+  const chancelPoints: THREE.Vector3[] = [];
+  for (let j = 0; j <= 32; j++) {
+    const t = j / 32;
+    chancelPoints.push(new THREE.Vector3(
+      length * 0.86,
+      height * (0.62 + 0.3 * Math.sin(Math.PI * t)),
+      width * t,
+    ));
+  }
+  const chancel = new THREE.Mesh(
+    new THREE.TubeGeometry(new THREE.CatmullRomCurve3(chancelPoints), 48, 0.18, 10, false),
+    new THREE.MeshStandardMaterial({ color: 0xc0a77b, roughness: 0.5 }),
+  );
+  chancel.castShadow = true;
+  scene.add(chancel);
+
   // A simple cross and sanctuary light define the altar end of the room.
   const crossMaterial = new THREE.MeshStandardMaterial({
     color: 0xd9bd80, metalness: 0.34, roughness: 0.35, emissive: 0x6a4d20, emissiveIntensity: 0.14,
   });
   const crossX = length - 0.34;
-  addBox(scene, [0.14, height * 0.31, 0.22], [crossX, height * 0.58, width / 2], crossMaterial);
-  addBox(scene, [0.14, 0.22, width * 0.16], [crossX, height * 0.63, width / 2], crossMaterial);
+  addBox(scene, [0.14, height * 0.31, 0.22], [crossX, height * 0.58, midZ], crossMaterial);
+  addBox(scene, [0.14, 0.22, width * 0.16], [crossX, height * 0.63, midZ], crossMaterial);
 
   for (let i = 1; i <= 4; i++) {
     const x = length * i / 5;
     const light = new THREE.PointLight(0xffd9a3, 0.55, Math.max(length, width) * 0.55, 2);
-    light.position.set(x, height * 0.68, width / 2);
+    light.position.set(x, height * 0.68, midZ);
     scene.add(light);
     const fitting = new THREE.Mesh(
       new THREE.SphereGeometry(0.12, 12, 8),
@@ -513,7 +622,7 @@ export default function ChurchSceneWebGL(props: Props) {
         state.groups.delete(key);
       }
     }
-  }, [props.speakers, props.objects, props.selectedSpeaker, props.selectedObject]);
+  }, [props.speakers, props.objects, props.measurementPositions, props.selectedSpeaker, props.selectedObject]);
 
   return (
     <div
