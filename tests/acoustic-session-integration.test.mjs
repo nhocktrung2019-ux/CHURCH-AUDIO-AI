@@ -6,7 +6,7 @@ test("reports a complete diagnostic summary when independent module results are 
   const spectrum = Array.from({ length: 25 }, (_, index) => ({
     frequencyHz: 30 * 10 ** (index / 24 * 2.7),
     levelDb: -30 - (index % 4),
-    evidence: "measured" as const,
+    evidence: "measured",
   }));
   const rt60Bands = [125, 250, 500, 1000, 2000, 4000].map((centerHz) => ({
     centerHz, rt20Seconds: 0.8, rt30Seconds: 0.8, rt60Seconds: 0.8, fitR2: 0.9,
