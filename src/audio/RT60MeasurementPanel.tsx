@@ -29,6 +29,11 @@ export default function RT60MeasurementPanel({ selectedInput, running }: Props) 
 
   const measure = async () => {
     setBusy(true); setError(""); setNotice(""); setResult(null); setImpulse(null);
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("church-audio-measurement-updated", {
+        detail: { key: "church-audio-rt60-latest", value: null },
+      }));
+    }
     let stream: MediaStream | undefined;
     let audio: AudioContext | undefined;
     let source: AudioBufferSourceNode | undefined;
