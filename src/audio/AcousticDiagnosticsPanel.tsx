@@ -89,8 +89,8 @@ export default function AcousticDiagnosticsPanel({ spectrumDbfs, running }: Prop
       <article><small>SPL ABSOLUTE</small><strong>{report.splStatus === "calibrated" ? "CALIBRATED" : "NOT VERIFIED"}</strong></article>
     </div>
     <div className="form-grid">
-      <article className="device-notice"><b>RT60</b><span>{hasRt60 ? `Đã lưu kết quả · RT60 trung vị ${report.rt60.medianSeconds?.toFixed(2) ?? "—"} s · độ rộng ${report.rt60.spreadSeconds?.toFixed(2) ?? "—"} s` : "Chưa có phép đo RT60 hợp lệ được lưu."}</span></article>
-      <article className="device-notice"><b>Transfer / Phase</b><span>{hasTransfer ? `${transferResult?.points.length ?? 0} điểm · coherence tin cậy ${report.transfer.reliableBandPercent?.toFixed(0) ?? "—"}% · ${transferMode}` : "Chưa có kết quả Transfer Function được lưu."}</span></article>
+      <article className="device-notice"><b>RT60</b><span>{hasRt60 ? (sessionCompatibility.compatible ? `Đã lưu kết quả · RT60 trung vị ${report.rt60.medianSeconds?.toFixed(2) ?? "—"} s · độ rộng ${report.rt60.spreadSeconds?.toFixed(2) ?? "—"} s` : "Có kết quả RT60, nhưng chưa được ghép vì thiếu phiên đo tương thích.") : "Chưa có phép đo RT60 hợp lệ được lưu."}</span></article>
+      <article className="device-notice"><b>Transfer / Phase</b><span>{hasTransfer ? (sessionCompatibility.compatible ? `${transferResult?.points.length ?? 0} điểm · coherence tin cậy ${report.transfer.reliableBandPercent?.toFixed(0) ?? "—"}% · ${transferMode}` : `Có ${transferResult?.points.length ?? 0} điểm Transfer, nhưng chưa được ghép vì thiếu phiên đo tương thích.`) : "Chưa có kết quả Transfer Function được lưu."}</span></article>
     </div>
     <div className="table-wrap"><table><thead><tr><th>Dải tần</th><th>Khoảng</th><th>Số bin</th><th>Mức năng lượng tương đối</th></tr></thead>
       <tbody>{report.spectrumBands.map((band) => <tr key={band.name}><td>{band.name}</td><td>{band.lowHz}–{band.highHz >= 1000 ? (band.highHz / 1000) + " kHz" : band.highHz + " Hz"}</td><td>{band.binCount}</td><td>{band.energyAverageDb === null ? "—" : band.energyAverageDb.toFixed(1) + " dBFS"}</td></tr>)}</tbody>
