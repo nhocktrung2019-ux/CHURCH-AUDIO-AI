@@ -11,5 +11,5 @@ export function validateDspProposal(filters: DspFilterProposal[], context: { cal
   }
   if (!context.calibrated) warnings.push("Chưa có chuỗi đo SPL hiệu chuẩn; cấu hình chỉ là bản nháp tương đối.");
   if (!context.measuredTransfer) warnings.push("Chưa có Transfer Function đo thực; không được coi EQ là Auto EQ đã xác minh.");
-  return { safeToExport: errors.length === 0, errors, warnings };
+  return { safeToExport: errors.length === 0 && context.calibrated && context.measuredTransfer, errors, warnings };
 }
