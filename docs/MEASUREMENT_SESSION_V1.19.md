@@ -1,4 +1,4 @@
-# Measurement Session — v1.18.1 foundation
+# Measurement Session — v1.19 foundation
 
 ## Operator workflow
 
