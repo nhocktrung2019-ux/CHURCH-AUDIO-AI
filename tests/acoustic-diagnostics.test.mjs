@@ -1,12 +1,12 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { analyzeAcousticSnapshot, type SpectrumBin } from "../src/audio/acousticDiagnostics.ts";
+import { analyzeAcousticSnapshot } from "../src/audio/acousticDiagnostics.ts";
 
-function spectrum(levels: number[] = [80, 80, 80, 80, 80]): SpectrumBin[] {
+function spectrum(levels = [80, 80, 80, 80, 80]) {
   const ranges = [[25, 40, 63, 90, 110], [150, 200, 300, 400, 480], [600, 800, 1000, 1400, 1800],
     [2200, 3000, 4000, 5000, 5800], [6500, 8000, 10000, 14000, 18000]];
   return ranges.flatMap((frequencies, band) => frequencies.map((frequencyHz, index) => ({
-    frequencyHz, levelDb: levels[band] ?? 80, evidence: "measured" as const,
+    frequencyHz, levelDb: levels[band] ?? 80, evidence: "measured",
   })));
 }
 
