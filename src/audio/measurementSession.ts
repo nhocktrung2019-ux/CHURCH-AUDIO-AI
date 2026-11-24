@@ -8,6 +8,7 @@ export type MeasurementSession = {
 };
 export type MeasurementCaptureContext = {
   sessionId: string | null;
+  roomId?: string;
   capturedAt: string;
   inputDeviceId?: string;
   outputDeviceId?: string;
@@ -48,6 +49,7 @@ export function createCaptureContext(
 ): MeasurementCaptureContext {
   return {
     sessionId: session?.sessionId ?? null,
+    roomId: session?.roomId,
     capturedAt: now.toISOString(),
     ...values,
   };
@@ -63,8 +65,8 @@ export function assessSessionCompatibility(captures: Array<MeasurementCaptureCon
   if (ids.length !== 1 || valid.some((item) => !item.sessionId)) {
     return { compatible: false, reason: "Các phép đo không thuộc cùng một phiên có mã định danh.", sessionIds: ids };
   }
-  const roomIds = [...new Set(valid.map((item) => item.positionId ? item.positionId.split(":")[0] : ""))];
-  if (roomIds.some((room) => room && room !== roomIds[0])) {
+  const roomIds = [...new Set(valid.map((item) => item.roomId).filter((room): room is string => Boolean(room)))];
+  if (roomIds.length > 1) {
     return { compatible: false, reason: "Các phép đo khác mã phòng/khu vực.", sessionIds: ids };
   }
   return { compatible: true, reason: "Các kết quả có cùng mã phiên. Vẫn cần xác nhận vị trí và chuỗi đo trước khi so sánh định lượng.", sessionIds: ids };
