@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { Activity, AlertTriangle, CheckCircle2, ClipboardList } from "lucide-react";
 import { analyzeAcousticSnapshot } from "./acousticDiagnostics";
 import { rtaBandFrequency } from "./rtaFrequency";
@@ -9,8 +9,17 @@ import type { TransferResult } from "./transfer";
 type Props = { spectrumDbfs: number[]; running: boolean };
 
 export default function AcousticDiagnosticsPanel({ spectrumDbfs, running }: Props) {
-  const [rt60Result] = usePersistentState<ImpulseResponseResult | null>("church-audio-rt60-latest", null);
-  const [transferResult] = usePersistentState<TransferResult | null>("church-audio-transfer-latest", null);
+  const [rt60Result, setRt60Result] = usePersistentState<ImpulseResponseResult | null>("church-audio-rt60-latest", null);
+  const [transferResult, setTransferResult] = usePersistentState<TransferResult | null>("church-audio-transfer-latest", null);
+  useEffect(() => {
+    const refresh = (event: Event) => {
+      const detail = (event as CustomEvent<{ key?: string; value?: unknown }>).detail;
+      if (detail?.key === "church-audio-rt60-latest") setRt60Result((detail.value ?? null) as ImpulseResponseResult | null);
+      if (detail?.key === "church-audio-transfer-latest") setTransferResult((detail.value ?? null) as TransferResult | null);
+    };
+    window.addEventListener("church-audio-measurement-updated", refresh);
+    return () => window.removeEventListener("church-audio-measurement-updated", refresh);
+  }, [setRt60Result, setTransferResult]);
 
   const report = useMemo(() => analyzeAcousticSnapshot({
     spectrum: running ? spectrumDbfs.map((levelDb, index) => ({
