@@ -6,13 +6,14 @@ export type WebGLSpeaker = {
   id: number; name: string; model: string; x: number; y: number; z: number;
   azimuth: number; coverage: number;
 };
+export type WebGLMeasurementPosition = { id: string; label: string; zoneId: string; xM: number; yM: number; zM: number };
 export type WebGLObject = {
   id: number; kind: "altar" | "pulpit" | "column" | "pew" | "chair" | "stage";
   name: string; x: number; y: number; w: number; d: number; h: number; rotation: number;
 };
 type Props = {
   length: number; width: number; height: number;
-  speakers: WebGLSpeaker[]; objects: WebGLObject[];
+  speakers: WebGLSpeaker[]; objects: WebGLObject[]; measurementPositions: WebGLMeasurementPosition[];
   selectedSpeaker: number; selectedObject: number;
   onSelectSpeaker: (id: number) => void; onSelectObject: (id: number) => void;
   onMoveSpeaker: (id: number, x: number, y: number) => void;
@@ -484,6 +485,25 @@ export default function ChurchSceneWebGL(props: Props) {
       }
       group.rotation.y = -THREE.MathUtils.degToRad(speaker.azimuth);
       group.scale.setScalar(speaker.id === props.selectedSpeaker ? 1.08 : 1);
+    });
+
+
+    props.measurementPositions.forEach((point) => {
+      const key = "p:" + point.id;
+      liveKeys.add(key);
+      let group = state.groups.get(key);
+      if (!group) {
+        group = new THREE.Group();
+        const marker = new THREE.Mesh(new THREE.SphereGeometry(0.16, 16, 12), new THREE.MeshBasicMaterial({ color: 0x56e0d0 }));
+        marker.userData.noDrag = true;
+        const halo = new THREE.Mesh(new THREE.TorusGeometry(0.28, 0.025, 6, 32), new THREE.MeshBasicMaterial({ color: 0xa7fff2, transparent: true, opacity: 0.9 }));
+        halo.rotation.x = Math.PI / 2;
+        halo.userData.noDrag = true;
+        group.add(marker, halo);
+        state.scene.add(group);
+        state.groups.set(key, group);
+      }
+      group.position.set(point.xM, point.zM, point.yM);
     });
 
     for (const [key, group] of state.groups) {
