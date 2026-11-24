@@ -26,7 +26,7 @@ test("reports a complete diagnostic summary when independent module results are 
 test("does not mark calibrated SPL merely because frequency response and transfer data exist", () => {
   const report = analyzeAcousticSnapshot({
     spectrum: Array.from({ length: 20 }, (_, index) => ({
-      frequencyHz: 100 + index * 500, levelDb: -24, evidence: "measured" as const,
+      frequencyHz: 100 + index * 500, levelDb: -24, evidence: "measured",
     })),
     rt60Bands: [{ centerHz: 1000, rt20Seconds: 0.7, rt30Seconds: 0.7, rt60Seconds: 0.7, fitR2: 0.9 }],
     transferPoints: [{ frequencyHz: 1000, magnitudeDb: -2, coherence: 0.95 }],
