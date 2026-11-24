@@ -10,6 +10,7 @@ import { aggregateMultiPositionAutoEq, assessMultiPositionAutoEq, type MultiPosi
 import { analyzeMeasurementRepeatability } from "./measurementRepeatability.ts";
 import { explainMicrophoneError, requestMicrophoneStream } from "./microphone";
 import type { MicCalibrationPoint } from "./micCalibration";
+import { createCaptureContext, readActiveMeasurementSession, type MeasurementCaptureContext } from "./measurementSession";
 import {
   assessChannelCalibrationRepeatability,
   applyDifferentialChannelCalibration,
@@ -22,12 +23,14 @@ import {
 } from "./channelCalibration";
 
 export default function TransferFunctionPanel({ selectedInput, selectedOutput, running, calibrationPoints = [] }: { selectedInput: string; selectedOutput: string; running: boolean; calibrationPoints?: MicCalibrationPoint[] }) {
+  let captureContextForCurrentMeasurement: MeasurementCaptureContext | null = null;
   const [result, setResult] = usePersistentState<TransferResult | null>("church-audio-transfer-latest",null);
   const publishResult = (value: TransferResult | null) => {
-    setResult(value);
+    const stampedValue = value && captureContextForCurrentMeasurement ? { ...value, measurementContext: captureContextForCurrentMeasurement } : value;
+    setResult(stampedValue);
     if (typeof window !== "undefined") {
       window.dispatchEvent(new CustomEvent("church-audio-measurement-updated", {
-        detail: { key: "church-audio-transfer-latest", value },
+        detail: { key: "church-audio-transfer-latest", value: stampedValue },
       }));
     }
   };
@@ -95,6 +98,7 @@ export default function TransferFunctionPanel({ selectedInput, selectedOutput, r
     &&!multiPositionSamples.some(s=>s.label.trim().toLocaleLowerCase()===positionLabel.trim().toLocaleLowerCase()));
 
   const measure = async () => {
+    captureContextForCurrentMeasurement = createCaptureContext(readActiveMeasurementSession(), { inputDeviceId: selectedInput, outputDeviceId: selectedOutput });
     setBusy(true); setError(""); setNotice(""); publishResult(null); setEqCopied(false);
     let stream: MediaStream | undefined, audio: AudioContext | undefined;
     let microphoneSource: MediaStreamAudioSourceNode | undefined;
