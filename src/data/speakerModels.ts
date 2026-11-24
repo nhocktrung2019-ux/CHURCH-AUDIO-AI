@@ -10,6 +10,7 @@ export type SpeakerSpec = {
   frequencyRangeTolerance?: string;
   maxSPLContinuousDb?: number | null;
   maxSPLPeakDb?: number | null;
+  maxSPLSource?: "manufacturer_published" | "calculated_estimate" | null;
   drivers?: string;
   dimensionsMm?: [number, number, number] | null;
   weightKg?: number | null;
@@ -24,7 +25,7 @@ export const SPEAKER_SPECS: Record<string, SpeakerSpec> = {
   "CBT 50LA-1 (CBT 50)": {
     manufacturer: "JBL Professional", model: "CBT 50LA-1", horizontalDeg: 150, verticalDeg: 20,
     sensitivityDb1W1m: 89, powerLongTermW: 100, impedanceOhm: 8, frequencyRangeHz: [80, 20000],
-    frequencyRangeTolerance: "-10 dB", maxSPLContinuousDb: 111, maxSPLPeakDb: 117,
+    frequencyRangeTolerance: "-10 dB", maxSPLContinuousDb: 111, maxSPLPeakDb: 117, maxSPLSource: "manufacturer_published",
     drivers: "8 × 50 mm (2 in) full-range",
     source: "https://jblpro.com/en-US/products/cbt-50la-1",
     sourceNote: "JBL official spec: music mode sensitivity 89 dB (300 Hz–18 kHz), 100 W/100 h, 111 dB continuous average / 117 dB peak music mode. Speech mode differs; transformer taps 60/30/15 W (7.5 W at 70 V only) and 8 Ω direct."
@@ -32,7 +33,7 @@ export const SPEAKER_SPECS: Record<string, SpeakerSpec> = {
   "CBT 70J-1 (CBT 70)": {
     manufacturer: "JBL Professional", model: "CBT 70J-1", horizontalDeg: 150, verticalDeg: 45,
     sensitivityDb1W1m: 92, powerLongTermW: 350, impedanceOhm: 8, frequencyRangeHz: [60, 20000],
-    frequencyRangeTolerance: "-10 dB", maxSPLContinuousDb: 119, maxSPLPeakDb: 125,
+    frequencyRangeTolerance: "-10 dB", maxSPLContinuousDb: 119, maxSPLPeakDb: 125, maxSPLSource: "manufacturer_published",
     drivers: "4 × 130 mm (5 in) LF + 16 × 25 mm (1 in) HF",
     source: "https://jblpro.com/en-US/products/cbt-70j-1",
     sourceNote: "JBL official spec: 150° H; vertical switchable 25° narrow / 45° broad. Music mode broad sensitivity 92 dB and 119 dB continuous average / 125 dB peak; narrow mode is higher. 350 W is 100-hour capacity."
@@ -40,7 +41,7 @@ export const SPEAKER_SPECS: Record<string, SpeakerSpec> = {
   "CBT 100LA-1 (CBT 100)": {
     manufacturer: "JBL Professional", model: "CBT 100LA-1", horizontalDeg: 150, verticalDeg: 40,
     sensitivityDb1W1m: 90, powerLongTermW: 200, impedanceOhm: 5, frequencyRangeHz: [80, 20000],
-    frequencyRangeTolerance: "-10 dB", maxSPLContinuousDb: 115, maxSPLPeakDb: 121,
+    frequencyRangeTolerance: "-10 dB", maxSPLContinuousDb: 115, maxSPLPeakDb: 121, maxSPLSource: "manufacturer_published",
     drivers: "16 × 50 mm (2 in) full-range",
     source: "https://jblpro.com/en-US/products/cbt-100la-1",
     sourceNote: "JBL official spec: vertical switchable 15° narrow / 40° broad, 150° H. Broad music mode sensitivity 90 dB and 115 dB continuous average / 121 dB peak; narrow mode is higher. 200 W is 100-hour capacity. 5 Ω is specified in Thru mode; transformer taps 120/60/30 W (15 W at 70 V only)."
@@ -48,7 +49,7 @@ export const SPEAKER_SPECS: Record<string, SpeakerSpec> = {
   "Bose MA12": {
     manufacturer: "Bose Professional", model: "Panaray MA12", horizontalDeg: 145, verticalDeg: 20,
     sensitivityDb1W1m: 88, powerLongTermW: 300, impedanceOhm: 8, frequencyRangeHz: [100, 16000],
-    frequencyRangeTolerance: "-10 dB", maxSPLContinuousDb: 113, maxSPLPeakDb: 119,
+    frequencyRangeTolerance: "-10 dB", maxSPLContinuousDb: 113, maxSPLPeakDb: 119, maxSPLSource: "manufacturer_published",
     drivers: "12 × 2.25 in (57 mm) mid/high-frequency drivers",
     dimensionsMm: [984, 105, 128], weightKg: 8.5,
     source: "https://www.boseprofessional.com/products/loudspeakers/line-columns/passive/ma/ma12-modular-columnar-array-loudspeaker",
@@ -57,7 +58,7 @@ export const SPEAKER_SPECS: Record<string, SpeakerSpec> = {
   "Bose MA12EX": {
     manufacturer: "Bose Professional", model: "Panaray MA12EX", horizontalDeg: 160, verticalDeg: 20,
     sensitivityDb1W1m: 87, powerLongTermW: 150, impedanceOhm: 8, frequencyRangeHz: [58, 16000],
-    frequencyRangeTolerance: "-10 dB", maxSPLContinuousDb: 112, maxSPLPeakDb: 118,
+    frequencyRangeTolerance: "-10 dB", maxSPLContinuousDb: 112, maxSPLPeakDb: 118, maxSPLSource: "manufacturer_published",
     drivers: "12 × 2.25 in (57 mm) weather-resistant high-excursion drivers",
     dimensionsMm: [985, 104, 139], weightKg: 9.4,
     source: "https://www.boseprofessional.com/products/loudspeakers/line-columns/passive/ma/ma12ex-modular-columnar-array-loudspeaker",
@@ -66,7 +67,7 @@ export const SPEAKER_SPECS: Record<string, SpeakerSpec> = {
   "Bose 402 Series IV": {
     manufacturer: "Bose Professional", model: "Panaray 402 Series IV", horizontalDeg: 120, verticalDeg: 60,
     sensitivityDb1W1m: 91, powerLongTermW: 120, impedanceOhm: 8, frequencyRangeHz: [73, 15000],
-    frequencyRangeTolerance: "-10 dB", maxSPLContinuousDb: 112, maxSPLPeakDb: 118,
+    frequencyRangeTolerance: "-10 dB", maxSPLContinuousDb: 112, maxSPLPeakDb: 118, maxSPLSource: "manufacturer_published",
     drivers: "4 × 4.5 in (114 mm) full-range cone drivers",
     dimensionsMm: [592, 206, 202], weightKg: 7.3, highPassHz: 75,
     source: "https://assets.boseprofessional.com/m/50836c8f81ac089d/original/ig_Panaray_402-IV_502A_802IV_en.pdf",
@@ -75,7 +76,7 @@ export const SPEAKER_SPECS: Record<string, SpeakerSpec> = {
   "Bose 802 Series IV": {
     manufacturer: "Bose Professional", model: "Panaray 802 Series IV", horizontalDeg: 120, verticalDeg: 100,
     sensitivityDb1W1m: 92, powerLongTermW: 240, impedanceOhm: 8, frequencyRangeHz: [52, 15000],
-    frequencyRangeTolerance: "-10 dB", maxSPLContinuousDb: 116, maxSPLPeakDb: 122,
+    frequencyRangeTolerance: "-10 dB", maxSPLContinuousDb: 116, maxSPLPeakDb: 122, maxSPLSource: "manufacturer_published",
     drivers: "8 × 4.5 in full-range cone drivers",
     dimensionsMm: [336, 523, 335], weightKg: 13.6, highPassHz: 55,
     source: "https://assets.boseprofessional.com/m/50836c8f81ac089d/original/ig_Panaray_402-IV_502A_802IV_en.pdf",
@@ -84,7 +85,7 @@ export const SPEAKER_SPECS: Record<string, SpeakerSpec> = {
   "Bose 502 A": {
     manufacturer: "Bose Professional", model: "Panaray 502 A", horizontalDeg: 120, verticalDeg: 70,
     sensitivityDb1W1m: 88, powerLongTermW: 150, impedanceOhm: 8, frequencyRangeHz: [103, 15000],
-    frequencyRangeTolerance: "-10 dB", maxSPLContinuousDb: 110, maxSPLPeakDb: 116,
+    frequencyRangeTolerance: "-10 dB", maxSPLContinuousDb: 110, maxSPLPeakDb: 116, maxSPLSource: "manufacturer_published",
     drivers: "5 × 4.5 in (114 mm) full-range cone drivers",
     dimensionsMm: [603, 146, 179], weightKg: 6.8, highPassHz: 110,
     source: "https://assets.boseprofessional.com/m/50836c8f81ac089d/original/ig_Panaray_402-IV_502A_802IV_en.pdf",
