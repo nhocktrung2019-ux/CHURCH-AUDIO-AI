@@ -1,6 +1,6 @@
 import type { MeasurementPosition } from "./measurementPositions";
 import { assessCalibration, type CalibrationRecord } from "./calibrationRecords";
-export type ReportReading = { id: string; positionId: string; value: number; unit: "dB_SPL"|"dBFS"; evidence: "measured"|"manual"|"simulated"|"interpolated"; calibrationId?: string; sessionId: string; weighting: "A"|"C"|"Z" };
+export type ReportReading = { id: string; positionId: string; value: number; unit: "dB_SPL"|"dBFS"; evidence: "measured"|"manual"|"simulated"|"interpolated"; calibrationId?: string; sessionId: string; weighting: "A"|"C"|"Z"; microphoneId?: string };
 export type AcousticReportInput = { reportId: string; roomId: string; sessionId: string; createdAt: string; positions: MeasurementPosition[]; calibrations: CalibrationRecord[]; readings: ReportReading[] };
 export type AcousticReport = { schemaVersion: 1; reportId: string; roomId: string; sessionId: string; createdAt: string; positions: MeasurementPosition[]; readings: Array<ReportReading & { acceptedForSpl: boolean; rejectionReason?: string }>; summary: { acceptedSplCount: number; rejectedCount: number; status: "ready"|"insufficient-data" } };
 export function buildAcousticReport(input: AcousticReportInput, now = new Date()): AcousticReport {
@@ -12,6 +12,7 @@ export function buildAcousticReport(input: AcousticReportInput, now = new Date()
     let rejectionReason: string | undefined;
     if (reading.sessionId !== input.sessionId) rejectionReason = "Khác phiên đo.";
     else if (!positions.has(reading.positionId)) rejectionReason = "Không tìm thấy vị trí đo.";
+    else if (positions.get(reading.positionId)?.roomId !== input.roomId) rejectionReason = "Vị trí đo thuộc phòng khác.";
     else if (reading.unit !== "dB_SPL") rejectionReason = "dBFS không được xem là dB SPL.";
     else if (reading.evidence !== "measured") rejectionReason = "Chỉ dữ liệu đo thực mới đủ điều kiện.";
     else if (!reading.calibrationId || !calibrations.has(reading.calibrationId)) rejectionReason = "Thiếu hồ sơ hiệu chuẩn.";
@@ -19,6 +20,7 @@ export function buildAcousticReport(input: AcousticReportInput, now = new Date()
       const record = calibrations.get(reading.calibrationId)!;
       const assessment = assessCalibration(record, now);
       if (assessment.status !== "valid") rejectionReason = assessment.reason;
+      else if (reading.microphoneId && reading.microphoneId !== record.microphoneId) rejectionReason = "Microphone của phép đo không khớp hồ sơ hiệu chuẩn.";
     }
     const acceptedForSpl = !rejectionReason && Number.isFinite(reading.value) && reading.value >= 20 && reading.value <= 140;
     if (!acceptedForSpl && !rejectionReason) rejectionReason = "Giá trị SPL ngoài phạm vi 20–140 dB.";
