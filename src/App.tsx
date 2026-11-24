@@ -12,6 +12,7 @@ import TuningAdvisor from "./audio/TuningAdvisor";
 import RoomPlanner3D from "./audio/RoomPlanner3D";
 import SPLZoneMapPanel from "./audio/SPLZoneMapPanel";
 import RT60MeasurementPanel from "./audio/RT60MeasurementPanel";
+import AcousticDiagnosticsPanel from "./audio/AcousticDiagnosticsPanel";
 import MeasurementCalibrationPanel from "./audio/MeasurementCalibrationPanel";
 import CBTCalculator from "./audio/CBTCalculator";
 import PolarDataStudio from "./audio/PolarDataStudio";
@@ -27,6 +28,7 @@ import DSPIntegrationPanel from "./audio/DSPIntegrationPanel";
 import { APP_VERSION } from "./appVersion";
 import { LifeBuoy } from "lucide-react";
 import SystemHealthPanel from "./audio/SystemHealthPanel";
+import MeasurementWorkflowPanel from "./audio/MeasurementWorkflowPanel";
 
 type TabId = "overview" | "rta" | "room" | "align" | "system" | "design" | "tools" | "dsp" | "support";
 const EMPTY_MIC_CALIBRATION_POINTS: MicCalibrationPoint[] = [];
@@ -220,7 +222,7 @@ export default function App() {
     </>}
     {activeTab === "rta" && <section className="tab-stack"><section className="grid"><RtaPanel /><SpectrogramPanel /><DevicePanel /></section><SPLMeterPanel weighted={a.weightedLevels} leq={a.leqLevels} timeWeighted={a.timeWeightedLevels} peakDbfs={a.level} offsetDb={calibrationOffsetDb} durationSeconds={a.measurementSeconds} running={a.running} /><MeasurementCalibrationPanel inputDbfs={a.rmsDbfs + micCorrectionAt(calibrationPoints,1000)} offsetDb={calibrationOffsetDb} onOffsetChange={setCalibrationOffsetDb} /><MicCalibrationPanel value={micCalibration} onChange={setMicCalibration} />
     <MicrophoneSensitivityPanel value={micSensitivityProfile} onChange={setMicSensitivityProfile} activeDeviceLabel={inputs.find((device) => device.deviceId === a.selectedInput)?.label || "Micro mặc định hệ thống"} /></section>}
-    {activeTab === "room" && <section className="tab-stack"><RT60MeasurementPanel selectedInput={a.selectedInput} running={a.running} /><MeasurementPlanner running={a.running} spectrum={a.spectrum} /><SpectrogramPanel /></section>}
+    {activeTab === "room" && <section className="tab-stack"><MeasurementWorkflowPanel /><AcousticDiagnosticsPanel spectrumDbfs={a.spectrum} running={a.running} /><RT60MeasurementPanel selectedInput={a.selectedInput} running={a.running} /><MeasurementPlanner running={a.running} spectrum={a.spectrum} /><SpectrogramPanel /></section>}
     {activeTab === "align" && <section className="tab-stack"><TransferFunctionPanel selectedInput={a.selectedInput} selectedOutput={t.outputDevice} running={a.running} calibrationPoints={calibrationPoints} /><MeasurementPlanner running={a.running} spectrum={a.spectrum} /></section>}
     {activeTab === "system" && <section className="tab-stack"><MultiMicFeedbackPanel /><FeedbackMonitor history={a.history} selectedFrequencyHz={selectedRtaFrequency} selectedLevelDbfs={selectedRtaLevel} /><TuningAdvisor history={a.history} /></section>}
     {activeTab === "design" && <section className="tab-stack"><CBTCalculator /><PolarDataStudio /><RoomPlanner3D /><SPLZoneMapPanel /></section>}

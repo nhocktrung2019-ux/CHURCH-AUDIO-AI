@@ -1,7 +1,9 @@
 import { useState } from "react";
+import { usePersistentState } from "./usePersistentState";
 import { Play, Square, AlertTriangle, Waves } from "lucide-react";
 import { analyzeImpulseResponse, createLogSweep, type ImpulseResponseResult } from "./rt60";
 import { explainMicrophoneError, requestMicrophoneStream } from "./microphone";
+import { createCaptureContext, readActiveMeasurementSession } from "./measurementSession";
 
 type Props = { selectedInput: string; running: boolean };
 function resampleLinear(input: Float32Array, fromRate: number, toRate: number): Float32Array {
@@ -21,13 +23,19 @@ export default function RT60MeasurementPanel({ selectedInput, running }: Props) 
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
-  const [result, setResult] = useState<ImpulseResponseResult | null>(null);
+  const [result, setResult] = usePersistentState<ImpulseResponseResult | null>("church-audio-rt60-latest", null);
   const [impulse, setImpulse] = useState<Float32Array | null>(null);
   const [duration, setDuration] = useState(6);
   const [tailSeconds, setTailSeconds] = useState(4);
 
   const measure = async () => {
+    const measurementContext = createCaptureContext(readActiveMeasurementSession(), { inputDeviceId: selectedInput });
     setBusy(true); setError(""); setNotice(""); setResult(null); setImpulse(null);
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("church-audio-measurement-updated", {
+        detail: { key: "church-audio-rt60-latest", value: null },
+      }));
+    }
     let stream: MediaStream | undefined;
     let audio: AudioContext | undefined;
     let source: AudioBufferSourceNode | undefined;
@@ -82,7 +90,12 @@ export default function RT60MeasurementPanel({ selectedInput, running }: Props) 
       if (!analyzed) throw new Error("Không giải chập được impulse response rõ. Kiểm tra loa, micro, khoảng cách, tiếng ồn và thử sweep lại.");
       if (analyzed.result.peakToNoiseDb < 20) setNotice("Tỷ lệ đỉnh/nhiễu thấp; RT60 chỉ nên xem là tham khảo. Tăng SNR hoặc giảm tiếng ồn nền.");
       else if (analyzed.result.quality !== "good") setNotice("Một số dải tần thiếu dynamic range hoặc độ tuyến tính. Hãy kiểm tra decay plot và đo lặp tại nhiều vị trí.");
-      setResult(analyzed.result);
+      setResult({ ...analyzed.result, measurementContext });
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("church-audio-measurement-updated", {
+          detail: { key: "church-audio-rt60-latest", value: { ...analyzed.result, measurementContext } },
+        }));
+      }
       setImpulse(analyzed.impulse);
     } catch (cause) {
       setError(explainMicrophoneError(cause));

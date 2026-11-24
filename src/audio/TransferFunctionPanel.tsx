@@ -10,6 +10,7 @@ import { aggregateMultiPositionAutoEq, assessMultiPositionAutoEq, type MultiPosi
 import { analyzeMeasurementRepeatability } from "./measurementRepeatability.ts";
 import { explainMicrophoneError, requestMicrophoneStream } from "./microphone";
 import type { MicCalibrationPoint } from "./micCalibration";
+import { createCaptureContext, readActiveMeasurementSession, type MeasurementCaptureContext } from "./measurementSession";
 import {
   assessChannelCalibrationRepeatability,
   applyDifferentialChannelCalibration,
@@ -22,7 +23,17 @@ import {
 } from "./channelCalibration";
 
 export default function TransferFunctionPanel({ selectedInput, selectedOutput, running, calibrationPoints = [] }: { selectedInput: string; selectedOutput: string; running: boolean; calibrationPoints?: MicCalibrationPoint[] }) {
+  let captureContextForCurrentMeasurement: MeasurementCaptureContext | null = null;
   const [result, setResult] = usePersistentState<TransferResult | null>("church-audio-transfer-latest",null);
+  const publishResult = (value: TransferResult | null) => {
+    const stampedValue = value && captureContextForCurrentMeasurement ? { ...value, measurementContext: captureContextForCurrentMeasurement } : value;
+    setResult(stampedValue);
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("church-audio-measurement-updated", {
+        detail: { key: "church-audio-transfer-latest", value: stampedValue },
+      }));
+    }
+  };
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -87,7 +98,8 @@ export default function TransferFunctionPanel({ selectedInput, selectedOutput, r
     &&!multiPositionSamples.some(s=>s.label.trim().toLocaleLowerCase()===positionLabel.trim().toLocaleLowerCase()));
 
   const measure = async () => {
-    setBusy(true); setError(""); setNotice(""); setResult(null); setEqCopied(false);
+    captureContextForCurrentMeasurement = createCaptureContext(readActiveMeasurementSession(), { inputDeviceId: selectedInput, outputDeviceId: selectedOutput });
+    setBusy(true); setError(""); setNotice(""); publishResult(null); setEqCopied(false);
     let stream: MediaStream | undefined, audio: AudioContext | undefined;
     let microphoneSource: MediaStreamAudioSourceNode | undefined;
     let legacyProcessor: ScriptProcessorNode | undefined;
@@ -443,7 +455,7 @@ export default function TransferFunctionPanel({ selectedInput, selectedOutput, r
           // Missing browser storage never blocks raw measurement.
         }
         if (calibratedPoints && calibratedDelay !== null) {
-          setResult({
+          publishResult({
             ...measured,
             points: calibratedPoints,
             estimatedDelayMs: calibratedDelay,
@@ -456,7 +468,7 @@ export default function TransferFunctionPanel({ selectedInput, selectedOutput, r
             + ". Biểu đồ chỉ hiển thị dải tần được cả hai hồ sơ cùng bao phủ; Auto EQ vẫn khóa cho đến khi kiểm chứng phần cứng.",
           );
         } else {
-          setResult({ ...measured, captureQuality, captureMetadata });
+          publishResult({ ...measured, captureQuality, captureMetadata });
           setNotice(
             "Đã đo đồng bộ hai kênh cùng AudioWorklet clock nhưng chưa tìm thấy đủ hai hồ sơ loopback tương thích. "
             + "Kết quả hiện là dữ liệu thô, chưa bù lệch đáp tuyến/pha/latency giữa kênh; Auto EQ vẫn khóa an toàn.",
@@ -505,7 +517,7 @@ export default function TransferFunctionPanel({ selectedInput, selectedOutput, r
         analysisMode,
         pcmIntegrity: integritySnapshot,
       };
-      setResult({ ...measured, captureQuality, captureMetadata });
+      publishResult({ ...measured, captureQuality, captureMetadata });
     } catch (cause) {
       setError(explainMicrophoneError(cause));
     } finally {
@@ -529,7 +541,7 @@ export default function TransferFunctionPanel({ selectedInput, selectedOutput, r
     const capture:TransferResult={...result,points:points.filter((_,index)=>index%stride===0)};
     setPositionRepeatLabel(positionLabel.trim());
     setPositionRepeatCaptures(current=>[...current,capture].slice(0,5));
-    setResult(null);
+    publishResult(null);
     setNotice("Đã thêm lần đo lặp "+(positionRepeatCaptures.length+1)+". Giữ nguyên vị trí micro và đo lại; cần ít nhất 3 lần.");
   };
   const clearPositionRepeats=()=>{setPositionRepeatCaptures([]);setPositionRepeatLabel("");};
@@ -541,7 +553,7 @@ export default function TransferFunctionPanel({ selectedInput, selectedOutput, r
       repeatability:repeatabilityAnalysis.summary,repeatabilityDiagnostics:repeatabilityAnalysis.diagnostics,
     };
     setMultiPositionSamples(current=>[...current,sample].slice(0,8));
-    clearPositionRepeats();setResult(null);
+    clearPositionRepeats();publishResult(null);
     setPositionLabel("Khu vực "+(multiPositionSamples.length+2));setSameChainConfirmed(false);
     setEqSource("multi-position");
     setNotice("Đã lưu "+sample.label+" sau "+sample.repeatability?.captureCount+" lần đo lặp. Di chuyển micro đến khu vực tiếp theo.");
