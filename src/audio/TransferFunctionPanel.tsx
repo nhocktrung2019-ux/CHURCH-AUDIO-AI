@@ -6,6 +6,7 @@ import { deinterleaveInterleavedPcm, mixInterleavedPcmToMono } from "./pcmCaptur
 import { PcmCaptureIntegrityMonitor } from "./pcmCaptureIntegrity";
 import { AUTO_EQ_TARGETS, assessAutoEqReadiness, suggestParametricEq, type AutoEqTargetProfile } from "./autoEq.ts";
 import { comparePhaseInBand } from "./phaseAlignment";
+import { analyzeCrossoverAlignment } from "./crossoverAlignment";
 import { aggregateMultiPositionAutoEq, assessMultiPositionAutoEq, type MultiPositionAutoEqSample } from "./multiPositionAutoEq";
 import { analyzeMeasurementRepeatability } from "./measurementRepeatability.ts";
 import { explainMicrophoneError, requestMicrophoneStream } from "./microphone";
@@ -630,6 +631,71 @@ export default function TransferFunctionPanel({ selectedInput, selectedOutput, r
     return comparePhaseInBand(referenceA.points, referenceB.points, crossoverHz);
   }, [referenceA, referenceB, crossoverHz]);
 
+  const crossoverReview = useMemo(() => {
+    if (!referenceA || !referenceB) return null;
+    return analyzeCrossoverAlignment(referenceA.points, referenceB.points, crossoverHz);
+  }, [referenceA, referenceB, crossoverHz]);
+
+  const exportCrossoverJson = () => {
+    if (!referenceA || !referenceB || !crossoverReview) return;
+    const payload = {
+      schema: "church-audio.crossover-alignment-report",
+      schemaVersion: "1.0.0",
+      generatedAt: new Date().toISOString(),
+      application: { name: "CHURCH AUDIO AI", version: "0.30.0-beta.1" },
+      reportStatus: "advisory-not-applied",
+      analysis: crossoverReview,
+      setup: {
+        crossoverCenterHz: crossoverHz,
+        analysisBandHz: [crossoverReview.bandLowHz, crossoverReview.bandHighHz],
+        minimumCoherence: 0.8,
+        captureA: { sampleRateHz: referenceA.sampleRate, analysisMode: referenceA.analysisMode ?? null, captureMetadata: referenceA.captureMetadata ?? null },
+        captureB: { sampleRateHz: referenceB.sampleRate, analysisMode: referenceB.analysisMode ?? null, captureMetadata: referenceB.captureMetadata ?? null },
+        operatorNote: "Confirm same microphone position, input, gain, routing and processing for A/B captures.",
+      },
+      responses: {
+        A: referenceA.points.map(point => ({ frequencyHz: point.frequencyHz, magnitudeDb: point.magnitudeDb, phaseDeg: point.phaseDeg, coherence: point.coherence })),
+        B: referenceB.points.map(point => ({ frequencyHz: point.frequencyHz, magnitudeDb: point.magnitudeDb, phaseDeg: point.phaseDeg, coherence: point.coherence })),
+      },
+      limitations: [
+        "Sequential A/B captures support relative phase-shape review only.",
+        "Absolute A-to-B arrival-time difference is unavailable from this report.",
+        "Polarity, crossover and delay recommendations require operator verification.",
+        "No DSP or mixer settings were changed.",
+      ],
+      units: { frequency: "Hz", magnitude: "dB relative", phase: "degrees", coherence: "0..1" },
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url; anchor.download = "church-audio-crossover-report.json"; anchor.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const exportCrossoverCsv = () => {
+    if (!referenceA || !referenceB || !crossoverReview) return;
+    const quote = (value: string | number | null) => {
+      const text = value === null ? "" : String(value);
+      return '"' + text.replace(/"/g, '""') + '"';
+    };
+    const rows = [
+      ["record_type","measurement","frequency_hz","magnitude_db_relative","phase_deg","coherence_0_to_1","analysis_status","unit_note"],
+      ["summary","A_vs_B","","","","",crossoverReview.status,"Phase degrees; relative magnitude dB; coherence 0..1"],
+      ["summary","crossover_center",crossoverHz,"","","",crossoverReview.status,"Hz"],
+      ["summary","mean_phase_difference","","",crossoverReview.meanPhaseDifferenceDeg ?? "","",crossoverReview.status,"degrees"],
+      ["summary","mean_magnitude_difference","",crossoverReview.meanMagnitudeDifferenceDb ?? "","","",crossoverReview.status,"dB"],
+      ["summary","average_coherence","","","",crossoverReview.averageCoherence,crossoverReview.status,"0..1"],
+      ...referenceA.points.map(point=>["response","A",point.frequencyHz,point.magnitudeDb,point.phaseDeg,point.coherence,"",""]),
+      ...referenceB.points.map(point=>["response","B",point.frequencyHz,point.magnitudeDb,point.phaseDeg,point.coherence,"",""]),
+    ];
+    const csv = "\uFEFF" + rows.map(row=>row.map(value=>quote(value as string | number | null)).join(",")).join("\r\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url; anchor.download = "church-audio-crossover-report.csv"; anchor.click();
+    URL.revokeObjectURL(url);
+  };
+
   return <section className="panel transfer-pro-panel" id="transfer">
     <div className="heading"><Activity /><h2>Transfer Function · Magnitude · Phase · Coherence</h2><span>WELCH H1</span></div>
     <p className="muted">{capturePurpose === "channel-calibration"
@@ -707,6 +773,23 @@ export default function TransferFunctionPanel({ selectedInput, selectedOutput, r
         <div className="phase-ab-controls"><label>CROSSOVER CENTER<select value={crossoverHz} onChange={event=>setCrossoverHz(+event.target.value)}><option value={80}>80 Hz</option><option value={100}>100 Hz</option><option value={120}>120 Hz</option><option value={150}>150 Hz</option><option value={200}>200 Hz</option><option value={250}>250 Hz</option><option value={500}>500 Hz</option><option value={1000}>1 kHz</option><option value={2000}>2 kHz</option></select></label><button className="secondary" onClick={()=>setReferenceA(result)}>Save current as A</button><button className="secondary" onClick={()=>setReferenceB(result)}>Save current as B</button></div>
         <div className="phase-ab-status"><span>A: <b>{referenceA?referenceA.points.length+" bins saved":"not saved"}</b></span><span>B: <b>{referenceB?referenceB.points.length+" bins saved":"not saved"}</b></span><button className="icon-button" onClick={()=>{setReferenceA(null);setReferenceB(null);}}>Reset A/B</button></div>
         {phaseComparison&&<div className="phase-ab-result"><article><small>MEAN PHASE B − A</small><b>{phaseComparison.meanPhaseDeg===null?"—":phaseComparison.meanPhaseDeg.toFixed(1)+"°"}</b></article><article><small>MAGNITUDE DELTA B − A</small><b>{phaseComparison.magnitudeDeltaDb===null?"—":phaseComparison.magnitudeDeltaDb.toFixed(1)+" dB"}</b></article><article><small>PHASE CONCENTRATION</small><b>{(phaseComparison.phaseConcentration*100).toFixed(0)}%</b></article><article><small>AVG COHERENCE</small><b>{(phaseComparison.averageCoherence*100).toFixed(0)}%</b></article><p>{phaseComparison.interpretation}</p></div>}
+        {crossoverReview&&<div className="crossover-review-panel">
+          <div className="heading"><Waves/><h3>Đánh giá vùng giao nhau · v1.08</h3><span>{crossoverReview.confidence.toUpperCase()} CONFIDENCE</span></div>
+          <div className="crossover-review-grid">
+            <article><small>TRẠNG THÁI</small><b className={"crossover-status "+crossoverReview.status}>{crossoverReview.status==="good-overlap"?"Tương đối phù hợp":crossoverReview.status==="review-polarity"?"Kiểm tra cực tính":crossoverReview.status==="review-level-balance"?"Kiểm tra cân mức":crossoverReview.status==="review-delay-or-filter"?"Kiểm tra delay / lọc":"Thiếu dữ liệu"}</b></article>
+            <article><small>PHA TRUNG BÌNH B − A</small><b>{crossoverReview.meanPhaseDifferenceDeg===null?"—":crossoverReview.meanPhaseDifferenceDeg.toFixed(1)+"°"}</b></article>
+            <article><small>CHÊNH MỨC B − A</small><b>{crossoverReview.meanMagnitudeDifferenceDb===null?"—":crossoverReview.meanMagnitudeDifferenceDb.toFixed(1)+" dB"}</b></article>
+            <article><small>COHERENCE TRUNG BÌNH</small><b>{(crossoverReview.averageCoherence*100).toFixed(0)+"%"}</b></article>
+            <article><small>SỐ BIN GHÉP</small><b>{crossoverReview.matchedBins}</b></article>
+            <article><small>ĐỘ PHỦ DẢI TẦN</small><b>{crossoverReview.octaveCoverage.toFixed(2)+" octave"}</b></article>
+          </div>
+          <p className="crossover-recommendation">{crossoverReview.recommendation}</p>
+          <p className="warning">Delay tuyệt đối: không khả dụng từ phép đo A/B tuần tự. Đây là báo cáo tư vấn, không tự đảo cực hoặc thay đổi crossover/DSP.</p>
+          <div className="crossover-export-actions">
+            <button className="secondary" onClick={exportCrossoverJson}><Download/>Xuất báo cáo JSON</button>
+            <button className="secondary" onClick={exportCrossoverCsv}><Download/>Xuất dữ liệu CSV</button>
+          </div>
+        </div>}
         <p className="warning">Important: each capture is independently time-aligned to its own correlation peak, so this tool does not retain the absolute A-to-B arrival-time difference. Use it only as a phase-shape/polarity diagnostic. True relative speaker delay requires a synchronous dual-channel reference/measurement chain, common clock and simultaneous capture.</p>
       </div>
       <section className="multi-position-eq">
