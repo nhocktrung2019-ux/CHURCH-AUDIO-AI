@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { usePersistentState } from "./usePersistentState";
 import { Play, Square, AlertTriangle, Waves } from "lucide-react";
 import { analyzeImpulseResponse, createLogSweep, type ImpulseResponseResult } from "./rt60";
 import { explainMicrophoneError, requestMicrophoneStream } from "./microphone";
@@ -21,7 +22,7 @@ export default function RT60MeasurementPanel({ selectedInput, running }: Props) 
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
-  const [result, setResult] = useState<ImpulseResponseResult | null>(null);
+  const [result, setResult] = usePersistentState<ImpulseResponseResult | null>("church-audio-rt60-latest", null);
   const [impulse, setImpulse] = useState<Float32Array | null>(null);
   const [duration, setDuration] = useState(6);
   const [tailSeconds, setTailSeconds] = useState(4);
