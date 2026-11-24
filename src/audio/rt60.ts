@@ -7,6 +7,7 @@ export type Rt60BandResult = {
   fitRangeDb: number;
 };
 export type ImpulseResponseResult = {
+  measurementContext?: import("./measurementSession").MeasurementCaptureContext;
   sampleRate: number;
   peakIndex: number;
   peakToNoiseDb: number;
