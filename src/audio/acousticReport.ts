@@ -1,5 +1,5 @@
-import type { MeasurementPosition } from "./measurementPositions";
-import { assessCalibration, type CalibrationRecord } from "./calibrationRecords";
+import type { MeasurementPosition } from "./measurementPositions.ts";
+import { assessCalibration, type CalibrationRecord } from "./calibrationRecords.ts";
 export type ReportReading = { id: string; positionId: string; value: number; unit: "dB_SPL"|"dBFS"; evidence: "measured"|"manual"|"simulated"|"interpolated"; calibrationId?: string; sessionId: string; weighting: "A"|"C"|"Z"; microphoneId?: string };
 export type AcousticReportInput = { reportId: string; roomId: string; sessionId: string; createdAt: string; positions: MeasurementPosition[]; calibrations: CalibrationRecord[]; readings: ReportReading[] };
 export type AcousticReport = { schemaVersion: 1; reportId: string; roomId: string; sessionId: string; createdAt: string; positions: MeasurementPosition[]; readings: Array<ReportReading & { acceptedForSpl: boolean; rejectionReason?: string }>; summary: { acceptedSplCount: number; rejectedCount: number; status: "ready"|"insufficient-data" } };
