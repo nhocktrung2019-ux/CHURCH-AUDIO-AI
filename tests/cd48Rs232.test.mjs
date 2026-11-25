@@ -5,7 +5,7 @@ import { cd48Rs232, isCd48Rs232Command } from "../src/audio/cd48Rs232.ts";
 test("encodes global mute exactly as supplied in the vendor table", () => {
   const command = cd48Rs232.globalMute(true);
   assert.equal(command.command, "setnr 0 d0/data/d0/pros/gnOut0/arg/allMute true 0;");
-  assert.equal(command.asciiHex.slice(0, 17), "73 65 74 6E 72 20 30 20");
+  assert.equal(command.asciiHex.startsWith("73 65 74 6E 72 20 30 20"), true);
   assert.equal(command.transport, "RS232");
   assert.equal(command.baudRate, 115200);
   assert.equal(command.requiresExplicitConfirmation, true);
