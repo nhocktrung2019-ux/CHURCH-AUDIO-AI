@@ -163,14 +163,21 @@ export const cd48Rs232 = {
 export function isCd48Rs232Command(value: unknown): value is Cd48Command {
   if (!value || typeof value !== "object") return false;
   const candidate = value as Partial<Cd48Command>;
-  return candidate.device === "dbAcoustics CD48"
-    && candidate.firmwareLabel === "Ver. 2215"
-    && candidate.transport === "RS232"
-    && candidate.baudRate === 115200
-    && typeof candidate.command === "string"
-    && candidate.command.startsWith("setnr ")
-    && candidate.command.endsWith(";")
-    && candidate.asciiHex === asciiHex(candidate.command)
-    && candidate.requiresExplicitConfirmation === true
-    && candidate.readbackSupportedBySuppliedTable === false;
+  if (
+    candidate.device !== "dbAcoustics CD48"
+    || candidate.firmwareLabel !== "Ver. 2215"
+    || candidate.transport !== "RS232"
+    || candidate.baudRate !== 115200
+    || typeof candidate.command !== "string"
+    || !candidate.command.startsWith("setnr ")
+    || !candidate.command.endsWith(";")
+    || candidate.requiresExplicitConfirmation !== true
+    || candidate.readbackSupportedBySuppliedTable !== false
+  ) return false;
+
+  try {
+    return candidate.asciiHex === asciiHex(candidate.command);
+  } catch {
+    return false;
+  }
 }
