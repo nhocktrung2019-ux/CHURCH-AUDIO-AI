@@ -28,7 +28,7 @@ test("round-trips OSC string, int32, float32 and blob arguments", () => {
   assert.equal(decoded.address, "/test");
   assert.equal(decoded.typeTags, ",sifb");
   assert.deepEqual(decoded.args.slice(0, 3), ["X32", -12, 0.5]);
-  assert.deepEqual([...(decoded.args[3] as Uint8Array)], [1, 2, 3]);
+  assert.deepEqual(Array.from(decoded.args[3]), [1, 2, 3]);
 });
 
 test("rejects malformed packets, unsupported tags and non-finite values", () => {
