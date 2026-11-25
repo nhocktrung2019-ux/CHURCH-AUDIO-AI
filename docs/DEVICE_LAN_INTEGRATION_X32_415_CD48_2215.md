@@ -176,3 +176,19 @@ Do not begin protocol tests until vendor protocol evidence is obtained. Then ver
 ## Current implementation status
 
 This document is a staged engineering specification committed on a feature branch. It does not implement network transport, contact the physical devices, enable DSP writes, or create a new APK.
+
+
+## Addendum: supplied CD48 vendor files reviewed (2026-11-25)
+
+The operator has now supplied the CD48 User Manual, Ethernet Connection Guide, Central Control Protocol Table spreadsheet, PC connection video, installer and Windows Desktop Runtime installer.
+
+The files establish additional facts:
+- The User Manual specifies rear RJ45 100M Ethernet, direct-PC/LAN connection, default IP `192.168.20.20`, subnet `255.255.255.0`, gateway `192.168.20.1`, and same-subnet requirement.
+- The connection video visibly shows the RJ45 100M port, the RS232 R/T/G terminal and the vendor software network setting for `192.168.20.20`.
+- The spreadsheet explicitly labels its command list as **RS232 communication protocol** and states baud rate **115200**.
+- Its hex columns encode ASCII text commands. The documented command families cover global mute, per-channel input/output mute, ±1 dBu input/output gain steps, Scene1–Scene8 selection, and input/output group mute and ±1% volume steps.
+- The spreadsheet does not document serial data bits/parity/stop bits/flow control, response/readback semantics, or a mapping of these serial commands to Ethernet.
+
+See `docs/CD48_VER2215_PROTOCOL_EVIDENCE.md` for decoded examples and the evidence boundary.
+
+**Updated status:** CD48 is no longer “protocol unknown” in every respect: a vendor-supplied RS232 command table is available. It remains **Ethernet protocol unverified** and **physical RS232 compatibility pending**. Do not send the ASCII commands over TCP/UDP by assumption. Do not enable live writes until electrical serial details, framing, pacing, response/readback, and hardware revision compatibility are verified.
