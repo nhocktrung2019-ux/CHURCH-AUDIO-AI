@@ -137,7 +137,7 @@ export function decodeOscMessage(packet: Uint8Array): OscMessage {
 
 export function isValidX32Ipv4Target(ip: string): boolean {
   const parts = ip.split(".");
-  if (parts.length !== 4 || parts.some((part) => !/^(0|[1-9]\\d{0,2})$/.test(part))) return false;
+  if (parts.length !== 4 || parts.some((part) => !/^(0|[1-9]\d{0,2})$/.test(part))) return false;
   const octets = parts.map(Number);
   if (octets.some((octet) => octet < 0 || octet > 255)) return false;
   if (octets.every((octet) => octet === 0)) return false;
