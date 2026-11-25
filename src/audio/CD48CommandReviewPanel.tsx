@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { AlertTriangle, Clipboard, ShieldCheck } from "lucide-react";
-import { cd48Rs232, type Cd48Command, type Cd48CommandKind } from "./cd48Rs232";
+import { cd48Rs232, type Cd48Command } from "./cd48Rs232";
 
 type Action =
   | "global-mute" | "input-mute" | "input-gain-step" | "output-mute"
