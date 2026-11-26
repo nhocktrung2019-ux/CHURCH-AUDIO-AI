@@ -38,7 +38,11 @@ export class X32ReadOnlyClient {
   private state: X32ConnectionState = "idle";
   private busy = false;
 
-  constructor(private readonly transport: X32DatagramTransport) {}
+  private readonly transport: X32DatagramTransport;
+
+  constructor(transport: X32DatagramTransport) {
+    this.transport = transport;
+  }
 
   getState(): X32ConnectionState {
     return this.state;
