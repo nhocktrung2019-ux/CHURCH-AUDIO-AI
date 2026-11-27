@@ -2,7 +2,7 @@
 
 A Vietnamese-first measurement and system-tuning workspace for church sound systems. Targets Android through Capacitor and laptop/desktop browsers.
 
-**Integrated beta branch version:** `0.29.0-beta.1`.
+**Integrated beta branch version:** `0.30.0-beta.1`.
 
 ## Workspaces
 
@@ -47,4 +47,4 @@ The tag-triggered signed-release workflow requires these repository Actions secr
 - The church 3D, CBT and coverage modules are planning aids and approximations. They are not a substitute for official JBL CBT Calculator or validated EASE Focus/GLL/CLF workflows.
 - Do not claim IEC 61672 or ISO 3382 conformity from a phone/browser microphone chain.
 
-See [the full six-stage roadmap](docs/ROADMAP_FULL.md), [integration and validation gates](docs/INTEGRATION_AND_VALIDATION.md), [acoustic workflow](docs/ACOUSTICS_ENGINE.md), [DSP integration boundaries](docs/DSP_INTEGRATION.md) and [voice/multi-source limitations](docs/VOICE_AND_MULTI_SOURCE_MEASUREMENT.md).
+See [the full six-stage roadmap](docs/ROADMAP_FULL.md), [integration and validation gates](docs/INTEGRATION_AND_VALIDATION.md), [acoustic workflow](docs/ACOUSTICS_ENGINE.md), [DSP integration boundaries](docs/DSP_INTEGRATION.md), [voice/multi-source limitations](docs/VOICE_AND_MULTI_SOURCE_MEASUREMENT.md) and [V0.31–V0.35 execution tracker](docs/V031_V035_EXECUTION.md).
