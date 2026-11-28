@@ -22,6 +22,7 @@ export interface MeasurementProvenance {
   sessionId: string;
   capturedAt: string;
   sourceLabel: string;
+  measurementPositionId?: string;
   sampleRateHz?: number;
   channelCount?: number;
   microphonePosition?: { x: number; y: number; z: number; unit: "m" };
