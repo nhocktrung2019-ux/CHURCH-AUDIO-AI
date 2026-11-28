@@ -60,3 +60,45 @@ test("invalid capture metadata is rejected", () => {
   assert.ok(errors.some((error) => error.includes("Sample rate")));
   assert.ok(errors.some((error) => error.includes("Channel count")));
 });
+
+
+test("zone analysis reports calibrated level, target deviation and sample sufficiency", async () => {
+  const { analyzeZoneSpl } = await import("../src/domain/acoustics.ts");
+  const zone = { id: "zone-1", name: "Main seating", targetSplDb: 85, speakerIds: [] };
+  const results = analyzeZoneSpl(
+    [zone],
+    [record("a", 84), record("b", 85), record("c", 86)],
+    { minimumSamples: 3, maximumSpreadDb: 4 },
+  );
+  assert.equal(results.length, 1);
+  assert.equal(results[0].sampleCount, 3);
+  assert.ok(Math.abs(results[0].energyAverageDbSpl - 85.03) < 0.1);
+  assert.ok(results[0].deviationFromTargetDb > 0);
+  assert.equal(results[0].uniformity, "within-limit");
+});
+
+test("zone analysis never treats simulated or uncalibrated samples as measured SPL", async () => {
+  const { analyzeZoneSpl } = await import("../src/domain/acoustics.ts");
+  const zone = { id: "zone-1", name: "Choir", targetSplDb: 82, speakerIds: [] };
+  const uncalibrated = record("b", 110);
+  uncalibrated.provenance.calibration = { calibrationMethod: "none" };
+  const results = analyzeZoneSpl(
+    [zone],
+    [record("a", 80), uncalibrated, { ...record("c", 95, "simulated-spl"), quality: "uncalibrated" }],
+    { minimumSamples: 2 },
+  );
+  assert.equal(results[0].sampleCount, 1);
+  assert.equal(results[0].excludedCount, 2);
+  assert.equal(results[0].uniformity, "insufficient-data");
+});
+
+test("zone analysis validates thresholds and handles missing targets", async () => {
+  const { analyzeZoneSpl } = await import("../src/domain/acoustics.ts");
+  const zone = { id: "zone-2", name: "Balcony", speakerIds: [] };
+  const result = analyzeZoneSpl([zone], [record("a", 80)])[0];
+  assert.equal(result.targetSplDb, null);
+  assert.equal(result.deviationFromTargetDb, null);
+  assert.equal(result.uniformity, "insufficient-data");
+  assert.throws(() => analyzeZoneSpl([zone], [], { minimumSamples: 0 }), RangeError);
+  assert.throws(() => analyzeZoneSpl([zone], [], { maximumSpreadDb: -1 }), RangeError);
+});
