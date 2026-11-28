@@ -102,3 +102,40 @@ test("zone analysis validates thresholds and handles missing targets", async () 
   assert.throws(() => analyzeZoneSpl([zone], [], { minimumSamples: 0 }), RangeError);
   assert.throws(() => analyzeZoneSpl([zone], [], { maximumSpreadDb: -1 }), RangeError);
 });
+
+
+test("3D measured overlay groups only matching position, session, weighting and calibration profile", async () => {
+  const { buildMeasuredSplOverlay } = await import("../src/domain/spl3dOverlay.ts");
+  const positions = [{ id: "p1", label: "Ghế giữa", zoneId: "zone-1", xM: 8, yM: 4, zM: 1.2 }];
+  const a = record("a", 80);
+  a.provenance.measurementPositionId = "p1";
+  const b = record("b", 82);
+  b.provenance.measurementPositionId = "p1";
+  const otherSession = record("c", 99);
+  otherSession.provenance.measurementPositionId = "p1";
+  otherSession.provenance.sessionId = "session-2";
+  const noPosition = record("d", 110);
+  const results = buildMeasuredSplOverlay(positions, [a, b, otherSession, noPosition], [
+    { id: "zone-1", name: "Main", targetSplDb: 85, speakerIds: [] },
+  ]);
+  assert.equal(results.length, 2);
+  const first = results.find((item) => item.sessionId === "session-1");
+  assert.equal(first.sampleCount, 2);
+  assert.ok(first.splDb > 80 && first.splDb < 82);
+  assert.equal(first.targetSplDb, 85);
+});
+
+test("3D measured overlay excludes uncalibrated, simulated, mismatched-zone and unpositioned records", async () => {
+  const { buildMeasuredSplOverlay } = await import("../src/domain/spl3dOverlay.ts");
+  const positions = [{ id: "p1", label: "Ghế giữa", zoneId: "zone-1", xM: 8, yM: 4, zM: 1.2 }];
+  const uncalibrated = record("a", 90);
+  uncalibrated.provenance.measurementPositionId = "p1";
+  uncalibrated.provenance.calibration = { calibrationMethod: "none" };
+  const wrongZone = record("b", 91);
+  wrongZone.provenance.measurementPositionId = "p1";
+  wrongZone.zoneId = "zone-2";
+  const simulated = { ...record("c", 92, "simulated-spl"), quality: "uncalibrated" };
+  simulated.provenance.measurementPositionId = "p1";
+  const results = buildMeasuredSplOverlay(positions, [uncalibrated, wrongZone, simulated], []);
+  assert.equal(results.length, 0);
+});
