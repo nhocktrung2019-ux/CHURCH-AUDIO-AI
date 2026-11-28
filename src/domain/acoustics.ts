@@ -72,6 +72,21 @@ export interface SplSummary {
   excludedCount: number;
 }
 
+/**
+ * A record is eligible for a physical SPL summary only when it explicitly
+ * carries a non-"none" calibration method. A UI quality flag alone is not
+ * evidence of calibration; this prevents stale/imported records from silently
+ * entering calibrated zone statistics.
+ */
+function hasCalibrationEvidence(record: AcousticMeasurement): boolean {
+  const calibration = record.provenance?.calibration;
+  return Boolean(
+    calibration &&
+    calibration.calibrationMethod &&
+    calibration.calibrationMethod !== "none",
+  );
+}
+
 /** Only valid, calibrated physical SPL records contribute to this summary. */
 export function summarizeCalibratedSpl(records: readonly AcousticMeasurement[]): SplSummary {
   const valid = records.filter(
@@ -79,7 +94,8 @@ export function summarizeCalibratedSpl(records: readonly AcousticMeasurement[]):
       record.kind === "calibrated-spl" &&
       record.unit === "dB_SPL" &&
       record.quality === "valid" &&
-      Number.isFinite(record.value),
+      Number.isFinite(record.value) &&
+      hasCalibrationEvidence(record),
   );
   const values = valid.map((record) => record.value);
   if (values.length === 0) {
@@ -116,8 +132,8 @@ export function validateAcousticMeasurement(record: AcousticMeasurement): string
   if (!Number.isFinite(record.value)) errors.push("Measurement value must be finite.");
   if (record.kind === "calibrated-spl") {
     if (record.unit !== "dB_SPL") errors.push("Calibrated SPL must use dB_SPL units.");
-    if (record.quality === "valid" && (!record.provenance.calibration || record.provenance.calibration.calibrationMethod === "none")) {
-      errors.push("A valid calibrated SPL record requires a calibration reference.");
+    if (record.quality === "valid" && !hasCalibrationEvidence(record)) {
+      errors.push("A valid calibrated SPL record requires a non-none calibration method.");
     }
   }
   if (record.kind === "relative-dbfs" && record.unit !== "dBFS") {
@@ -128,5 +144,14 @@ export function validateAcousticMeasurement(record: AcousticMeasurement): string
   }
   if (!record.provenance.sessionId.trim()) errors.push("Measurement session id is required.");
   if (!record.provenance.sourceLabel.trim()) errors.push("Measurement source label is required.");
+  if (!Number.isFinite(Date.parse(record.provenance.capturedAt))) errors.push("Capture timestamp must be a valid date.");
+  if (record.provenance.sampleRateHz !== undefined &&
+      (!Number.isFinite(record.provenance.sampleRateHz) || record.provenance.sampleRateHz <= 0)) {
+    errors.push("Sample rate must be a positive finite number.");
+  }
+  if (record.provenance.channelCount !== undefined &&
+      (!Number.isInteger(record.provenance.channelCount) || record.provenance.channelCount < 1)) {
+    errors.push("Channel count must be a positive integer.");
+  }
   return errors;
 }
