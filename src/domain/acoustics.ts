@@ -155,3 +155,67 @@ export function validateAcousticMeasurement(record: AcousticMeasurement): string
   }
   return errors;
 }
+
+
+export type ZoneSplUniformity = "insufficient-data" | "within-limit" | "above-limit";
+
+export interface ZoneSplAnalysis {
+  zoneId: string;
+  zoneName: string;
+  targetSplDb: number | null;
+  sampleCount: number;
+  excludedCount: number;
+  energyAverageDbSpl: number | null;
+  minimumDbSpl: number | null;
+  maximumDbSpl: number | null;
+  spreadDb: number | null;
+  deviationFromTargetDb: number | null;
+  uniformity: ZoneSplUniformity;
+}
+
+/**
+ * Summarizes each configured zone using calibrated physical SPL only.
+ * Sample sufficiency is not a claim of spatial coverage: microphone positions
+ * and room geometry must be assessed separately by the mapping layer.
+ */
+export function analyzeZoneSpl(
+  zones: readonly AcousticZone[],
+  measurements: readonly AcousticMeasurement[],
+  options: { minimumSamples?: number; maximumSpreadDb?: number } = {},
+): ZoneSplAnalysis[] {
+  const minimumSamples = options.minimumSamples ?? 3;
+  const maximumSpreadDb = options.maximumSpreadDb ?? 6;
+  if (!Number.isInteger(minimumSamples) || minimumSamples < 1) {
+    throw new RangeError("minimumSamples must be a positive integer.");
+  }
+  if (!Number.isFinite(maximumSpreadDb) || maximumSpreadDb < 0) {
+    throw new RangeError("maximumSpreadDb must be a non-negative finite number.");
+  }
+
+  return zones.map((zone) => {
+    const zoneRecords = measurements.filter((record) => record.zoneId === zone.id);
+    const summary = summarizeCalibratedSpl(zoneRecords);
+    const enoughSamples = summary.count >= minimumSamples;
+    const validTarget = Number.isFinite(zone.targetSplDb);
+    return {
+      zoneId: zone.id,
+      zoneName: zone.name,
+      targetSplDb: validTarget ? zone.targetSplDb! : null,
+      sampleCount: summary.count,
+      excludedCount: summary.excludedCount,
+      energyAverageDbSpl: summary.energyAverageDbSpl,
+      minimumDbSpl: summary.minimumDbSpl,
+      maximumDbSpl: summary.maximumDbSpl,
+      spreadDb: summary.spreadDb,
+      deviationFromTargetDb:
+        validTarget && summary.energyAverageDbSpl !== null
+          ? summary.energyAverageDbSpl - zone.targetSplDb!
+          : null,
+      uniformity: !enoughSamples
+        ? "insufficient-data"
+        : summary.spreadDb !== null && summary.spreadDb <= maximumSpreadDb
+          ? "within-limit"
+          : "above-limit",
+    };
+  });
+}
