@@ -32,11 +32,31 @@ test("simulated values are excluded from measured SPL summary", () => {
 test("valid calibrated SPL requires calibration provenance", () => {
   const item = record("a", 80);
   item.provenance.calibration = undefined;
-  assert.ok(validateAcousticMeasurement(item).some((error) => error.includes("calibration reference")));
+  assert.ok(validateAcousticMeasurement(item).some((error) => error.includes("calibration method")));
+});
+
+test("records marked valid but carrying no calibration are excluded from summaries", () => {
+  const uncalibrated = record("b", 96);
+  uncalibrated.provenance.calibration = { calibrationMethod: "none" };
+  const summary = summarizeCalibratedSpl([record("a", 80), uncalibrated]);
+  assert.equal(summary.count, 1);
+  assert.equal(summary.excludedCount, 1);
+  assert.equal(summary.energyAverageDbSpl, 80);
 });
 
 test("relative dBFS cannot be mislabeled as physical SPL", () => {
   const item = record("a", -18, "relative-dbfs");
   item.unit = "dB_SPL";
   assert.ok(validateAcousticMeasurement(item).some((error) => error.includes("dBFS")));
+});
+
+test("invalid capture metadata is rejected", () => {
+  const item = record("a", 80);
+  item.provenance.capturedAt = "not-a-date";
+  item.provenance.sampleRateHz = 0;
+  item.provenance.channelCount = 1.5;
+  const errors = validateAcousticMeasurement(item);
+  assert.ok(errors.some((error) => error.includes("timestamp")));
+  assert.ok(errors.some((error) => error.includes("Sample rate")));
+  assert.ok(errors.some((error) => error.includes("Channel count")));
 });
