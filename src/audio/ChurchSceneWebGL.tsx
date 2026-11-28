@@ -7,13 +7,17 @@ export type WebGLSpeaker = {
   azimuth: number; coverage: number;
 };
 export type WebGLMeasurementPosition = { id: string; label: string; zoneId: string; xM: number; yM: number; zM: number };
+export type WebGLSplPoint = {
+  id: string; label: string; xM: number; yM: number; zM: number;
+  splDb: number; targetSplDb: number | null; sampleCount: number;
+};
 export type WebGLObject = {
   id: number; kind: "altar" | "pulpit" | "column" | "pew" | "chair" | "stage";
   name: string; x: number; y: number; w: number; d: number; h: number; rotation: number;
 };
 type Props = {
   length: number; width: number; height: number;
-  speakers: WebGLSpeaker[]; objects: WebGLObject[]; measurementPositions: WebGLMeasurementPosition[];
+  speakers: WebGLSpeaker[]; objects: WebGLObject[]; measurementPositions: WebGLMeasurementPosition[]; splPoints: WebGLSplPoint[];
   selectedSpeaker: number; selectedObject: number;
   onSelectSpeaker: (id: number) => void; onSelectObject: (id: number) => void;
   onMoveSpeaker: (id: number, x: number, y: number) => void;
@@ -612,6 +616,41 @@ export default function ChurchSceneWebGL(props: Props) {
       group.position.set(point.xM, point.zM, point.yM);
     });
 
+
+    props.splPoints.forEach((point) => {
+      const key = "m:" + point.id;
+      liveKeys.add(key);
+      let group = state.groups.get(key);
+      const delta = point.targetSplDb === null ? null : point.splDb - point.targetSplDb;
+      const color = delta === null ? 0x56d7e8 : delta < -6 ? 0xe06b62 : delta > 6 ? 0xe5ad52 : 0x63d7a0;
+      const signature = [color, point.sampleCount].join("|");
+      if (group && group.userData.signature !== signature) {
+        state.scene.remove(group);
+        disposeObject(group);
+        state.groups.delete(key);
+        group = undefined;
+      }
+      if (!group) {
+        group = new THREE.Group();
+        group.userData.signature = signature;
+        const marker = new THREE.Mesh(
+          new THREE.SphereGeometry(0.22, 20, 14),
+          new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.96 }),
+        );
+        marker.userData.noDrag = true;
+        const halo = new THREE.Mesh(
+          new THREE.TorusGeometry(0.38, 0.035, 8, 36),
+          new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.82 }),
+        );
+        halo.rotation.x = Math.PI / 2;
+        halo.userData.noDrag = true;
+        group.add(marker, halo);
+        state.scene.add(group);
+        state.groups.set(key, group);
+      }
+      group.position.set(point.xM, point.zM + 0.08, point.yM);
+    });
+
     for (const [key, group] of state.groups) {
       if (!liveKeys.has(key)) {
         state.scene.remove(group);
@@ -619,7 +658,7 @@ export default function ChurchSceneWebGL(props: Props) {
         state.groups.delete(key);
       }
     }
-  }, [props.speakers, props.objects, props.measurementPositions, props.selectedSpeaker, props.selectedObject]);
+  }, [props.speakers, props.objects, props.measurementPositions, props.splPoints, props.selectedSpeaker, props.selectedObject]);
 
   return (
     <div
